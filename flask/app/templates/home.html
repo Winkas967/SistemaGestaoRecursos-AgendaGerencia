@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Uso do Datashow</title>
+<style>
+  :root {
+    --bg: #F4F1EA;
+    --ink: #23262B;
+    --muted: #6B6F76;
+    --accent: #C7562A;
+    --accent-dark: #9C431F;
+    --line: #DAD5C8;
+    --white: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    padding: 32px 16px 64px;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  header {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  header .tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .sair-link {
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    padding: 7px 14px;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sair-link:hover {
+    background: var(--accent);
+    color: var(--white);
+  }
+
+  .sair-link:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  form {
+    background: var(--white);
+    border: 1px solid var(--line);
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  input, textarea {
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  input:focus, textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    background: var(--white);
+  }
+
+  textarea { resize: vertical; min-height: 50px; }
+
+  button {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--accent);
+    color: var(--white);
+    border: none;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  button:hover { background: var(--accent-dark); }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .table-title {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border: 1px solid var(--line);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.88rem;
+    vertical-align: top;
+  }
+
+  th {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    background: var(--bg);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .del-btn {
+    background: transparent;
+    color: var(--accent);
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border: 1px solid var(--accent);
+  }
+  .del-btn:hover { background: var(--accent); color: var(--white); }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 28px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    td {
+      border: none;
+      padding: 4px 12px;
+    }
+    td::before {
+      content: attr(data-label);
+      display: block;
+      font-family: 'Courier New', monospace;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    tr { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Registro de Uso do Datashow</h1>
+    <form action="{{url_for('main.logout')}}" method="GET">
+    <button type="submit">Sair</button>
+    </form>
+  </header>
+
+  <form id="form-registro">
+    <div class="grid">
+      <div class="field">
+        <label for="data">Data</label>
+        <input type="date" id="data" required>
+      </div>
+      <div class="field">
+        <label for="responsavel">Responsável</label>
+        <input type="text" id="responsavel" placeholder="Nome do professor/funcionário" required>
+      </div>
+      <div class="field">
+        <label for="hora-inicio">Horário de início</label>
+        <input type="time" id="hora-inicio" required>
+      </div>
+      <div class="field">
+        <label for="hora-fim">Horário de término</label>
+        <input type="time" id="hora-fim" required>
+      </div>
+      <div class="field">
+        <label for="turma">Turma / Setor</label>
+        <input type="text" id="turma" placeholder="Ex: 8º Ano B" required>
+      </div>
+      <div class="field">
+        <label for="local">Local de uso</label>
+        <input type="text" id="local" placeholder="Ex: Sala 12" required>
+      </div>
+      <div class="field full">
+        <label for="obs">Observações</label>
+        <textarea id="obs" placeholder="Estado do equipamento, ocorrências, etc. (opcional)"></textarea>
+      </div>
+    </div>
+    <button type="submit">Adicionar registro</button>
+  </form>
+
+  <div class="table-title">Registros do dia</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Responsável</th>
+        <th>Início</th>
+        <th>Término</th>
+        <th>Turma/Setor</th>
+        <th>Local</th>
+        <th>Obs.</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tabela-corpo">
+    </tbody>
+  </table>
+  <div class="empty" id="msg-vazio">Nenhum registro ainda. Preencha o formulário acima.</div>
+
+</div>
+
+<script>
+  const registros = [];
+  const form = document.getElementById('form-registro');
+  const corpo = document.getElementById('tabela-corpo');
+  const msgVazio = document.getElementById('msg-vazio');
+
+  function formatarData(iso) {
+    const [ano, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  function renderizar() {
+    corpo.innerHTML = '';
+    msgVazio.style.display = registros.length ? 'none' : 'block';
+
+    registros.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Data">${formatarData(r.data)}</td>
+        <td data-label="Responsável">${r.responsavel}</td>
+        <td data-label="Início">${r.inicio}</td>
+        <td data-label="Término">${r.fim}</td>
+        <td data-label="Turma/Setor">${r.turma}</td>
+        <td data-label="Local">${r.local}</td>
+        <td data-label="Obs.">${r.obs || '—'}</td>
+        <td data-label=""><button class="del-btn" data-index="${i}">Excluir</button></td>
+      `;
+      corpo.appendChild(tr);
+    });
+
+    corpo.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        registros.splice(Number(btn.dataset.index), 1);
+        renderizar();
+      });
+    });
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    registros.push({
+      data: document.getElementById('data').value,
+      responsavel: document.getElementById('responsavel').value,
+      inicio: document.getElementById('hora-inicio').value,
+      fim: document.getElementById('hora-fim').value,
+      turma: document.getElementById('turma').value,
+      local: document.getElementById('local').value,
+      obs: document.getElementById('obs').value.trim()
+    });
+    form.reset();
+    renderizar();
+  });
+
+  renderizar();
+</script>
+</body>
+</html>
