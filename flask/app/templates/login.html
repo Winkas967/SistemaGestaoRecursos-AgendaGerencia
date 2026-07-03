@@ -1,126 +1,105 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-
-        body {
-            background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .login {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            width: 320px;
-        }
-
-        .login h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .campo {
-            margin-bottom: 15px;
-        }
-
-        .campo label {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .campo input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #0d6efd;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        button:hover {
-            background-color: #0b5ed7;
-        }
-
-        .cadastro{
-            width: 50%;
-            margin: 0 auto;
-            padding: 5px;
-            background-color: #0d6efd;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            justify-content: center;
-            align-content: center;
-            
-        }
-
-        .cadastro:hover {
-            background-color: #0b5ed7;
-        }
-
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+    (function () {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", savedTheme || (prefersDark ? "dark" : "light"));
+        document.documentElement.classList.add("is-loading");
+    })();
+</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<title>Login | Unimed</title>
 </head>
 
 <body>
 
-    <div class="login">
-        <h2>Login</h2>
+<button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema claro ou escuro">
+    <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <line x1="12" y1="2" x2="12" y2="4"></line>
+        <line x1="12" y1="20" x2="12" y2="22"></line>
+        <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
+        <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+        <line x1="2" y1="12" x2="4" y2="12"></line>
+        <line x1="20" y1="12" x2="22" y2="12"></line>
+        <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
+        <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
+    </svg>
+    <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <span id="themeLabel">Modo escuro</span>
+</button>
 
-        <form action="/login" method="POST">
+<main class="page-shell">
+    <section class="login-panel" aria-label="Acesso ao sistema">
+        <div class="brand-side">
+            <img class="brand-logo" src="{{ url_for('static', filename='img/unimed3.png') }}" alt="Unimed" width="597" height="335">
+            <div class="brand-copy">
+                <p class="eyebrow">Controle interno</p>
+                <h1>Registro de uso do datashow</h1>
+                <p>Acesse sua conta para consultar, cadastrar e acompanhar os registros do equipamento.</p>
+            </div>
+        </div>
 
-            <div class="campo">
-                <label for="usuario">Usuário</label>
-                <input
-                    type="text"
-                    id="usuario"
-                    name="usuario"
-                    required
-                >
+        <div class="login">
+            <div class="logo-area">
+                <img class="logo-img" src="{{ url_for('static', filename='img/unimed3.png') }}" alt="Unimed" width="597" height="335">
+                <div class="logo-sub">Sistema de Login</div>
             </div>
 
-            <div class="campo">
-                <label for="senha">Senha</label>
-                <input
-                    type="password"
-                    id="senha"
-                    name="senha"
-                    required
-                >
-            </div>
+            <h2>Entrar</h2>
 
-            <button type="submit">Entrar</button>
-            <br><br>
-            <a href="/cadastro" class="cadastro">Fazer cadastro</a>
+            {% with mensagens = get_flashed_messages(with_categories=true) %}
+                {% if mensagens %}
+                    {% for categoria, mensagem in mensagens %}
+                        <div class="mensagem {{categoria}}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        </form>
-    </div>
+            <form action="{{ url_for('main.login') }}" method="POST">
+                <div class="campo">
+                    <label for="usuario">Usuário</label>
+                    <input
+                        type="text"
+                        id="usuario"
+                        name="usuario"
+                        placeholder="Digite seu usuário"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="senha">Senha</label>
+                    <input
+                        type="password"
+                        id="senha"
+                        name="senha"
+                        placeholder="Digite sua senha"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+
+                <button type="submit">Entrar</button>
+
+                <a href="{{ url_for('main.cadastro_page') }}" class="cadastro">Fazer cadastro</a>
+            </form>
+
+            <div class="rodape">Unimed &copy; 2026 — Todos os direitos reservados</div>
+        </div>
+    </section>
+</main>
+
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
 
 </body>
 </html>

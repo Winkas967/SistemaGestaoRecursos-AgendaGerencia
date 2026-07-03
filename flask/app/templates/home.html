@@ -3,330 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Uso do Datashow</title>
-<style>
-  :root {
-    --bg: #F4F1EA;
-    --ink: #23262B;
-    --muted: #6B6F76;
-    --accent: #C7562A;
-    --accent-dark: #9C431F;
-    --line: #DAD5C8;
-    --white: #FFFFFF;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Georgia', 'Times New Roman', serif;
-    padding: 32px 16px 64px;
-  }
-
-  .wrap {
-    max-width: 780px;
-    margin: 0 auto;
-  }
-
-  header {
-    border-bottom: 3px solid var(--ink);
-    padding-bottom: 16px;
-    margin-bottom: 28px;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  h1 {
-    font-size: 1.7rem;
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-
-  header .tag {
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-  }
-
-  .sair-link {
-    font-family: 'Courier New', monospace;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-    text-decoration: none;
-    border: 1px solid var(--accent);
-    padding: 7px 14px;
-    white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-
-  .sair-link:hover {
-    background: var(--accent);
-    color: var(--white);
-  }
-
-  .sair-link:focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
-  }
-
-  form {
-    background: var(--white);
-    border: 1px solid var(--line);
-    padding: 24px;
-    margin-bottom: 32px;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-  .field.full { grid-column: 1 / -1; }
-
-  label {
-    font-family: 'Courier New', monospace;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-  }
-
-  input, textarea {
-    font-family: inherit;
-    font-size: 0.95rem;
-    padding: 9px 10px;
-    border: 1px solid var(--line);
-    background: var(--bg);
-    color: var(--ink);
-  }
-
-  input:focus, textarea:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-    background: var(--white);
-  }
-
-  textarea { resize: vertical; min-height: 50px; }
-
-  button {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    background: var(--accent);
-    color: var(--white);
-    border: none;
-    padding: 12px 22px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  button:hover { background: var(--accent-dark); }
-  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
-  .table-title {
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--white);
-    border: 1px solid var(--line);
-  }
-
-  th, td {
-    text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--line);
-    font-size: 0.88rem;
-    vertical-align: top;
-  }
-
-  th {
-    font-family: 'Courier New', monospace;
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    background: var(--bg);
-  }
-
-  tr:last-child td { border-bottom: none; }
-
-  .del-btn {
-    background: transparent;
-    color: var(--accent);
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    border: 1px solid var(--accent);
-  }
-  .del-btn:hover { background: var(--accent); color: var(--white); }
-
-  .empty {
-    text-align: center;
-    color: var(--muted);
-    padding: 28px 12px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.82rem;
-  }
-
-  @media (max-width: 560px) {
-    .grid { grid-template-columns: 1fr; }
-    table, thead, tbody, th, td, tr { display: block; }
-    thead { display: none; }
-    td {
-      border: none;
-      padding: 4px 12px;
-    }
-    td::before {
-      content: attr(data-label);
-      display: block;
-      font-family: 'Courier New', monospace;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-    tr { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <header>
-    <h1>Registro de Uso do Datashow</h1>
-    <form action="{{url_for('main.logout')}}" method="GET">
-    <button type="submit">Sair</button>
-    </form>
-  </header>
-
-  <form id="form-registro">
-    <div class="grid">
-      <div class="field">
-        <label for="data">Data</label>
-        <input type="date" id="data" required>
-      </div>
-      <div class="field">
-        <label for="responsavel">Responsável</label>
-        <input type="text" id="responsavel" placeholder="Nome do professor/funcionário" required>
-      </div>
-      <div class="field">
-        <label for="hora-inicio">Horário de início</label>
-        <input type="time" id="hora-inicio" required>
-      </div>
-      <div class="field">
-        <label for="hora-fim">Horário de término</label>
-        <input type="time" id="hora-fim" required>
-      </div>
-      <div class="field">
-        <label for="turma">Turma / Setor</label>
-        <input type="text" id="turma" placeholder="Ex: 8º Ano B" required>
-      </div>
-      <div class="field">
-        <label for="local">Local de uso</label>
-        <input type="text" id="local" placeholder="Ex: Sala 12" required>
-      </div>
-      <div class="field full">
-        <label for="obs">Observações</label>
-        <textarea id="obs" placeholder="Estado do equipamento, ocorrências, etc. (opcional)"></textarea>
-      </div>
-    </div>
-    <button type="submit">Adicionar registro</button>
-  </form>
-
-  <div class="table-title">Registros do dia</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Data</th>
-        <th>Responsável</th>
-        <th>Início</th>
-        <th>Término</th>
-        <th>Turma/Setor</th>
-        <th>Local</th>
-        <th>Obs.</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="tabela-corpo">
-    </tbody>
-  </table>
-  <div class="empty" id="msg-vazio">Nenhum registro ainda. Preencha o formulário acima.</div>
-
-</div>
-
 <script>
-  const registros = [];
-  const form = document.getElementById('form-registro');
-  const corpo = document.getElementById('tabela-corpo');
-  const msgVazio = document.getElementById('msg-vazio');
-
-  function formatarData(iso) {
-    const [ano, mes, dia] = iso.split('-');
-    return `${dia}/${mes}/${ano}`;
-  }
-
-  function renderizar() {
-    corpo.innerHTML = '';
-    msgVazio.style.display = registros.length ? 'none' : 'block';
-
-    registros.forEach((r, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Data">${formatarData(r.data)}</td>
-        <td data-label="Responsável">${r.responsavel}</td>
-        <td data-label="Início">${r.inicio}</td>
-        <td data-label="Término">${r.fim}</td>
-        <td data-label="Turma/Setor">${r.turma}</td>
-        <td data-label="Local">${r.local}</td>
-        <td data-label="Obs.">${r.obs || '—'}</td>
-        <td data-label=""><button class="del-btn" data-index="${i}">Excluir</button></td>
-      `;
-      corpo.appendChild(tr);
-    });
-
-    corpo.querySelectorAll('.del-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        registros.splice(Number(btn.dataset.index), 1);
-        renderizar();
-      });
-    });
-  }
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    registros.push({
-      data: document.getElementById('data').value,
-      responsavel: document.getElementById('responsavel').value,
-      inicio: document.getElementById('hora-inicio').value,
-      fim: document.getElementById('hora-fim').value,
-      turma: document.getElementById('turma').value,
-      local: document.getElementById('local').value,
-      obs: document.getElementById('obs').value.trim()
-    });
-    form.reset();
-    renderizar();
-  });
-
-  renderizar();
+    (function () {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", savedTheme || (prefersDark ? "dark" : "light"));
+        document.documentElement.classList.add("is-loading");
+    })();
 </script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<title>Registro de Uso do Datashow | Unimed</title>
+</head>
+<body class="{{ tema }}">
+
+<button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema claro ou escuro">
+    <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <line x1="12" y1="2" x2="12" y2="4"></line>
+        <line x1="12" y1="20" x2="12" y2="22"></line>
+        <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
+        <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+        <line x1="2" y1="12" x2="4" y2="12"></line>
+        <line x1="20" y1="12" x2="22" y2="12"></line>
+        <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
+        <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
+    </svg>
+    <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <span id="themeLabel">Modo escuro</span>
+</button>
+
+<main class="page-shell">
+    <div class="wrap">
+        <header class="topbar">
+            <div class="brand">
+                <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="#00995C" stroke-width="4"></circle>
+                    <rect x="42" y="20" width="16" height="60" rx="4" fill="#00995C"></rect>
+                    <rect x="20" y="42" width="60" height="16" rx="4" fill="#00995C"></rect>
+                </svg>
+                <div class="brand-text">
+                    <span class="tag">Unimed</span>
+                    <h1>Registro de Uso do Datashow</h1>
+                </div>
+            </div>
+
+            <div class="topbar-actions">
+                <nav class="nav-tabs" aria-label="Navegação principal">
+                    <a href="{{ url_for('main.home') }}" class="active">Início</a>
+                    <a href="{{ url_for('main.relatorios') }}">Relatórios</a>
+                </nav>
+                <form action="{{ url_for('main.logout') }}" method="GET">
+                    <button type="submit" class="sair-btn">Sair</button>
+                </form>
+            </div>
+        </header>
+
+        <form id="form-registro" action="{{ url_for('main.salvar_datashow') }}" method="POST">
+            <div class="form-head">
+                <div>
+                    <p class="eyebrow">Novo registro</p>
+                    <h2>Dados da solicitação</h2>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="field">
+                    <label for="data">Data</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <input type="date" id="data" name="data" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="hora-inicio">Hora</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg>
+                        <input type="time" id="hora-inicio" name="horaInicio" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="responsavel">Responsável</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+                        <input type="text" id="responsavel" name="responsavel" placeholder="Nome do responsável" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="requerente">Requerente</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+                        <input type="text" id="requerente" name="requerente" placeholder="Nome do requerente" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="turma">Setor</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"></path><path d="M9 21v-6h6v6"></path></svg>
+                        <input type="text" id="turma" name="setor" placeholder="Ex: T.I.C" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="local">Local de uso</label>
+                    <div class="input-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                        <input type="text" id="local" name="localUso" placeholder="Ex: Auditório 01" required>
+                    </div>
+                </div>
+
+                <div class="field full">
+                    <label for="obs">Observações</label>
+                    <textarea id="obs" placeholder="Estado do equipamento, ocorrências, etc. (opcional)" name="observacao"></textarea>
+                </div>
+            </div>
+
+            <button type="submit">
+                <span class="btn-spinner"></span>
+                <span>Adicionar registro</span>
+            </button>
+        </form>
+
+        <section class="records-panel">
+            <div class="table-title-row">
+                <div>
+                    <p class="eyebrow">Histórico</p>
+                    <h2>Registros do dia</h2>
+                </div>
+                <span class="record-count">{{ registros|length }}</span>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Responsável</th>
+                            <th>Requerente</th>
+                            <th>Setor</th>
+                            <th>Local</th>
+                            <th>Obs.</th>
+                            {% if session["role"] == "admin" %}
+                            <th class="col-acao"></th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-corpo">
+                        {% for registro in registros %}
+                        <tr>
+                            <td data-label="Data">{{ registro.data.strftime("%d/%m/%Y") }}</td>
+                            <td data-label="Hora">{{ registro.horaInicio }}</td>
+                            <td data-label="Responsável">{{ registro.responsavel }}</td>
+                            <td data-label="Requerente">{{ registro.requerente }}</td>
+                            <td data-label="Setor"><span class="setor-pill">{{ registro.setor }}</span></td>
+                            <td data-label="Local">{{ registro.localUso }}</td>
+                            <td data-label="Obs.">{{ registro.observacao }}</td>
+                            {% if session["role"] == "admin" %}
+                            <td data-label="">
+                                <form class="del-form" action="{{ url_for('main.excluir_registro', id=registro.id) }}" method="POST" onsubmit="return confirm('Excluir este registro?');">
+                                    <button type="submit" class="del-btn" aria-label="Excluir registro" title="Excluir registro">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                                            <path d="M10 11v6"></path>
+                                            <path d="M14 11v6"></path>
+                                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="empty {{ '' if not registros else 'hidden' }}" id="msg-vazio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                Nenhum registro ainda. Preencha o formulário acima.
+            </div>
+        </section>
+
+        <div class="rodape">Unimed &copy; 2026 — Todos os direitos reservados</div>
+    </div>
+</main>
+
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 </html>
