@@ -3,6 +3,26 @@ const toggleBtn = document.getElementById("themeToggle");
 const iconSun = document.getElementById("iconSun");
 const iconMoon = document.getElementById("iconMoon");
 const label = document.getElementById("themeLabel");
+const charts = [];
+
+function corDoTema() {
+    const styles = getComputedStyle(root);
+    return {
+        texto: styles.getPropertyValue("--text-muted").trim() || "#5f7568",
+        grade: styles.getPropertyValue("--header-line").trim() || "#e1efe6",
+    };
+}
+
+function atualizarCoresGraficos() {
+    const { texto, grade } = corDoTema();
+
+    charts.forEach((chart) => {
+        if (chart.options.scales?.x?.ticks) chart.options.scales.x.ticks.color = texto;
+        if (chart.options.scales?.y?.ticks) chart.options.scales.y.ticks.color = texto;
+        if (chart.options.scales?.y?.grid) chart.options.scales.y.grid.color = grade;
+        chart.update();
+    });
+}
 
 function applyTheme(theme) {
     root.setAttribute("data-theme", theme);
@@ -18,11 +38,8 @@ function applyTheme(theme) {
     }
 
     localStorage.setItem("theme", theme);
-    atualizarCoresGraficos(theme);
+    atualizarCoresGraficos();
 }
-
-let chartSetor = null;
-let chartPeriodo = null;
 
 const savedTheme = localStorage.getItem("theme");
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -51,94 +68,80 @@ if (filtroForm) {
     });
 }
 
-/* ==========================================================
-   Gráficos (Chart.js)
-   Os dados abaixo vêm do backend via Jinja. Se a variável não
-   existir, usamos um conjunto de exemplo para a tela nunca
-   ficar quebrada durante o desenvolvimento.
-   ========================================================== */
-
-const PALETA_VERDE = ["#00995C", "#33ad7d", "#66c29e", "#99d6bf", "#0d5c3a"];
-const COR_DESTAQUE = "#d9a544";
-
-
-
-
-function corDoTema() {
-    const styles = getComputedStyle(root);
-    return {
-        texto: styles.getPropertyValue("--text-muted").trim() || "#5f7568",
-        grade: styles.getPropertyValue("--header-line").trim() || "#e1efe6",
-    };
+function hashTexto(texto) {
+    return [...texto].reduce((acc, char) => {
+        return (acc * 31 + char.charCodeAt(0)) >>> 0;
+    }, 7);
 }
 
-function montarGraficoSetor(dados) {
-    const canvas = document.getElementById("graficoSetor");
-    if (!canvas || typeof Chart === "undefined") return;
+function criarAvatar(nome) {
+    const hash = hashTexto(nome || "usuario");
+    const peles = ["#f2c7a5", "#d89b73", "#b8734f", "#8f5d43", "#f0b98f"];
+    const cabelos = ["#2c221f", "#5a3825", "#1f2933", "#7a4a24", "#111827"];
+    const roupas = ["#00995c", "#2563eb", "#c2410c", "#7c3aed", "#0f766e"];
+    const fundos = ["#dff4ea", "#e0f2fe", "#fef3c7", "#ede9fe", "#dcfce7", "#ffe4e6", "#fce7f3", "#ccfbf1"];
+
+    const pele = peles[hash % peles.length];
+    const cabelo = cabelos[(hash >> 3) % cabelos.length];
+    const roupa = roupas[(hash >> 6) % roupas.length];
+    const fundo = fundos[(hash >> 9) % fundos.length];
+    const sorriso = hash % 2 === 0
+        ? '<path d="M23 35c3 3 9 3 12 0" fill="none" stroke="#553226" stroke-width="2" stroke-linecap="round"/>'
+        : '<path d="M24 35c2 2 8 2 10 0" fill="none" stroke="#553226" stroke-width="2" stroke-linecap="round"/>';
+    const cabeloForma = hash % 3 === 0
+        ? `<path d="M15 25c2-12 24-14 30 0-5-7-22-6-30 0z" fill="${cabelo}"/>`
+        : hash % 3 === 1
+            ? `<path d="M14 27c1-15 27-15 31 0-8-4-22-5-31 0z" fill="${cabelo}"/>`
+            : `<path d="M16 21c8-10 24-6 28 6-10-5-19-6-28-6z" fill="${cabelo}"/>`;
+
+    return `
+        <svg viewBox="0 0 60 60" role="img" aria-label="Avatar do usuario">
+            <rect width="60" height="60" rx="30" fill="${fundo}"/>
+            <circle cx="30" cy="30" r="28" fill="none" stroke="#ffffff" stroke-width="3"/>
+            <path d="M14 58c2-13 30-13 32 0z" fill="${roupa}"/>
+            <circle cx="30" cy="29" r="15" fill="${pele}"/>
+            ${cabeloForma}
+            <circle cx="24" cy="30" r="1.8" fill="#2b211f"/>
+            <circle cx="36" cy="30" r="1.8" fill="#2b211f"/>
+            ${sorriso}
+        </svg>
+    `;
+}
+
+const userPanel = document.querySelector(".user-panel");
+const userAvatar = document.querySelector(".user-avatar");
+
+if (userPanel && userAvatar) {
+    userAvatar.innerHTML = criarAvatar(userPanel.dataset.username);
+}
+
+const PALETA = ["#00995C", "#33ad7d", "#d9a544", "#2563eb", "#7c3aed", "#e0574a", "#0f766e", "#64748b"];
+
+function dadosValidos(dados) {
+    return dados && Array.isArray(dados.labels) && dados.labels.length > 0;
+}
+
+function registrarGrafico(chart) {
+    charts.push(chart);
+    return chart;
+}
+
+function criarGraficoLinha(canvasId, dados, labelGrafico) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
 
     const { texto, grade } = corDoTema();
 
-    chartSetor = new Chart(canvas, {
-        type: "doughnut",
-        data: {
-            labels: dados.labels,
-            datasets: [{
-                data: dados.valores,
-                backgroundColor: dados.labels.map((_, i) => PALETA_VERDE[i % PALETA_VERDE.length]),
-                borderWidth: 0,
-                hoverOffset: 6,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: "68%",
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => `${ctx.label}: ${ctx.parsed} uso(s)`,
-                    },
-                },
-            },
-        },
-    });
-
-    montarLegendaSetor(dados.labels);
-}
-
-function montarLegendaSetor(labels) {
-    const legenda = document.getElementById("legendaSetor");
-    if (!legenda) return;
-
-    legenda.innerHTML = "";
-    labels.forEach((label, i) => {
-        const li = document.createElement("li");
-        const dot = document.createElement("span");
-        dot.className = "legend-dot";
-        dot.style.background = PALETA_VERDE[i % PALETA_VERDE.length];
-        li.appendChild(dot);
-        li.append(label);
-        legenda.appendChild(li);
-    });
-}
-
-function montarGraficoPeriodo(dados) {
-    const canvas = document.getElementById("graficoPeriodo");
-    if (!canvas || typeof Chart === "undefined") return;
-
-    const { texto, grade } = corDoTema();
-
-    chartPeriodo = new Chart(canvas, {
+    registrarGrafico(new Chart(canvas, {
         type: "line",
         data: {
             labels: dados.labels,
             datasets: [{
-                label: "Registros",
+                label: labelGrafico,
                 data: dados.valores,
                 borderColor: "#00995C",
                 backgroundColor: "rgba(0, 153, 92, 0.14)",
-                pointBackgroundColor: COR_DESTAQUE,
+                pointBackgroundColor: "#d9a544",
                 pointBorderColor: "#ffffff",
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -153,42 +156,98 @@ function montarGraficoPeriodo(dados) {
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: texto }, grid: { display: false } },
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: texto, precision: 0 },
-                    grid: { color: grade },
+                y: { beginAtZero: true, ticks: { color: texto, precision: 0 }, grid: { color: grade } },
+            },
+        },
+    }));
+}
+
+function criarGraficoBarras(canvasId, dados, labelGrafico) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
+
+    const { texto, grade } = corDoTema();
+
+    registrarGrafico(new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: dados.labels,
+            datasets: [{
+                label: labelGrafico,
+                data: dados.valores,
+                backgroundColor: dados.labels.map((_, i) => PALETA[i % PALETA.length]),
+                borderRadius: 8,
+                maxBarThickness: 44,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: texto }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: texto, precision: 0 }, grid: { color: grade } },
+            },
+        },
+    }));
+}
+
+function criarGraficoRosca(canvasId, dados, legendaId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
+
+    registrarGrafico(new Chart(canvas, {
+        type: "doughnut",
+        data: {
+            labels: dados.labels,
+            datasets: [{
+                data: dados.valores,
+                backgroundColor: dados.labels.map((_, i) => PALETA[i % PALETA.length]),
+                borderWidth: 0,
+                hoverOffset: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "66%",
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${ctx.parsed} registro(s)`,
+                    },
                 },
             },
         },
+    }));
+
+    montarLegenda(dados.labels, legendaId);
+}
+
+function montarLegenda(labels, legendaId) {
+    const legenda = document.getElementById(legendaId);
+    if (!legenda) return;
+
+    legenda.innerHTML = "";
+    labels.forEach((texto, i) => {
+        const li = document.createElement("li");
+        const dot = document.createElement("span");
+        dot.className = "legend-dot";
+        dot.style.background = PALETA[i % PALETA.length];
+        li.appendChild(dot);
+        li.append(texto);
+        legenda.appendChild(li);
     });
 }
 
-function atualizarCoresGraficos(theme) {
-    if (!chartPeriodo) return;
-    const { texto, grade } = corDoTema();
-    chartPeriodo.options.scales.x.ticks.color = texto;
-    chartPeriodo.options.scales.y.ticks.color = texto;
-    chartPeriodo.options.scales.y.grid.color = grade;
-    chartPeriodo.update();
-}
-
 function iniciarGraficos() {
-    const dadosSetor = window.DADOS_SETOR || {
-        labels: ["T.I.C", "Enfermagem", "Auditório", "RH", "Financeiro"],
-        valores: [14, 9, 7, 4, 3],
-    };
-
-    const dadosPeriodo = window.DADOS_PERIODO || {
-        labels: ["01/06", "08/06", "15/06", "22/06", "29/06"],
-        valores: [3, 6, 4, 8, 5],
-    };
-
-    if (dadosSetor.labels.length) {
-        montarGraficoSetor(dadosSetor);
-    }
-    if (dadosPeriodo.labels.length) {
-        montarGraficoPeriodo(dadosPeriodo);
-    }
+    criarGraficoLinha("graficoPeriodo", window.DADOS_PERIODO, "Registros");
+    criarGraficoRosca("graficoSetor", window.DADOS_SETOR, "legendaSetor");
+    criarGraficoBarras("graficoRecurso", window.DADOS_RECURSO, "Reservas por recurso");
+    criarGraficoRosca("graficoStatus", window.DADOS_STATUS, "legendaStatus");
+    criarGraficoBarras("graficoResponsavel", window.DADOS_RESPONSAVEL, "Reservas por responsável");
+    criarGraficoBarras("graficoHora", window.DADOS_HORA, "Reservas por hora");
 }
 
 if (document.readyState === "loading") {
@@ -196,3 +255,9 @@ if (document.readyState === "loading") {
 } else {
     iniciarGraficos();
 }
+
+setInterval(() => {
+    if (document.visibilityState === "visible") {
+        window.location.reload();
+    }
+}, 60000);
