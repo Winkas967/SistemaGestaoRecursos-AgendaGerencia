@@ -18,6 +18,12 @@
 <body class="{{ tema }}">
 
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
+    <div class="user-panel-actions">
+        <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
+        {% if session["role"]|lower in ["tecnico", "gerencia"] %}
+        <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
+        {% endif %}
+    </div>
     <div class="user-avatar" aria-hidden="true"></div>
     <span class="user-panel-label">Usuário</span>
     <strong>{{ session["nome"] or session["usuario"] }}</strong>
@@ -42,6 +48,8 @@
         <button type="submit">Sair</button>
     </form>
 </div>
+
+{% include "_self_password_modal.html" %}
 
 <main class="page-shell">
     <div class="wrap">
@@ -79,6 +87,8 @@
                 </nav>
             </div>
         </header>
+
+        {% include "_flash_messages.html" %}
 
         <form id="form-filtros" class="filtros-panel" action="{{ url_for('main.relatorios') }}" method="GET">
             <div class="form-head">
@@ -362,7 +372,7 @@
     </div>
 </main>
 
-<script src="{{ url_for('static', filename='js/chart.umd.js')   }}"></script>
+<script src="{{ url_for('static', filename='js/chart.umd.js', v='4.5.1') }}"></script>
 <script>
     // Dados injetados pelo backend (Jinja). Ajuste as variáveis no
     // controller (ex.: dados_setor, dados_periodo) para alimentar os gráficos.
@@ -373,6 +383,6 @@
     window.DADOS_HORA = {{ dados_hora | tojson if dados_hora is defined else 'null' }};
     window.DADOS_RESPONSAVEL = {{ dados_responsavel | tojson if dados_responsavel is defined else 'null' }};
 </script>
-<script src="{{ url_for('static', filename='js/relatorios.js') }}"></script>
+<script src="{{ url_for('static', filename='js/relatorios.js', v='20260722') }}"></script>
 </body>
 </html>

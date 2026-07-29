@@ -28,13 +28,13 @@ function applyTheme(theme) {
     root.setAttribute("data-theme", theme);
 
     if (theme === "dark") {
-        iconSun.style.display = "none";
-        iconMoon.style.display = "block";
-        label.textContent = "Modo claro";
+        if (iconSun) iconSun.style.display = "none";
+        if (iconMoon) iconMoon.style.display = "block";
+        if (label) label.textContent = "Modo claro";
     } else {
-        iconSun.style.display = "block";
-        iconMoon.style.display = "none";
-        label.textContent = "Modo escuro";
+        if (iconSun) iconSun.style.display = "block";
+        if (iconMoon) iconMoon.style.display = "none";
+        if (label) label.textContent = "Modo escuro";
     }
 
     localStorage.setItem("theme", theme);
@@ -52,10 +52,12 @@ window.addEventListener("load", () => {
     root.classList.add("is-ready");
 });
 
-toggleBtn.addEventListener("click", () => {
-    currentTheme = currentTheme === "light" ? "dark" : "light";
-    applyTheme(currentTheme);
-});
+if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+        currentTheme = currentTheme === "light" ? "dark" : "light";
+        applyTheme(currentTheme);
+    });
+}
 
 const filtroForm = document.getElementById("form-filtros");
 
@@ -118,7 +120,38 @@ if (userPanel && userAvatar) {
 const PALETA = ["#00995C", "#33ad7d", "#d9a544", "#2563eb", "#7c3aed", "#e0574a", "#0f766e", "#64748b"];
 
 function dadosValidos(dados) {
-    return dados && Array.isArray(dados.labels) && dados.labels.length > 0;
+    return dados
+        && Array.isArray(dados.labels)
+        && Array.isArray(dados.valores)
+        && dados.labels.length > 0
+        && dados.valores.length === dados.labels.length;
+}
+
+function mostrarEstadoGrafico(canvasId, mensagem) {
+    const canvas = document.getElementById(canvasId);
+    const container = canvas?.parentElement;
+    if (!canvas || !container) return;
+
+    canvas.hidden = true;
+    const aviso = document.createElement("div");
+    aviso.className = "chart-empty";
+    aviso.setAttribute("role", "status");
+    aviso.textContent = mensagem;
+    container.appendChild(aviso);
+}
+
+function podeCriarGrafico(canvasId, dados) {
+    if (typeof window.Chart === "undefined") {
+        mostrarEstadoGrafico(canvasId, "Não foi possível carregar o gráfico.");
+        return false;
+    }
+
+    if (!dadosValidos(dados)) {
+        mostrarEstadoGrafico(canvasId, "Não há dados para este gráfico.");
+        return false;
+    }
+
+    return Boolean(document.getElementById(canvasId));
 }
 
 function registrarGrafico(chart) {
@@ -128,7 +161,7 @@ function registrarGrafico(chart) {
 
 function criarGraficoLinha(canvasId, dados, labelGrafico) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
+    if (!canvas || !podeCriarGrafico(canvasId, dados)) return;
 
     const { texto, grade } = corDoTema();
 
@@ -164,7 +197,7 @@ function criarGraficoLinha(canvasId, dados, labelGrafico) {
 
 function criarGraficoBarras(canvasId, dados, labelGrafico) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
+    if (!canvas || !podeCriarGrafico(canvasId, dados)) return;
 
     const { texto, grade } = corDoTema();
 
@@ -194,7 +227,7 @@ function criarGraficoBarras(canvasId, dados, labelGrafico) {
 
 function criarGraficoRosca(canvasId, dados, legendaId) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || !dadosValidos(dados) || typeof Chart === "undefined") return;
+    if (!canvas || !podeCriarGrafico(canvasId, dados)) return;
 
     registrarGrafico(new Chart(canvas, {
         type: "doughnut",
@@ -242,12 +275,22 @@ function montarLegenda(labels, legendaId) {
 }
 
 function iniciarGraficos() {
-    criarGraficoLinha("graficoPeriodo", window.DADOS_PERIODO, "Registros");
-    criarGraficoRosca("graficoSetor", window.DADOS_SETOR, "legendaSetor");
-    criarGraficoBarras("graficoRecurso", window.DADOS_RECURSO, "Reservas por recurso");
-    criarGraficoRosca("graficoStatus", window.DADOS_STATUS, "legendaStatus");
-    criarGraficoBarras("graficoResponsavel", window.DADOS_RESPONSAVEL, "Reservas por responsável");
-    criarGraficoBarras("graficoHora", window.DADOS_HORA, "Reservas por hora");
+    const configuracoes = [
+        () => criarGraficoLinha("graficoPeriodo", window.DADOS_PERIODO, "Registros"),
+        () => criarGraficoRosca("graficoSetor", window.DADOS_SETOR, "legendaSetor"),
+        () => criarGraficoBarras("graficoRecurso", window.DADOS_RECURSO, "Reservas por recurso"),
+        () => criarGraficoRosca("graficoStatus", window.DADOS_STATUS, "legendaStatus"),
+        () => criarGraficoBarras("graficoResponsavel", window.DADOS_RESPONSAVEL, "Reservas por responsável"),
+        () => criarGraficoBarras("graficoHora", window.DADOS_HORA, "Reservas por hora"),
+    ];
+
+    configuracoes.forEach((criar) => {
+        try {
+            criar();
+        } catch (erro) {
+            console.error("Falha ao montar um gráfico do relatório:", erro);
+        }
+    });
 }
 
 if (document.readyState === "loading") {

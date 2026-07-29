@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda | Gestão de Recursos</title>
+<script>
+    (function () {
+        const savedTheme = localStorage.getItem("agendaTheme") || localStorage.getItem("theme") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+    })();
+</script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260727-6') }}">
+</head>
+<body>
+<div class="agenda-page">
+    <header class="agenda-topbar">
+        <a class="back-link" href="{{ url_for('main.home') }}">Voltar para Home</a>
+        <div class="brand">
+            <div class="brand-mark">+</div>
+            <div>
+                <span class="eyebrow">Agenda</span>
+                <h1>Agenda da Diretoria</h1>
+            </div>
+        </div>
+        <div class="topbar-actions">
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema claro ou escuro">
+                <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <line x1="12" y1="2" x2="12" y2="4"></line>
+                    <line x1="12" y1="20" x2="12" y2="22"></line>
+                    <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
+                    <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+                    <line x1="2" y1="12" x2="4" y2="12"></line>
+                    <line x1="20" y1="12" x2="22" y2="12"></line>
+                    <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
+                    <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
+                </svg>
+                <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <span id="themeLabel">Modo claro</span>
+            </button>
+            <button class="btn" id="printBtn" type="button">Imprimir</button>
+        </div>
+    </header>
+
+    <div class="agenda-tabs" role="tablist" aria-label="Acoes da agenda">
+        <button class="agenda-tab active" data-view="agenda" type="button">Agenda</button>
+        <button class="agenda-tab" data-view="documentacao" type="button">Documentação</button>
+    </div>
+
+    <section class="agenda-view active" id="agendaView">
+    <div class="agenda-view-actions">
+        <button class="btn" id="exportMonthPdfBtn" type="button">Salvar mês em PDF</button>
+        <button class="btn btn-primary" id="newApptBtn" type="button">Novo compromisso</button>
+    </div>
+    <div class="agenda-layout">
+        <aside class="panel calendar-panel">
+            <div class="cal-head">
+                <button id="prevMonth" type="button" aria-label="Mês anterior">&lsaquo;</button>
+                <button class="month-label" id="calMonthLabel" type="button">Julho 2026</button>
+                <button id="nextMonth" type="button" aria-label="Próximo mês">&rsaquo;</button>
+            </div>
+
+            <div class="month-picker" id="myPicker">
+                <div class="picker-head">
+                    <button type="button" id="myPrevYear">&lsaquo;</button>
+                    <strong id="myYearLabel">2026</strong>
+                    <button type="button" id="myNextYear">&rsaquo;</button>
+                </div>
+                <div class="month-grid" id="myGrid"></div>
+            </div>
+
+            <div class="cal-grid" id="calGrid"></div>
+
+            <div class="legend">
+                <span><i class="dot agendado"></i> Agendado</span>
+                <span><i class="dot andamento"></i> Em andamento</span>
+                <span><i class="dot cancelado"></i> Cancelado</span>
+                <span><i class="dot concluido"></i> Concluído</span>
+            </div>
+
+            <div class="filters">
+                <label for="filterResponsavel">Responsável</label>
+                <select id="filterResponsavel">
+                    <option value="">Todos</option>
+                </select>
+
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus">
+                    <option value="">Todos</option>
+                    <option value="agendado">Agendado</option>
+                    <option value="andamento">Em andamento</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="concluido">Concluído</option>
+                </select>
+            </div>
+        </aside>
+
+        <main class="panel schedule-panel">
+            <div class="schedule-head">
+                <div>
+                    <span class="eyebrow">Dia selecionado</span>
+                    <h2 id="selectedDateTitle">Quinta-feira, 16 de julho</h2>
+                    <p id="selectedDateSub">2026</p>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Buscar compromisso...">
+                </div>
+            </div>
+
+            <div class="feedback hidden" id="feedbackMessage"></div>
+            <div class="day-summary" id="daySummary"></div>
+            <div class="appointment-list" id="apptList"></div>
+        </main>
+    </div>
+    </section>
+
+    <section class="agenda-view" id="documentacaoView">
+        <div class="panel docs-panel">
+            <div class="docs-head">
+                <div>
+                    <label class="docs-category-picker" for="docsCategoryFilter">
+                        <span>Categoria</span>
+                        <select id="docsCategoryFilter">
+                            <option value="credenciado">Méd. credenciados</option>
+                            <option value="cooperado">Méd. cooperados</option>
+                            <option value="laboratorio">Laboratórios</option>
+                            <option value="hospital">Hospitais</option>
+                            <option value="todos">Todos</option>
+                        </select>
+                    </label>
+                    <h2>Documentação da rede prestadora</h2>
+                    <p class="docs-indicator-summary" id="docsPercentText">
+                        <span>Meta do indicador: 75%</span>
+                        <span>Resultado geral: --</span>
+                    </p>
+                </div>
+                <div class="docs-actions">
+                    <span class="docs-save-status" id="docsDirtyCount" role="status" aria-live="polite">Salvamento automático</span>
+                    <button class="btn" id="newDocsBtn" type="button">Adicionar cadastro</button>
+                </div>
+            </div>
+
+            <div class="docs-summary" id="docsSummary"></div>
+
+            <div class="docs-filters">
+                <div class="field">
+                    <label for="docsStatusFilter">Situação</label>
+                    <select id="docsStatusFilter">
+                        <option value="">Todas</option>
+                        <option value="CONFORME">CONFORME</option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="NOTIFICADO">NOTIFICADO</option>
+                    </select>
+                </div>
+                <div class="field docs-search">
+                    <label for="docsSearchInput">Buscar</label>
+                    <input type="text" id="docsSearchInput" placeholder="Nome do médico, documento ou documentação...">
+                </div>
+            </div>
+
+            <div class="docs-result-count" id="docsResultCount"></div>
+            <div class="docs-doctors-list" id="docsDoctorsList"></div>
+            <div class="docs-pagination" id="docsPagination">
+                <button class="btn" id="docsPrevPage" type="button">Anterior</button>
+                <span id="docsPageInfo">Página 1 de 1</span>
+                <button class="btn" id="docsNextPage" type="button">Próxima</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-head">
+            <div>
+                <span class="eyebrow">Compromisso</span>
+                <h2 id="modalTitle">Novo compromisso</h2>
+            </div>
+            <button type="button" class="close-btn" id="cancelModalBtn" aria-label="Fechar">&times;</button>
+        </div>
+
+        <form id="apptForm">
+            <input type="hidden" id="apptId">
+            <div class="form-grid">
+                <div class="field full">
+                    <label for="fTitulo">Título</label>
+                    <input type="text" id="fTitulo" required placeholder="Ex: Reunião com fornecedores">
+                </div>
+                <div class="field">
+                    <label for="fData">Data</label>
+                    <input type="date" id="fData" required>
+                </div>
+                <div class="field">
+                    <label for="fHoraInicio">Hora início</label>
+                    <input type="time" id="fHoraInicio" required>
+                </div>
+                <div class="field">
+                    <label for="fHoraFim">Hora fim</label>
+                    <input type="time" id="fHoraFim">
+                </div>
+                <div class="field">
+                    <label for="fResponsavel">Responsável</label>
+                    <input type="text" id="fResponsavel" placeholder="Ex: Diretoria" list="respList">
+                    <datalist id="respList"></datalist>
+                </div>
+                <div class="field">
+                    <label for="fLocal">Local</label>
+                    <input type="text" id="fLocal" placeholder="Ex: Sala de reunião 2">
+                </div>
+                <div class="field">
+                    <label for="fStatus">Status</label>
+                    <select id="fStatus" required>
+                        <option value="agendado">Agendado</option>
+                        <option value="andamento">Em andamento</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label for="fDescricao">Observações</label>
+                    <textarea id="fDescricao" rows="3" placeholder="Detalhes, pauta, participantes..."></textarea>
+                </div>
+            </div>
+
+            <p class="appt-form-error hidden" id="apptFormError" role="alert"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn" id="secondaryCancelModalBtn">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar compromisso</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <h3>Excluir compromisso?</h3>
+        <p>Essa ação não pode ser desfeita.</p>
+        <div class="modal-actions">
+            <button class="btn" id="cancelDeleteBtn" type="button">Cancelar</button>
+            <button class="btn danger-btn" id="confirmDeleteBtn" type="button">Excluir</button>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="doctorOverlay">
+    <div class="modal doctor-modal">
+        <div class="modal-head">
+            <div>
+                <span class="eyebrow">Rede prestadora</span>
+                <h2>Adicionar cadastro</h2>
+            </div>
+            <button type="button" class="close-btn" id="cancelDoctorBtn" aria-label="Fechar">&times;</button>
+        </div>
+        <form id="doctorForm">
+            <div class="field">
+                <label for="doctorName">Nome</label>
+                <input type="text" id="doctorName" required maxlength="160" autocomplete="off" placeholder="Digite o nome do médico ou instituição">
+            </div>
+            <div class="field">
+                <label for="doctorType">Categoria</label>
+                <select id="doctorType" required>
+                    <option value="credenciado">Médico credenciado</option>
+                    <option value="cooperado">Médico cooperado</option>
+                    <option value="laboratorio">Laboratório</option>
+                    <option value="hospital">Hospital</option>
+                </select>
+            </div>
+            <p class="doctor-form-error hidden" id="doctorFormError" role="alert"></p>
+            <p class="doctor-form-help">Depois de cadastrar, abra a seta para adicionar os documentos.</p>
+            <div class="modal-actions">
+                <button class="btn" id="secondaryCancelDoctorBtn" type="button">Cancelar</button>
+                <button class="btn btn-primary" type="submit">Adicionar cadastro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="overlay" id="statusOverlay">
+    <div class="confirm-box status-box">
+        <h3>Alterar status</h3>
+        <p>Escolha uma situação para este documento.</p>
+        <div class="status-options">
+            <button class="btn status-option conforme" data-status-option="CONFORME" type="button">CONFORME</button>
+            <button class="btn status-option pendente" data-status-option="PENDENTE" type="button">PENDENTE</button>
+            <button class="btn status-option notificado" data-status-option="NOTIFICADO" type="button">NOTIFICADO</button>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" id="cancelStatusBtn" type="button">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260727-4') }}"></script>
+</body>
+</html>

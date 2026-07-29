@@ -17,6 +17,12 @@
 <body class="{{ tema }}">
 
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
+    <div class="user-panel-actions">
+        <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
+        {% if session["role"]|lower in ["tecnico", "gerencia"] %}
+        <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
+        {% endif %}
+    </div>
     <div class="user-avatar" aria-hidden="true"></div>
     <span class="user-panel-label">Usuário</span>
     <strong>{{ session["nome"] or session["usuario"] }}</strong>
@@ -41,6 +47,8 @@
         <button type="submit">Sair</button>
     </form>
 </div>
+
+{% include "_self_password_modal.html" %}
 
 <main class="page-shell">
     <div class="wrap">
@@ -71,7 +79,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
                         Reserva
                     </a>
-                    {% if session["role"]|lower in ["rh", "diretoria", "tecnico"] %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                     <a href="{{ url_for('main.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
@@ -86,6 +94,8 @@
             <h2>Olá, {{ session["nome"] or session["usuario"] }}</h2>
             <p class="dash-sub">Acompanhe seus agendamentos e devolva o que estiver em aberto.</p>
         </section>
+
+        {% include "_flash_messages.html" %}
 
         <div class="reminder-banner hidden" id="devolucaoReminder">
             <strong>Atenção:</strong> existe equipamento com horário de devolução vencido ou chegando agora.
@@ -115,9 +125,9 @@
                 <div class="table-title-row">
                     <div>
                         <p class="eyebrow">Histórico</p>
-                        <h2>{% if session["role"]|lower == "tecnico" %}Histórico geral{% else %}Agendamentos realizados{% endif %}</h2>
+                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Histórico geral{% else %}Agendamentos realizados{% endif %}</h2>
                     </div>
-                    {% if session["role"]|lower == "tecnico" %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                     <div class="history-export-actions">
                         <a class="secondary-action" href="{{ url_for('main.exportar_historico_excel') }}">Excel</a>
                         <a class="primary-action" href="{{ url_for('main.exportar_historico_pdf') }}">PDF</a>
@@ -134,9 +144,10 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Data</th>
+                                <th>Data Inicial</th>
+                                <th>Data Final</th>
                                 <th>Hora</th>
-                                {% if session["role"]|lower == "tecnico" %}
+                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                                 <th>Responsável</th>
                                 {% endif %}
                                 <th>Equipamento</th>
@@ -149,6 +160,13 @@
                             {% for item in agendamentos.items %}
                             <tr class="linha-agendamento" data-status="{{ item.status_calculado }}" data-devolucao="{{ item.devolucao_iso }}">
                                 <td data-label="Data" class="data">{{ item.data_reserva.strftime("%d/%m/%Y") }}</td>
+                                <td data-label="Data Final" class="data">
+                                    {% if item.data_volta %}
+                                        {{ item.data_volta.strftime("%d/%m/%Y") }}
+                                    {% else %}
+                                        Sem hora final
+                                    {% endif %}
+                                </td>
                                 <td data-label="Hora" class="hora">
                                     {{ item.hora_inicio.strftime("%H:%M") }}
                                     {% if item.hora_fim %}
@@ -157,7 +175,7 @@
                                         - Viagem
                                     {% endif %}
                                 </td>
-                                {% if session["role"]|lower == "tecnico" %}
+                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                                 <td data-label="Responsável" class="responsavel">{{ item.responsavel or (item.usuario.usuario if item.usuario else "-") }}</td>
                                 {% endif %}
                                 <td data-label="Equipamento" class="equipamento"><span class="setor-pill">{{ item.recurso.nome if item.recurso else "-" }}</span></td>
@@ -194,7 +212,7 @@
 
                 <div class="empty {{ '' if not agendamentos or agendamentos.total == 0 else 'hidden' }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    {% if session["role"]|lower == "tecnico" %}Nenhum agendamento encontrado no sistema.{% else %}Você ainda não tem agendamentos. Faça uma reserva para começar.{% endif %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Nenhum agendamento encontrado no sistema.{% else %}Você ainda não tem agendamentos. Faça uma reserva para começar.{% endif %}
                 </div>
             </div>
         </section>
@@ -204,7 +222,7 @@
                 <div class="table-title-row">
                     <div>
                         <p class="eyebrow">Pendências</p>
-                        <h2>{% if session["role"]|lower == "tecnico" %}Pendências gerais{% else %}Relatórios em aberto{% endif %}</h2>
+                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Pendências gerais{% else %}Relatórios em aberto{% endif %}</h2>
                     </div>
                     <span class="record-count">{{ emprestimos_abertos|length if emprestimos_abertos else 0 }}</span>
                 </div>
@@ -220,7 +238,7 @@
                             </span>
                         </div>
                         <dl class="aberto-info">
-                            {% if session["role"]|lower == "tecnico" %}
+                            {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                             <div>
                                 <dt>Responsável</dt>
                                 <dd>{{ emp.responsavel or (emp.usuario.usuario if emp.usuario else "-") }}</dd>
@@ -229,6 +247,10 @@
                             <div>
                                 <dt>Retirado em</dt>
                                 <dd>{{ emp.data_reserva.strftime("%d/%m/%Y") }}</dd>
+                            </div>
+                            <div>
+                                <dt>Devolver em</dt>
+                                <dd>{{ (emp.data_volta or emp.data_reserva).strftime("%d/%m/%Y") }}</dd>
                             </div>
                             <div>
                                 <dt>Local</dt>
@@ -285,9 +307,9 @@
                                     <form class="role-update-form" action="{{ url_for('main.alterar_role_usuario') }}" method="POST">
                                         <input type="hidden" name="usuario_id" value="{{ user.id }}">
                                         <select name="role" aria-label="Perfil de {{ user.usuario }}">
-                                            <option value="usuario" {% if user.role|lower == "usuario" %}selected{% endif %}>usuario</option>
+                                            <option value="user" {% if user.role|lower == "user" %}selected{% endif %}>user</option>
+                                            <option value="gerencia" {% if user.role|lower == "gerencia" %}selected{% endif %}>gerencia</option>
                                             <option value="rh" {% if user.role|lower == "rh" %}selected{% endif %}>rh</option>
-                                            <option value="diretoria" {% if user.role|lower == "diretoria" %}selected{% endif %}>diretoria</option>
                                             <option value="tecnico" {% if user.role|lower == "tecnico" %}selected{% endif %}>tecnico</option>
                                         </select>
                                         <button type="submit" class="secondary-action role-save-btn">Salvar</button>
@@ -322,7 +344,7 @@
                 <form class="sector-add-form" action="{{ url_for('main.adicionar_setor') }}" method="POST">
                     <div class="form-field">
                         <label class="field-label" for="novo_setor">Novo setor</label>
-                        <input id="novo_setor" name="nome" type="text" placeholder="Ex: RH, Financeiro, Diretoria" required>
+                        <input id="novo_setor" name="nome" type="text" placeholder="Ex: Financeiro, Gerência, Administração" required>
                     </div>
                     <button type="submit" class="primary-action">Adicionar setor</button>
                 </form>

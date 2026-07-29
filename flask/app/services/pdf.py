@@ -1,11 +1,12 @@
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from flask import send_file
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.shapes import Drawing, String
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -21,6 +22,38 @@ PALETA = [
     colors.HexColor("#E0574A"),
     colors.HexColor("#0F766E"),
 ]
+
+
+def estilo_celula():
+    return ParagraphStyle(
+        "CelulaTabela",
+        fontName="Helvetica",
+        fontSize=7,
+        leading=9,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor("#1F2D25"),
+    )
+
+
+def estilo_cabecalho():
+    return ParagraphStyle(
+        "CabecalhoTabela",
+        fontName="Helvetica-Bold",
+        fontSize=7,
+        leading=9,
+        alignment=TA_CENTER,
+        textColor=colors.white,
+    )
+
+
+def paragrafo_tabela(valor, estilo=None):
+    texto = "-" if valor is None or valor == "" else str(valor)
+    return Paragraph(escape(texto), estilo or estilo_celula())
+
+
+def linha_tabela(valores, cabecalho=False):
+    estilo = estilo_cabecalho() if cabecalho else estilo_celula()
+    return [paragrafo_tabela(valor, estilo) for valor in valores]
 
 
 def grafico_barras(titulo, dados, largura=24 * cm, altura=8 * cm):
@@ -74,19 +107,19 @@ def grafico_pizza(titulo, dados, largura=11 * cm, altura=8 * cm):
 
 def tabela_resumo(stats):
     dados = [
-        ["Indicador", "Valor"],
-        ["Total de registros", stats["total"]],
-        ["Dias com uso", stats["diasComUso"]],
-        ["Media diaria", stats["mediaDiaria"]],
-        ["Recurso mais usado", stats["recursoTop"]],
-        ["Setor mais ativo", stats["setorTop"]],
-        ["Responsavel mais frequente", stats["requerenteTop"]],
-        ["Taxa de devolucao", f"{stats['taxaDevolucao']}%"],
-        ["Pendentes", stats["pendentes"]],
-        ["Em uso", stats["emUso"]],
-        ["Atrasados", stats["atrasados"]],
-        ["Devolvidos", stats["devolvidos"]],
-        ["Viagens", stats["viagens"]],
+        linha_tabela(["Indicador", "Valor"], cabecalho=True),
+        linha_tabela(["Total de registros", stats["total"]]),
+        linha_tabela(["Dias com uso", stats["diasComUso"]]),
+        linha_tabela(["Media diaria", stats["mediaDiaria"]]),
+        linha_tabela(["Recurso mais usado", stats["recursoTop"]]),
+        linha_tabela(["Setor mais ativo", stats["setorTop"]]),
+        linha_tabela(["Responsavel mais frequente", stats["requerenteTop"]]),
+        linha_tabela(["Taxa de devolucao", f"{stats['taxaDevolucao']}%"]),
+        linha_tabela(["Pendentes", stats["pendentes"]]),
+        linha_tabela(["Em uso", stats["emUso"]]),
+        linha_tabela(["Atrasados", stats["atrasados"]]),
+        linha_tabela(["Devolvidos", stats["devolvidos"]]),
+        linha_tabela(["Viagens", stats["viagens"]]),
     ]
 
     tabela = Table(dados, colWidths=[8 * cm, 7 * cm])
@@ -107,7 +140,7 @@ def tabela_resumo(stats):
 
 
 def tabela_rankings(dados):
-    linhas = [["Ranking", "Nome", "Reservas"]]
+    linhas = [linha_tabela(["Ranking", "Nome", "Reservas"], cabecalho=True)]
 
     for titulo, chave in [
         ("Recursos", "recursos"),
@@ -116,9 +149,9 @@ def tabela_rankings(dados):
     ]:
         itens = dados["rankings"].get(chave, [])
         if not itens:
-            linhas.append([titulo, "-", 0])
+            linhas.append(linha_tabela([titulo, "-", 0]))
         for nome, valor in itens[:5]:
-            linhas.append([titulo, nome, valor])
+            linhas.append(linha_tabela([titulo, nome, valor]))
 
     tabela = Table(linhas, repeatRows=1, colWidths=[4 * cm, 10 * cm, 3 * cm])
     tabela.setStyle(
@@ -138,33 +171,37 @@ def tabela_rankings(dados):
 
 
 def tabela_registros(registros):
-    dados = [["Data", "Recurso", "Responsavel", "Setor", "Status", "Horario"]]
+    dados = [linha_tabela(["Inicio", "Devolucao", "Recurso", "Responsavel", "Setor", "Status", "Horario"], cabecalho=True)]
 
     for registro in registros[:28]:
         hora_fim = registro.hora_fim.strftime("%H:%M") if registro.hora_fim else "Viagem"
         dados.append(
-            [
+            linha_tabela([
                 registro.data_reserva.strftime("%d/%m/%Y"),
+                (registro.data_volta or registro.data_reserva).strftime("%d/%m/%Y"),
                 registro.recurso.nome if registro.recurso else "-",
                 registro.responsavel or "-",
                 registro.setor or "-",
                 registro.status_label,
                 f"{registro.hora_inicio.strftime('%H:%M')} - {hora_fim}",
-            ]
+            ])
         )
 
-    tabela = Table(dados, repeatRows=1, colWidths=[2.5 * cm, 4.2 * cm, 4 * cm, 3.5 * cm, 2.6 * cm, 3 * cm])
+    tabela = Table(dados, repeatRows=1, colWidths=[2.0 * cm, 2.2 * cm, 3.5 * cm, 3.6 * cm, 3.0 * cm, 2.3 * cm, 3.1 * cm])
     tabela.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#00995C")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D7E6DC")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FBF9")]),
-                ("PADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ]
         )
     )
@@ -288,13 +325,14 @@ def gerar_pdf_historico(registros):
         spaceAfter=14,
     )
 
-    dados = [["Data", "Hora", "Responsavel", "Recurso", "Setor", "Local", "Status", "Obs."]]
+    dados = [linha_tabela(["Inicio", "Devolucao", "Hora", "Responsavel", "Recurso", "Setor", "Local", "Status", "Obs."], cabecalho=True)]
 
     for registro in registros:
         hora_fim = registro.hora_fim.strftime("%H:%M") if registro.hora_fim else ("Viagem" if registro.viagem else "-")
         dados.append(
-            [
+            linha_tabela([
                 registro.data_reserva.strftime("%d/%m/%Y"),
+                (registro.data_volta or registro.data_reserva).strftime("%d/%m/%Y"),
                 f"{registro.hora_inicio.strftime('%H:%M')} - {hora_fim}",
                 registro.responsavel or (registro.usuario.usuario if registro.usuario else "-"),
                 registro.recurso.nome if registro.recurso else "-",
@@ -302,13 +340,13 @@ def gerar_pdf_historico(registros):
                 registro.motivo or "-",
                 registro.status_label,
                 registro.observacao or "-",
-            ]
+            ])
         )
 
     tabela = Table(
         dados,
         repeatRows=1,
-        colWidths=[2.3 * cm, 2.8 * cm, 4 * cm, 4 * cm, 3 * cm, 3.2 * cm, 2.6 * cm, 4.4 * cm],
+        colWidths=[1.9 * cm, 2.0 * cm, 2.4 * cm, 3.2 * cm, 3.2 * cm, 2.5 * cm, 3.0 * cm, 2.2 * cm, 4.2 * cm],
     )
     tabela.setStyle(
         TableStyle(
@@ -320,7 +358,10 @@ def gerar_pdf_historico(registros):
                 ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D7E6DC")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FBF9")]),
-                ("PADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )

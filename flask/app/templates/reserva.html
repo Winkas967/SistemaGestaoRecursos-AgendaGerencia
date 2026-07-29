@@ -17,6 +17,12 @@
 <body>
 
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
+    <div class="user-panel-actions">
+        <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
+        {% if session["role"]|lower in ["tecnico", "gerencia"] %}
+        <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
+        {% endif %}
+    </div>
     <div class="user-avatar" aria-hidden="true"></div>
     <span class="user-panel-label">Usuário</span>
     <strong>{{ session["nome"] or session["usuario"] }}</strong>
@@ -41,6 +47,8 @@
         <button type="submit">Sair</button>
     </form>
 </div>
+
+{% include "_self_password_modal.html" %}
 
 <main class="page-shell">
     <div class="wrap">
@@ -71,7 +79,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
                         Reserva
                     </a>
-                    {% if session["role"]|lower in ["rh", "diretoria", "tecnico"] %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
                     <a href="{{ url_for('main.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
@@ -87,15 +95,7 @@
             <p class="dash-sub">O equipamento selecionado em Equipamentos aparece preenchido aqui.</p>
         </section>
 
-        {% with mensagens = get_flashed_messages(with_categories=true) %}
-            {% if mensagens %}
-                <div class="flash-stack">
-                    {% for categoria, mensagem in mensagens %}
-                        <div class="flash-message flash-{{ categoria }}">{{ mensagem }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+        {% include "_flash_messages.html" %}
 
         <section class="records-panel">
             <div class="form-head">
@@ -133,13 +133,18 @@
                     </div>
 
                     <div class="form-field">
-                        <label class="field-label" for="data_reserva">Data</label>
+                        <label class="field-label" for="data_reserva">Data do Empréstimo</label>
                         <input id="data_reserva" name="data_reserva" type="date" required>
                     </div>
 
                     <div class="form-field">
                         <label class="field-label" for="hora_inicio">Hora inicial</label>
                         <input id="hora_inicio" name="hora_inicio" type="time" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label" for="data_volta">Data da Devolução</label>
+                        <input id="data_volta" name="data_volta" type="date">
                     </div>
 
                     <div class="form-field">
@@ -160,7 +165,7 @@
 
                     <div class="form-field">
                         <label class="field-label" for="motivo">Local ou motivo</label>
-                        <input id="motivo" name="motivo" type="text">
+                        <input id="motivo" name="motivo" type="text" required>
                     </div>
 
                     <div class="form-field form-field-wide">
@@ -202,6 +207,9 @@
                                 {% for horario in dia.horarios %}
                                     <div class="calendar-slot">
                                         <span class="slot-time">{{ horario.inicio }} - {{ horario.fim }}</span>
+                                        {% if horario.data_fim != dia.data_formatada %}
+                                            <span class="slot-owner">Até {{ horario.data_fim }}</span>
+                                        {% endif %}
                                         <span class="slot-owner">{{ horario.responsavel }}</span>
                                         <span class="status-pill status-usando">{{ horario.status }}</span>
                                     </div>

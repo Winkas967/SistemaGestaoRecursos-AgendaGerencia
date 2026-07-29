@@ -154,6 +154,65 @@ if (passwordModal) {
     });
 }
 
+const selfPasswordModal = document.getElementById("selfPasswordModal");
+const selfPasswordModalClose = document.getElementById("selfPasswordModalClose");
+const selfPasswordModalCancel = document.getElementById("selfPasswordModalCancel");
+const selfPasswordForm = document.getElementById("selfPasswordForm");
+const selfNovaSenha = document.getElementById("selfNovaSenha");
+const selfConfirmarSenha = document.getElementById("selfConfirmarSenha");
+
+function abrirModalMinhaSenha() {
+    if (!selfPasswordModal) return;
+
+    if (selfPasswordForm) selfPasswordForm.reset();
+    if (selfConfirmarSenha) selfConfirmarSenha.setCustomValidity("");
+    selfPasswordModal.classList.remove("hidden");
+    selfPasswordModal.setAttribute("aria-hidden", "false");
+    if (selfNovaSenha) selfNovaSenha.focus();
+}
+
+function fecharModalMinhaSenha() {
+    if (!selfPasswordModal) return;
+
+    selfPasswordModal.classList.add("hidden");
+    selfPasswordModal.setAttribute("aria-hidden", "true");
+}
+
+document.querySelectorAll("[data-open-self-password]").forEach((btn) => {
+    btn.addEventListener("click", abrirModalMinhaSenha);
+});
+
+[selfPasswordModalClose, selfPasswordModalCancel].forEach((btn) => {
+    if (btn) btn.addEventListener("click", fecharModalMinhaSenha);
+});
+
+if (selfPasswordModal) {
+    selfPasswordModal.addEventListener("click", (event) => {
+        if (event.target === selfPasswordModal) fecharModalMinhaSenha();
+    });
+}
+
+if (selfConfirmarSenha) {
+    selfConfirmarSenha.addEventListener("input", () => {
+        selfConfirmarSenha.setCustomValidity("");
+    });
+}
+
+if (selfPasswordForm) {
+    selfPasswordForm.addEventListener("submit", (event) => {
+        if (!selfNovaSenha || !selfConfirmarSenha) return;
+
+        if (selfNovaSenha.value !== selfConfirmarSenha.value) {
+            event.preventDefault();
+            selfConfirmarSenha.setCustomValidity("As senhas nao conferem.");
+            selfConfirmarSenha.reportValidity();
+            return;
+        }
+
+        selfConfirmarSenha.setCustomValidity("");
+    });
+}
+
 // ---------- Lembrete de devolucao ----------
 
 const reminder = document.getElementById("devolucaoReminder");
