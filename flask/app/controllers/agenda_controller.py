@@ -9,6 +9,7 @@ from conexao import db
 from controllers import main
 from model import AgendaCompromisso
 from services.agenda_pdf import gerar_pdf_agenda_mensal
+from services.atas_service import criar_ata, excluir_ata, listar_atas, obter_ata
 from services.documentacao_rede_service import (
     atualizar_documentacao_medico,
     carregar_documentacao_rede,
@@ -23,6 +24,8 @@ from services.documentacao_rede_service import (
 
 
 STATUS_VALIDOS = {"agendado", "andamento", "concluido", "cancelado"}
+EXTENSOES_ATAS = {"pdf", "doc", "docx"}
+TAMANHO_MAXIMO_ATA = 15 * 1024 * 1024
 
 
 def pode_usar_agenda():
@@ -311,6 +314,70 @@ def excluir_medico_documentacao_rede():
 
     dados = request.get_json(silent=True) or {}
     return jsonify(excluir_documentacao_medico_em_lote(dados.get("ids")))
+
+
+@main.route("/api/agenda/atas", methods=["GET"])
+def listar_atas_reunioes():
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+    return jsonify(listar_atas())
+
+
+@main.route("/api/agenda/atas", methods=["POST"])
+def adicionar_ata_reuniao():
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+
+    arquivo = request.files.get("arquivo")
+    if not arquivo or not arquivo.filename:
+        return erro_json("Selecione o arquivo da ata.")
+
+    nome = secure_filename(arquivo.filename)
+    extensao = nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+    if extensao not in EXTENSOES_ATAS:
+        return erro_json("O arquivo deve estar no formato PDF, DOC ou DOCX.")
+
+    conteudo = arquivo.read(TAMANHO_MAXIMO_ATA + 1)
+    if len(conteudo) > TAMANHO_MAXIMO_ATA:
+        return erro_json("O arquivo da ata deve ter no máximo 15 MB.", 413)
+    if not conteudo:
+        return erro_json("O arquivo selecionado está vazio.")
+
+    try:
+        ata = criar_ata(
+            request.form,
+            nome,
+            arquivo.mimetype or "application/octet-stream",
+            conteudo,
+        )
+    except ValueError as erro:
+        return erro_json(str(erro))
+    return jsonify(ata), 201
+
+
+@main.route("/api/agenda/atas/<int:id>/arquivo", methods=["GET"])
+def baixar_arquivo_ata(id):
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+
+    ata = obter_ata(id)
+    return send_file(
+        BytesIO(ata.arquivo_dados),
+        mimetype=ata.arquivo_mime or "application/octet-stream",
+        as_attachment=True,
+        download_name=ata.arquivo_nome,
+    )
+
+
+@main.route("/api/agenda/atas/<int:id>", methods=["DELETE"])
+def excluir_ata_reuniao(id):
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+    return jsonify(excluir_ata(id))
 
 
 @main.route("/api/agenda/compromissos", methods=["POST"])

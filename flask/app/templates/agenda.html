@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260727-6') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260730-4') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -48,6 +48,7 @@
     <div class="agenda-tabs" role="tablist" aria-label="Acoes da agenda">
         <button class="agenda-tab active" data-view="agenda" type="button">Agenda</button>
         <button class="agenda-tab" data-view="documentacao" type="button">Documentação</button>
+        <button class="agenda-tab" data-view="atas" type="button">Atas</button>
     </div>
 
     <section class="agenda-view active" id="agendaView">
@@ -167,6 +168,92 @@
                 <button class="btn" id="docsPrevPage" type="button">Anterior</button>
                 <span id="docsPageInfo">Página 1 de 1</span>
                 <button class="btn" id="docsNextPage" type="button">Próxima</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="agenda-view" id="atasView">
+        <div class="panel minutes-panel">
+            <div class="minutes-head">
+                <div>
+                    <span class="eyebrow">Arquivo institucional</span>
+                    <h2>Atas de reuniões</h2>
+                    <p>Organize e consulte as atas registradas pela diretoria.</p>
+                </div>
+                <button class="btn btn-primary minutes-upload-btn" data-action="open-minutes-form" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3v12m0-12 4 4m-4-4L8 7M5 14v5h14v-5"/>
+                    </svg>
+                    Anexar nova ata
+                </button>
+            </div>
+
+            <div class="minutes-summary">
+                <div class="minutes-summary-card">
+                    <span class="minutes-summary-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 3h9l3 3v15H6V3Zm8 0v4h4M9 11h6M9 15h6"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <small>Total de atas</small>
+                        <strong id="minutesTotal">0</strong>
+                    </div>
+                </div>
+                <div class="minutes-summary-card">
+                    <span class="minutes-summary-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 5h14v15H5V5Zm3-2v4m8-4v4M5 9h14"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <small>Última atualização</small>
+                        <strong id="minutesLastUpdate">Nenhuma</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="minutes-toolbar">
+                <label class="minutes-search">
+                    <span>Buscar ata</span>
+                    <div>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="11" cy="11" r="6"/>
+                            <path d="m16 16 4 4"/>
+                        </svg>
+                        <input type="search" id="minutesSearch" placeholder="Pesquise por número, pauta ou participante">
+                    </div>
+                </label>
+                <label>
+                    <span>Ano</span>
+                    <select id="minutesYearFilter">
+                        <option>Todos os anos</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Tipo de ata</span>
+                    <select id="minutesTypeFilter">
+                        <option value="">Todos os tipos</option>
+                        <option value="conselho-administrativo">Conselho Administrativo</option>
+                        <option value="conselho-fiscal">Conselho Fiscal</option>
+                        <option value="conselho-etica">Conselho de Ética</option>
+                        <option value="relacionamento-cooperado">Relacionamento ao Cooperado</option>
+                        <option value="cgi">CGI</option>
+                        <option value="comite-governanca">Comitê de Governança</option>
+                        <option value="age-ago-unimed-sete-meia">AGE/AGO/Unimed Sete e Meia</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Ordenar por</span>
+                    <select id="minutesOrder">
+                        <option value="recentes">Mais recentes</option>
+                        <option value="antigas">Mais antigas</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="minutes-list" id="minutesList">
+                <div class="minutes-empty"><p>Carregando atas...</p></div>
             </div>
         </div>
     </section>
@@ -293,6 +380,75 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260727-4') }}"></script>
+<div class="overlay" id="minutesOverlay">
+    <div class="modal minutes-modal">
+        <div class="modal-head">
+            <div>
+                <span class="eyebrow">Arquivo institucional</span>
+                <h2>Adicionar nova ata</h2>
+                <p>Preencha as informações da reunião e selecione o arquivo correspondente.</p>
+            </div>
+            <button type="button" class="close-btn" id="cancelMinutesBtn" aria-label="Fechar">&times;</button>
+        </div>
+
+        <form id="minutesForm">
+            <div class="form-grid minutes-form-grid">
+                <div class="field">
+                    <label for="minutesNumber">Número da ata</label>
+                    <input type="text" id="minutesNumber" required placeholder="Ex: 012/2026">
+                </div>
+                <div class="field">
+                    <label for="minutesDate">Data da reunião</label>
+                    <input type="date" id="minutesDate" required>
+                </div>
+                <div class="field full">
+                    <label for="minutesType">Tipo de ata</label>
+                    <select id="minutesType" required>
+                        <option value="" selected disabled>Selecione o tipo da ata</option>
+                        <option value="conselho-administrativo">Ata do Conselho Administrativo</option>
+                        <option value="conselho-fiscal">Ata do Conselho Fiscal</option>
+                        <option value="conselho-etica">Ata do Conselho de Ética</option>
+                        <option value="relacionamento-cooperado">Ata do Relacionamento ao Cooperado</option>
+                        <option value="cgi">Ata do CGI</option>
+                        <option value="comite-governanca">Ata do Comitê de Governança</option>
+                        <option value="age-ago-unimed-sete-meia">Ata das AGE/AGO/Unimed Sete e Meia</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label for="minutesAgenda">Pauta da reunião</label>
+                    <textarea id="minutesAgenda" rows="4" required placeholder="Descreva os assuntos tratados na reunião"></textarea>
+                </div>
+                <div class="field full">
+                    <label for="minutesParticipants">Participantes da reunião</label>
+                    <textarea id="minutesParticipants" rows="3" required placeholder="Informe os nomes dos participantes"></textarea>
+                    <small class="field-help">Separe os participantes por vírgula ou utilize uma linha para cada nome.</small>
+                </div>
+                <div class="field full">
+                    <label for="minutesFile">Arquivo da ata</label>
+                    <label class="minutes-file-picker" for="minutesFile">
+                        <span class="minutes-file-icon">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3v12m0-12 4 4m-4-4L8 7M5 14v5h14v-5"/>
+                            </svg>
+                        </span>
+                        <span>
+                            <strong>Selecionar arquivo</strong>
+                            <small id="minutesFileName">PDF, DOC ou DOCX</small>
+                        </span>
+                    </label>
+                    <input class="minutes-file-input" type="file" id="minutesFile" accept=".pdf,.doc,.docx" required>
+                </div>
+            </div>
+
+            <p class="appt-form-error hidden" id="minutesFormError" role="alert"></p>
+            <div class="modal-actions">
+                <button class="btn" id="secondaryCancelMinutesBtn" type="button">Cancelar</button>
+                <button class="btn btn-primary" type="submit">Adicionar ata</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260730-6') }}"></script>
 </body>
 </html>

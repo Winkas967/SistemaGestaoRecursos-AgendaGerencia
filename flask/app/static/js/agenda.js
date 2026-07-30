@@ -4,6 +4,7 @@
     const API_URL = "/api/agenda/compromissos";
     const DOCS_API_URL = "/api/agenda/documentacao";
     const DOCTORS_API_URL = "/api/agenda/medicos";
+    const MINUTES_API_URL = "/api/agenda/atas";
     const THEME_KEY = "agendaTheme";
     const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -31,15 +32,36 @@
         docsLoading: false,
         docsAlterados: new Map(),
         docsSalvando: new Set(),
+        docsSaveTimers: new Map(),
+        docsErros: new Set(),
         docsPage: 1,
         docsPageSize: 20,
         statusEditingId: null,
+        atas: [],
+        atasAnos: [],
+        atasCarregadas: false,
+        atasLoading: false,
     };
 
     const el = {
         agendaTabs: document.querySelectorAll(".agenda-tab"),
         agendaView: document.getElementById("agendaView"),
         documentacaoView: document.getElementById("documentacaoView"),
+        atasView: document.getElementById("atasView"),
+        minutesOverlay: document.getElementById("minutesOverlay"),
+        minutesForm: document.getElementById("minutesForm"),
+        minutesFile: document.getElementById("minutesFile"),
+        minutesFileName: document.getElementById("minutesFileName"),
+        cancelMinutesBtn: document.getElementById("cancelMinutesBtn"),
+        secondaryCancelMinutesBtn: document.getElementById("secondaryCancelMinutesBtn"),
+        minutesTotal: document.getElementById("minutesTotal"),
+        minutesLastUpdate: document.getElementById("minutesLastUpdate"),
+        minutesSearch: document.getElementById("minutesSearch"),
+        minutesYearFilter: document.getElementById("minutesYearFilter"),
+        minutesTypeFilter: document.getElementById("minutesTypeFilter"),
+        minutesOrder: document.getElementById("minutesOrder"),
+        minutesList: document.getElementById("minutesList"),
+        minutesFormError: document.getElementById("minutesFormError"),
         themeToggle: document.getElementById("themeToggle"),
         themeIconSun: document.getElementById("iconSun"),
         themeIconMoon: document.getElementById("iconMoon"),
@@ -156,9 +178,181 @@
         });
         el.agendaView.classList.toggle("active", view === "agenda");
         el.documentacaoView.classList.toggle("active", view === "documentacao");
+        el.atasView.classList.toggle("active", view === "atas");
 
         if (view === "documentacao" && !state.documentacao && !state.docsLoading) {
             carregarDocumentacao();
+        }
+        if (view === "atas" && !state.atasCarregadas && !state.atasLoading) {
+            carregarAtas();
+        }
+    }
+
+    function abrirFormularioAta() {
+        el.minutesOverlay.classList.add("open");
+        window.setTimeout(() => document.getElementById("minutesNumber")?.focus(), 50);
+    }
+
+    function fecharFormularioAta() {
+        el.minutesOverlay.classList.remove("open");
+        el.minutesFormError.textContent = "";
+        el.minutesFormError.classList.add("hidden");
+    }
+
+    function normalizarBuscaAta(valor) {
+        return String(valor || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+    }
+
+    async function carregarAtas() {
+        state.atasLoading = true;
+        el.minutesList.innerHTML = '<div class="minutes-empty"><p>Carregando atas...</p></div>';
+        try {
+            const dados = await requestJson(MINUTES_API_URL);
+            state.atas = dados.registros || [];
+            state.atasAnos = dados.anos || [];
+            state.atasCarregadas = true;
+            el.minutesTotal.textContent = String(dados.total || 0);
+            el.minutesLastUpdate.textContent = dados.ultimaAtualizacao || "Nenhuma";
+            atualizarFiltroAnosAtas();
+            renderAtas();
+        } catch (error) {
+            el.minutesList.innerHTML = `<div class="minutes-empty"><h3>Não foi possível carregar as atas</h3><p>${escapeHtml(error.message)}</p></div>`;
+        } finally {
+            state.atasLoading = false;
+        }
+    }
+
+    function atualizarFiltroAnosAtas() {
+        const atual = el.minutesYearFilter.value;
+        el.minutesYearFilter.innerHTML = '<option value="">Todos os anos</option>' +
+            state.atasAnos.map((ano) => `<option value="${ano}">${ano}</option>`).join("");
+        if (state.atasAnos.map(String).includes(atual)) el.minutesYearFilter.value = atual;
+    }
+
+    function atasFiltradas() {
+        const busca = normalizarBuscaAta(el.minutesSearch.value.trim());
+        const ano = el.minutesYearFilter.value;
+        const tipo = el.minutesTypeFilter.value;
+        const resultado = state.atas.filter((ata) => {
+            if (ano && String(ata.ano) !== ano) return false;
+            if (tipo && ata.tipo !== tipo) return false;
+            if (!busca) return true;
+            return normalizarBuscaAta([
+                ata.numero,
+                ata.tipoTexto,
+                ata.pauta,
+                ata.participantes,
+                ata.arquivo?.nome,
+            ].join(" ")).includes(busca);
+        });
+        resultado.sort((a, b) => {
+            const comparacao = String(a.data).localeCompare(String(b.data));
+            return el.minutesOrder.value === "antigas" ? comparacao : -comparacao;
+        });
+        return resultado;
+    }
+
+    function renderAtas() {
+        const atas = atasFiltradas();
+        if (!atas.length) {
+            const temAtas = state.atas.length > 0;
+            el.minutesList.innerHTML = `
+                <div class="minutes-empty">
+                    <span class="minutes-empty-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 3h9l3 3v15H6V3Zm8 0v4h4M9 12h6M9 16h4"/>
+                        </svg>
+                    </span>
+                    <h3>${temAtas ? "Nenhuma ata encontrada" : "Nenhuma ata anexada"}</h3>
+                    <p>${temAtas ? "Ajuste os filtros para encontrar outros registros." : "Quando as atas forem adicionadas, elas aparecerão organizadas neste espaço."}</p>
+                    ${temAtas ? "" : '<button class="btn" data-action="open-minutes-form" type="button">Anexar primeira ata</button>'}
+                </div>`;
+        } else {
+            el.minutesList.innerHTML = atas.map((ata) => `
+                <article class="minutes-card" data-id="${ata.id}">
+                    <div class="minutes-card-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 3h9l3 3v15H6V3Zm8 0v4h4M9 12h6M9 16h4"/>
+                        </svg>
+                    </div>
+                    <div class="minutes-card-content">
+                        <div class="minutes-card-top">
+                            <span class="minutes-type-badge">${escapeHtml(ata.tipoTexto)}</span>
+                            <time datetime="${escapeHtml(ata.data)}">${escapeHtml(ata.dataTexto)}</time>
+                        </div>
+                        <h3>Ata nº ${escapeHtml(ata.numero)}</h3>
+                        <p class="minutes-card-agenda">${escapeHtml(ata.pauta)}</p>
+                        <p class="minutes-card-participants"><strong>Participantes:</strong> ${escapeHtml(ata.participantes)}</p>
+                        <span class="minutes-card-file">${escapeHtml(ata.arquivo?.nome || "")}</span>
+                    </div>
+                    <div class="minutes-card-actions">
+                        <a class="btn" href="${escapeHtml(ata.arquivo?.url || "#")}">Baixar</a>
+                        <button class="minutes-delete-btn" data-action="delete-minute" data-id="${ata.id}" type="button" aria-label="Apagar ata" title="Apagar ata">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-1 11H8L7 9Z"/></svg>
+                        </button>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        el.minutesList.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
+            button.addEventListener("click", abrirFormularioAta);
+        });
+        el.minutesList.querySelectorAll('[data-action="delete-minute"]').forEach((button) => {
+            button.addEventListener("click", () => excluirAta(Number(button.dataset.id)));
+        });
+    }
+
+    async function salvarAta(event) {
+        event.preventDefault();
+        el.minutesFormError.textContent = "";
+        el.minutesFormError.classList.add("hidden");
+
+        const submit = el.minutesForm.querySelector('button[type="submit"]');
+        const formData = new FormData();
+        formData.append("numero", document.getElementById("minutesNumber").value.trim());
+        formData.append("data", document.getElementById("minutesDate").value);
+        formData.append("tipo", document.getElementById("minutesType").value);
+        formData.append("pauta", document.getElementById("minutesAgenda").value.trim());
+        formData.append("participantes", document.getElementById("minutesParticipants").value.trim());
+        formData.append("arquivo", el.minutesFile.files[0]);
+
+        submit.disabled = true;
+        submit.textContent = "Adicionando...";
+        try {
+            const response = await fetch(MINUTES_API_URL, {
+                method: "POST",
+                headers: { Accept: "application/json" },
+                body: formData,
+            });
+            const ata = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(ata.erro || "Não foi possível adicionar a ata.");
+
+            el.minutesForm.reset();
+            el.minutesFileName.textContent = "PDF, DOC ou DOCX";
+            fecharFormularioAta();
+            await carregarAtas();
+            showFeedback("Ata adicionada com sucesso.");
+        } catch (error) {
+            el.minutesFormError.textContent = error.message;
+            el.minutesFormError.classList.remove("hidden");
+        } finally {
+            submit.disabled = false;
+            submit.textContent = "Adicionar ata";
+        }
+    }
+
+    async function excluirAta(id) {
+        if (!window.confirm("Deseja apagar esta ata e o arquivo anexado?")) return;
+        try {
+            await requestJson(`${MINUTES_API_URL}/${id}`, { method: "DELETE" });
+            await carregarAtas();
+            showFeedback("Ata apagada com sucesso.");
+        } catch (error) {
+            showFeedback(error.message, "error");
         }
     }
 
@@ -316,6 +510,7 @@
                     conformes: 0,
                     pendentes: 0,
                     notificados: 0,
+                    naoIndicados: 0,
                 });
             });
         }
@@ -339,6 +534,10 @@
 
             const grupo = grupos.get(medico);
             grupo.documentos.push(item);
+            if (item.naoIndicado) {
+                grupo.naoIndicados += 1;
+                return;
+            }
             const status = (item.status || "").trim().toUpperCase();
             if (status === "CONFORME") grupo.conformes += 1;
             if (status === "PENDENTE") grupo.pendentes += 1;
@@ -351,12 +550,15 @@
     function atualizarContadorAlteracoes() {
         el.docsDirtyCount.classList.remove("saving", "saved", "error");
 
-        if (state.docsSalvando.size > 0) {
+        if (state.docsSalvando.size > 0 || state.docsSaveTimers.size > 0) {
             el.docsDirtyCount.textContent = "Salvando...";
             el.docsDirtyCount.classList.add("saving");
-        } else if (state.docsAlterados.size > 0) {
+        } else if (state.docsErros.size > 0) {
             el.docsDirtyCount.textContent = "Erro ao salvar — tente novamente";
             el.docsDirtyCount.classList.add("error");
+        } else if (state.docsAlterados.size > 0) {
+            el.docsDirtyCount.textContent = "Alterações pendentes...";
+            el.docsDirtyCount.classList.add("saving");
         } else {
             el.docsDirtyCount.textContent = "Alterações salvas automaticamente";
             el.docsDirtyCount.classList.add("saved");
@@ -366,8 +568,32 @@
     function registrarAlteracaoDocumento(id, payload, row) {
         const atual = state.docsAlterados.get(id) || {};
         state.docsAlterados.set(id, { ...atual, ...payload });
+        state.docsErros.delete(id);
         if (row) row.classList.add("edited");
         atualizarContadorAlteracoes();
+    }
+
+    function agendarSalvamentoDocumento(id, delay = 700) {
+        const timerAnterior = state.docsSaveTimers.get(id);
+        if (timerAnterior) clearTimeout(timerAnterior);
+
+        const timer = window.setTimeout(() => {
+            state.docsSaveTimers.delete(id);
+            salvarDocumentoAutomaticamente(id);
+        }, delay);
+
+        state.docsSaveTimers.set(id, timer);
+        atualizarContadorAlteracoes();
+    }
+
+    function salvarDocumentoAgora(id) {
+        const timer = state.docsSaveTimers.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            state.docsSaveTimers.delete(id);
+        }
+        atualizarContadorAlteracoes();
+        return salvarDocumentoAutomaticamente(id);
     }
 
     function aplicarDocumentoSalvo(documento) {
@@ -376,10 +602,12 @@
         if (index >= 0) registros[index] = documento;
         const resumo = state.documentacao?.resumo;
         if (resumo) {
-            resumo.total = registros.length;
-            resumo.conformes = registros.filter((item) => item.status === "CONFORME").length;
-            resumo.pendentes = registros.filter((item) => item.status === "PENDENTE").length;
-            resumo.notificados = registros.filter((item) => item.status === "NOTIFICADO").length;
+            const avaliados = registros.filter((item) => !item.naoIndicado);
+            resumo.total = avaliados.length;
+            resumo.naoIndicados = registros.length - avaliados.length;
+            resumo.conformes = avaliados.filter((item) => item.status === "CONFORME").length;
+            resumo.pendentes = avaliados.filter((item) => item.status === "PENDENTE").length;
+            resumo.notificados = avaliados.filter((item) => item.status === "NOTIFICADO").length;
             state.documentacao.percentualTexto = resumo.total
                 ? `${(resumo.conformes / resumo.total * 100).toFixed(2).replace(".", ",")}%`
                 : "0,00%";
@@ -391,6 +619,11 @@
         if (statusButton) {
             statusButton.textContent = documento.status || "-";
             statusButton.className = `docs-status-cell ${normalizarClasseStatus(documento.status)}`;
+        }
+        const naoIndicadoInput = row?.querySelector('input[data-field="naoIndicado"]');
+        if (naoIndicadoInput) {
+            naoIndicadoInput.checked = Boolean(documento.naoIndicado);
+            row.classList.toggle("is-not-indicated", Boolean(documento.naoIndicado));
         }
     }
 
@@ -409,8 +642,10 @@
                     const documentoSalvo = await requestJson(`${DOCS_API_URL}/${id}`, {
                         method: "PATCH",
                         body: JSON.stringify(payload),
+                        keepalive: true,
                     });
                     aplicarDocumentoSalvo(documentoSalvo);
+                    state.docsErros.delete(id);
                 } catch (error) {
                     const maisRecentes = state.docsAlterados.get(id) || {};
                     state.docsAlterados.set(id, { ...payload, ...maisRecentes });
@@ -421,6 +656,7 @@
             const row = el.docsDoctorsList.querySelector(`[data-id="${id}"]`);
             if (row) row.classList.remove("edited");
         } catch (error) {
+            state.docsErros.add(id);
             showFeedback(`Não foi possível salvar automaticamente: ${error.message}`, "error");
         } finally {
             state.docsSalvando.delete(id);
@@ -445,11 +681,13 @@
             return tipoCadastro === categoria;
         });
         const statusNormalizado = (item) => (item.status || "").trim().toUpperCase();
+        const registrosAvaliados = registros.filter((item) => !item.naoIndicado);
         const resumo = {
-            total: registros.length,
-            conformes: registros.filter((item) => statusNormalizado(item) === "CONFORME").length,
-            pendentes: registros.filter((item) => statusNormalizado(item) === "PENDENTE").length,
-            notificados: registros.filter((item) => statusNormalizado(item) === "NOTIFICADO").length,
+            total: registrosAvaliados.length,
+            conformes: registrosAvaliados.filter((item) => statusNormalizado(item) === "CONFORME").length,
+            pendentes: registrosAvaliados.filter((item) => statusNormalizado(item) === "PENDENTE").length,
+            notificados: registrosAvaliados.filter((item) => statusNormalizado(item) === "NOTIFICADO").length,
+            naoIndicados: registros.length - registrosAvaliados.length,
         };
         const total = resumo.total;
         const percentualStatus = (quantidade) => total
@@ -472,6 +710,7 @@
             ["CONFORME", resumo.conformes || 0, "conforme"],
             ["PENDENTE", resumo.pendentes || 0, "pendente"],
             ["NOTIFICADO", resumo.notificados || 0, "notificado"],
+            ["NÃO INDICADOS", resumo.naoIndicados || 0, "nao-indicado"],
             ["CONFORMES (%)", percentual, "conforme"],
             ["PENDENTES (%)", percentualStatus(resumo.pendentes), "pendente"],
             ["NOTIFICADOS (%)", percentualStatus(resumo.notificados), "notificado"],
@@ -515,6 +754,7 @@
                 const id = Number(row.dataset.id);
                 const field = cell.dataset.field;
                 registrarAlteracaoDocumento(id, { [field]: cell.textContent.trim() }, row);
+                agendarSalvamentoDocumento(id);
                 if (cell.classList.contains("docs-status-cell")) {
                     cell.className = `docs-status-cell ${normalizarClasseStatus(cell.textContent)}`;
                     cell.dataset.label = cell.textContent.trim() || "-";
@@ -522,7 +762,7 @@
             });
             cell.addEventListener("blur", () => {
                 const row = cell.closest(".docs-document-row");
-                salvarDocumentoAutomaticamente(Number(row.dataset.id));
+                salvarDocumentoAgora(Number(row.dataset.id));
             });
         });
 
@@ -556,6 +796,10 @@
                     input.disabled = semValidadeAutomatica;
                     current.semValidade = semValidadeAutomatica;
                     current.data_maxima_notificacao = dataNotificacao;
+                }
+
+                if (input.dataset.field === "naoIndicado") {
+                    row.classList.toggle("is-not-indicated", input.checked);
                 }
 
                 registrarAlteracaoDocumento(id, current, row);
@@ -597,6 +841,7 @@
         el.docsDoctorsList.querySelectorAll('[data-action="choose-status"]').forEach((button) => {
             button.addEventListener("click", () => abrirSeletorStatus(Number(button.dataset.id)));
         });
+
     }
 
     function renderMedicoCard(medico, index) {
@@ -605,6 +850,7 @@
             medico.notificados ? `<span class="docs-status-badge notificado">${medico.notificados} notificado${medico.notificados === 1 ? "" : "s"}</span>` : "",
             medico.pendentes ? `<span class="docs-status-badge pendente">${medico.pendentes} pendente${medico.pendentes === 1 ? "" : "s"}</span>` : "",
             medico.conformes ? `<span class="docs-status-badge conforme">${medico.conformes} conforme${medico.conformes === 1 ? "" : "s"}</span>` : "",
+            medico.naoIndicados ? `<span class="docs-status-badge nao-indicado">${medico.naoIndicados} não indicado${medico.naoIndicados === 1 ? "" : "s"}</span>` : "",
         ].filter(Boolean).join("");
 
         return `
@@ -651,10 +897,11 @@
         const status = pendente.status ?? valores[4] ?? "";
         const documentacao = pendente.documentacao ?? valores[7] ?? "";
         const semValidade = pendente.semValidade ?? (item.semValidade || !dataVencimento);
+        const naoIndicado = pendente.naoIndicado ?? Boolean(item.naoIndicado);
         const arquivo = item.arquivo || null;
 
         return `
-            <div class="docs-document-row${state.docsAlterados.has(item.id) ? " edited" : ""}" data-id="${item.id}">
+            <div class="docs-document-row${state.docsAlterados.has(item.id) ? " edited" : ""}${naoIndicado ? " is-not-indicated" : ""}" data-id="${item.id}">
                 <div class="docs-document-name" contenteditable="true" data-field="documento" spellcheck="false">${escapeHtml(documento)}</div>
                 <div class="docs-file-area" data-has-file="${arquivo ? "true" : "false"}">
                     <input class="docs-file-input" id="docsFile${item.id}" type="file">
@@ -670,6 +917,10 @@
                 </div>
                 <input class="docs-date-input" type="date" data-field="data_maxima_notificacao" value="${escapeHtml(dataNotificacao)}">
                 <button class="docs-status-cell ${normalizarClasseStatus(status)}" data-action="choose-status" data-id="${item.id}" type="button" title="Clique para alterar o status">${escapeHtml(status || "-")}</button>
+                <label class="docs-not-indicated-field">
+                    <input type="checkbox" data-field="naoIndicado" ${naoIndicado ? "checked" : ""}>
+                    Não indicado
+                </label>
                 <div class="docs-documentation-field">
                     <div contenteditable="true" data-field="documentacao" spellcheck="false">${escapeHtml(documentacao)}</div>
                 </div>
@@ -1145,6 +1396,22 @@
         el.agendaTabs.forEach((tab) => {
             tab.addEventListener("click", () => switchView(tab.dataset.view));
         });
+        document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
+            button.addEventListener("click", abrirFormularioAta);
+        });
+        el.cancelMinutesBtn.addEventListener("click", fecharFormularioAta);
+        el.secondaryCancelMinutesBtn.addEventListener("click", fecharFormularioAta);
+        el.minutesOverlay.addEventListener("click", (event) => {
+            if (event.target === el.minutesOverlay) fecharFormularioAta();
+        });
+        el.minutesFile.addEventListener("change", () => {
+            el.minutesFileName.textContent = el.minutesFile.files?.[0]?.name || "PDF, DOC ou DOCX";
+        });
+        el.minutesForm.addEventListener("submit", salvarAta);
+        el.minutesSearch.addEventListener("input", renderAtas);
+        el.minutesYearFilter.addEventListener("change", renderAtas);
+        el.minutesTypeFilter.addEventListener("change", renderAtas);
+        el.minutesOrder.addEventListener("change", renderAtas);
         el.themeToggle.addEventListener("click", toggleTheme);
         el.printBtn.addEventListener("click", () => window.print());
         el.exportMonthPdfBtn.addEventListener("click", () => {
@@ -1208,6 +1475,16 @@
             if (event.target === el.doctorOverlay) fecharModalMedico();
         });
         window.addEventListener("online", tentarSalvarDocumentosPendentes);
+        window.addEventListener("beforeunload", (event) => {
+            if (
+                state.docsAlterados.size > 0 ||
+                state.docsSalvando.size > 0 ||
+                state.docsSaveTimers.size > 0
+            ) {
+                event.preventDefault();
+                event.returnValue = "";
+            }
+        });
         el.docsPrevPage.addEventListener("click", () => {
             state.docsPage -= 1;
             renderDocumentacao();
@@ -1241,6 +1518,7 @@
                 el.confirmOverlay.classList.remove("open");
                 fecharSeletorStatus();
                 fecharModalMedico();
+                fecharFormularioAta();
             }
         });
         document.addEventListener("click", (event) => {

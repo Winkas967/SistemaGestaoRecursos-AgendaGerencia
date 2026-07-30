@@ -157,6 +157,7 @@ class DocumentacaoMedicoCredenciado(db.Model):
     documento = db.Column(db.String(255), nullable=False)
     data_vencimento = db.Column(db.Date, nullable=True, index=True)
     sem_validade = db.Column(db.Boolean, nullable=False, default=False)
+    nao_indicado = db.Column(db.Boolean, nullable=False, default=False, index=True)
     data_maxima_notificacao = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="PENDENTE", index=True)
     status_manual = db.Column(db.Boolean, nullable=False, default=False)
@@ -175,3 +176,19 @@ class MedicoCredenciado(db.Model):
     nome = db.Column(db.String(160), nullable=False, unique=True)
     tipo = db.Column(db.String(20), nullable=False, default="credenciado", index=True)
     criado_em = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
+
+
+class AtaReuniao(db.Model):
+    __tablename__ = "atas_reunioes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_ata = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    data_reuniao = db.Column(db.Date, nullable=False, index=True)
+    tipo_ata = db.Column(db.String(50), nullable=False, index=True)
+    pauta = db.Column(db.Text, nullable=False)
+    participantes = db.Column(db.Text, nullable=False)
+    arquivo_nome = db.Column(db.String(255), nullable=False)
+    arquivo_mime = db.Column(db.String(120), nullable=False)
+    arquivo_dados = db.Column(db.LargeBinary(length=16777215), nullable=False)
+    criado_em = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
+    atualizado_em = db.Column(db.DateTime, nullable=True)

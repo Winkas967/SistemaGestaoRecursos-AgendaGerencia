@@ -50,6 +50,20 @@ def garantir_colunas_arquivo_documentacao():
     db.session.commit()
 
 
+def garantir_coluna_nao_indicado_documentacao():
+    db.create_all()
+    nome_tabela = "documentacao_medicos_credenciados"
+    colunas = {coluna["name"] for coluna in inspect(db.engine).get_columns(nome_tabela)}
+    if "nao_indicado" in colunas:
+        return
+
+    db.session.execute(text(
+        f"ALTER TABLE {nome_tabela} "
+        "ADD COLUMN nao_indicado BOOLEAN NOT NULL DEFAULT FALSE"
+    ))
+    db.session.commit()
+
+
 def limpar_texto(valor):
     if valor is None:
         return ""
@@ -112,14 +126,16 @@ def calcular_status_automatico(data_vencimento, sem_validade=False):
 def aplicar_status_automatico(registro):
     status_atual = limpar_texto(registro.status).upper()
 
+    # A escolha feita pelo usuário sempre tem prioridade sobre o cálculo
+    # automático, inclusive para documentos sem data ou sem validade.
+    if registro.status_manual and status_atual in STATUS_PRE_DEFINIDOS:
+        registro.status = status_atual
+        return
+
     if registro.sem_validade or registro.data_vencimento is None:
         registro.sem_validade = True
         registro.status = "CONFORME"
         registro.status_manual = False
-        return
-
-    if registro.status_manual and status_atual in STATUS_PRE_DEFINIDOS:
-        registro.status = status_atual
         return
 
     registro.status = calcular_status_automatico(registro.data_vencimento, registro.sem_validade)
@@ -153,6 +169,7 @@ def registro_json(registro, medico_nome=None):
         "status": valores[4],
         "status60": valores[5],
         "semValidade": bool(registro.sem_validade),
+        "naoIndicado": bool(registro.nao_indicado),
         "documentacao": valores[7],
         "arquivo": {
             "nome": registro.arquivo_nome,
@@ -165,6 +182,7 @@ def carregar_documentacao_rede():
     db.create_all()
     garantir_coluna_tipo_medico()
     garantir_colunas_arquivo_documentacao()
+    garantir_coluna_nao_indicado_documentacao()
 
     registros = (
         DocumentacaoMedicoCredenciado.query
@@ -186,11 +204,13 @@ def carregar_documentacao_rede():
             medico_atual = registro.nome_medico
 
         registros_json.append(registro_json(registro, medico_atual or "Sem médico informado"))
-    total = len(registros_json)
-    conformes = sum(1 for item in registros_json if item["status"].strip().upper() == "CONFORME")
-    pendentes = sum(1 for item in registros_json if item["status"].strip().upper() == "PENDENTE")
-    notificados = sum(1 for item in registros_json if item["status"].strip().upper() == "NOTIFICADO")
-    status60 = sum(1 for item in registros_json if item["status60"].strip())
+    registros_avaliados = [item for item in registros_json if not item["naoIndicado"]]
+    nao_indicados = len(registros_json) - len(registros_avaliados)
+    total = len(registros_avaliados)
+    conformes = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "CONFORME")
+    pendentes = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "PENDENTE")
+    notificados = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "NOTIFICADO")
+    status60 = sum(1 for item in registros_avaliados if item["status60"].strip())
 
     medicos_cadastrados = MedicoCredenciado.query.order_by(MedicoCredenciado.nome.asc()).all()
 
@@ -210,6 +230,7 @@ def carregar_documentacao_rede():
             "conformes": conformes,
             "pendentes": pendentes,
             "notificados": notificados,
+            "naoIndicados": nao_indicados,
             "status60": status60,
         },
     }
@@ -254,6 +275,7 @@ def excluir_medico_credenciado(id, ids_documentos):
 
 def criar_documentacao_medico(dados):
     db.create_all()
+    garantir_coluna_nao_indicado_documentacao()
 
     registro = DocumentacaoMedicoCredenciado()
     aplicar_dados_documentacao(registro, dados)
@@ -272,6 +294,7 @@ def criar_documentacao_medico(dados):
 
 def salvar_arquivo_documentacao(id, nome, mime, dados):
     garantir_colunas_arquivo_documentacao()
+    garantir_coluna_nao_indicado_documentacao()
     registro = DocumentacaoMedicoCredenciado.query.get_or_404(id)
     registro.arquivo_nome = limpar_texto(nome)[:255]
     registro.arquivo_mime = limpar_texto(mime)[:120] or "application/octet-stream"
@@ -283,11 +306,13 @@ def salvar_arquivo_documentacao(id, nome, mime, dados):
 
 def obter_arquivo_documentacao(id):
     garantir_colunas_arquivo_documentacao()
+    garantir_coluna_nao_indicado_documentacao()
     return DocumentacaoMedicoCredenciado.query.get_or_404(id)
 
 
 def atualizar_documentacao_medico(id, dados):
     db.create_all()
+    garantir_coluna_nao_indicado_documentacao()
 
     registro = DocumentacaoMedicoCredenciado.query.get_or_404(id)
 
@@ -335,6 +360,10 @@ def aplicar_dados_documentacao(registro, dados):
         registro.sem_validade = valor is True or limpar_texto(valor).lower() in {"1", "true", "sim", "on"}
         if registro.sem_validade:
             registro.data_vencimento = None
+
+    if "nao_indicado" in dados or "naoIndicado" in dados:
+        valor = dados.get("nao_indicado", dados.get("naoIndicado"))
+        registro.nao_indicado = valor is True or limpar_texto(valor).lower() in {"1", "true", "sim", "on"}
 
     if registro.data_vencimento is None:
         registro.sem_validade = True
