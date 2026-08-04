@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260730-4') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260731-1') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -145,6 +145,8 @@
             </div>
 
             <div class="docs-summary" id="docsSummary"></div>
+
+            <div class="docs-expiry-alert hidden" id="docsExpiryAlert" role="alert" aria-live="polite"></div>
 
             <div class="docs-filters">
                 <div class="field">
@@ -449,6 +451,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260730-6') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260731-1') }}"></script>
 </body>
 </html>

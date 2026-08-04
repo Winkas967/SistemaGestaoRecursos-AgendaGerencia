@@ -44,7 +44,7 @@ def recurso_visivel_para_perfil(recurso):
     role = role_atual()
 
     if recurso_eh_creta(recurso):
-        return role in ["gerencia", "tecnico"]
+        return role in ["gerencia", "tecnico", "admin"]
 
     if usuario_tecnico():
         return True

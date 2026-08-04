@@ -11,7 +11,7 @@
         document.documentElement.classList.add("is-loading");
     })();
 </script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css', v='20260731-1') }}">
 <title>Gestão de Recursos | Unimed</title>
 </head>
 <body class="{{ tema }}">
@@ -19,7 +19,7 @@
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
     <div class="user-panel-actions">
         <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
-        {% if session["role"]|lower in ["tecnico", "gerencia"] %}
+        {% if session["role"]|lower in ["gerencia", "admin"] %}
         <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
         {% endif %}
     </div>
@@ -79,7 +79,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
                         Reserva
                     </a>
-                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                     <a href="{{ url_for('main.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
@@ -112,7 +112,7 @@
                 <span class="tab-count tab-count-alert">{{ emprestimos_abertos|length }}</span>
                 {% endif %}
             </button>
-            {% if session["role"]|lower == "tecnico" %}
+            {% if session["role"]|lower == "admin" %}
             <button type="button" class="tab-btn" data-tab="usuarios" role="tab" aria-selected="false">
                 Usuários
                 <span class="tab-count">{{ usuarios|length }}</span>
@@ -125,9 +125,9 @@
                 <div class="table-title-row">
                     <div>
                         <p class="eyebrow">Histórico</p>
-                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Histórico geral{% else %}Agendamentos realizados{% endif %}</h2>
+                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}Histórico geral{% else %}Agendamentos realizados{% endif %}</h2>
                     </div>
-                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                     <div class="history-export-actions">
                         <a class="secondary-action" href="{{ url_for('main.exportar_historico_excel') }}">Excel</a>
                         <a class="primary-action" href="{{ url_for('main.exportar_historico_pdf') }}">PDF</a>
@@ -147,7 +147,7 @@
                                 <th>Data Inicial</th>
                                 <th>Data Final</th>
                                 <th>Hora</th>
-                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
+                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                                 <th>Responsável</th>
                                 {% endif %}
                                 <th>Equipamento</th>
@@ -175,7 +175,7 @@
                                         - Viagem
                                     {% endif %}
                                 </td>
-                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
+                                {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                                 <td data-label="Responsável" class="responsavel">{{ item.responsavel or (item.usuario.usuario if item.usuario else "-") }}</td>
                                 {% endif %}
                                 <td data-label="Equipamento" class="equipamento"><span class="setor-pill">{{ item.recurso.nome if item.recurso else "-" }}</span></td>
@@ -212,7 +212,7 @@
 
                 <div class="empty {{ '' if not agendamentos or agendamentos.total == 0 else 'hidden' }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Nenhum agendamento encontrado no sistema.{% else %}Você ainda não tem agendamentos. Faça uma reserva para começar.{% endif %}
+                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}Nenhum agendamento encontrado no sistema.{% else %}Você ainda não tem agendamentos. Faça uma reserva para começar.{% endif %}
                 </div>
             </div>
         </section>
@@ -222,7 +222,7 @@
                 <div class="table-title-row">
                     <div>
                         <p class="eyebrow">Pendências</p>
-                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}Pendências gerais{% else %}Relatórios em aberto{% endif %}</h2>
+                        <h2>{% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}Pendências gerais{% else %}Relatórios em aberto{% endif %}</h2>
                     </div>
                     <span class="record-count">{{ emprestimos_abertos|length if emprestimos_abertos else 0 }}</span>
                 </div>
@@ -238,7 +238,7 @@
                             </span>
                         </div>
                         <dl class="aberto-info">
-                            {% if session["role"]|lower in ["gerencia", "rh", "tecnico"] %}
+                            {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                             <div>
                                 <dt>Responsável</dt>
                                 <dd>{{ emp.responsavel or (emp.usuario.usuario if emp.usuario else "-") }}</dd>
@@ -275,19 +275,19 @@
             </div>
         </section>
 
-        {% if session["role"]|lower == "tecnico" %}
+        {% if session["role"]|lower == "admin" %}
         <section class="tab-panel" id="panel-usuarios">
             <div class="records-panel">
                 <div class="table-title-row">
                     <div>
-                        <p class="eyebrow">Técnico</p>
+                        <p class="eyebrow">Administração</p>
                         <h2>Usuários do sistema</h2>
                     </div>
                     <span class="record-count">{{ usuarios|length }}</span>
                 </div>
 
                 <div class="search-box">
-                    <input type="text" id="pesquisaUsuarios" placeholder="Buscar usuário ou perfil...">
+                    <input type="text" id="pesquisaUsuarios" placeholder="Buscar usuário, perfil ou e-mail...">
                 </div>
 
                 <div class="table-scroll users-table-scroll">
@@ -296,12 +296,13 @@
                             <tr>
                                 <th>Usuário</th>
                                 <th>Perfil</th>
+                                <th>E-mail para avisos</th>
                                 <th>Ação</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for user in usuarios %}
-                            <tr class="linha-usuario" data-usuario="{{ user.usuario }}" data-role="{{ user.role }}">
+                            <tr class="linha-usuario" data-usuario="{{ user.usuario }}" data-role="{{ user.role }}" data-email="{{ user.email or '' }}">
                                 <td data-label="Usuário">{{ user.usuario }}</td>
                                 <td data-label="Perfil">
                                     <form class="role-update-form" action="{{ url_for('main.alterar_role_usuario') }}" method="POST">
@@ -311,9 +312,28 @@
                                             <option value="gerencia" {% if user.role|lower == "gerencia" %}selected{% endif %}>gerencia</option>
                                             <option value="rh" {% if user.role|lower == "rh" %}selected{% endif %}>rh</option>
                                             <option value="tecnico" {% if user.role|lower == "tecnico" %}selected{% endif %}>tecnico</option>
+                                            <option value="admin" {% if user.role|lower == "admin" %}selected{% endif %}>admin</option>
                                         </select>
                                         <button type="submit" class="secondary-action role-save-btn">Salvar</button>
                                     </form>
+                                </td>
+                                <td data-label="E-mail para avisos">
+                                    <form class="user-email-form" action="{{ url_for('main.alterar_email_usuario') }}" method="POST">
+                                        <input type="hidden" name="usuario_id" value="{{ user.id }}">
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value="{{ user.email or '' }}"
+                                            placeholder="usuario@empresa.com.br"
+                                            aria-label="E-mail de {{ user.usuario }}"
+                                        >
+                                        <button type="submit" class="secondary-action role-save-btn">Salvar</button>
+                                    </form>
+                                    {% if user.role|lower in ["gerencia", "tecnico"] %}
+                                    <small class="email-notification-state active">Receberá avisos de vencimento da Documentação</small>
+                                    {% else %}
+                                    <small class="email-notification-state">O envio exige perfil Gerência ou Técnico</small>
+                                    {% endif %}
                                 </td>
                                 <td data-label="Ação">
                                     <button
@@ -335,7 +355,7 @@
             <div class="records-panel sector-admin-panel">
                 <div class="table-title-row">
                     <div>
-                        <p class="eyebrow">Técnico</p>
+                        <p class="eyebrow">Administração</p>
                         <h2>Setores</h2>
                     </div>
                     <span class="record-count">{{ setores|length }}</span>
@@ -372,7 +392,7 @@
             <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
                 <div class="modal-head">
                     <div>
-                        <p class="eyebrow">Técnico</p>
+                        <p class="eyebrow">Administração</p>
                         <h2 id="passwordModalTitle">Redefinir senha</h2>
                     </div>
                     <button type="button" class="modal-close" id="passwordModalClose" aria-label="Fechar">×</button>
@@ -383,7 +403,7 @@
                     <p class="modal-user">Usuário: <strong id="modalUsuarioNome">-</strong></p>
 
                     <label class="field-label" for="modalSenha">Nova senha</label>
-                    <input id="modalSenha" name="senha" type="text" placeholder="Digite a nova senha" required>
+                    <input id="modalSenha" name="senha" type="password" autocomplete="new-password" placeholder="Digite a nova senha" required>
 
                     <div class="form-actions">
                         <button type="button" class="secondary-action" id="passwordModalCancel">Cancelar</button>
@@ -398,6 +418,6 @@
     </div>
 </main>
 
-<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+<script src="{{ url_for('static', filename='js/home.js', v='20260731-1') }}"></script>
 </body>
 </html>

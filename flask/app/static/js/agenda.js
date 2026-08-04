@@ -118,6 +118,7 @@
         docsDirtyCount: document.getElementById("docsDirtyCount"),
         docsPercentText: document.getElementById("docsPercentText"),
         docsSummary: document.getElementById("docsSummary"),
+        docsExpiryAlert: document.getElementById("docsExpiryAlert"),
         docsCategoryFilter: document.getElementById("docsCategoryFilter"),
         docsStatusFilter: document.getElementById("docsStatusFilter"),
         docsSearchInput: document.getElementById("docsSearchInput"),
@@ -722,6 +723,53 @@
                 <strong>${value}</strong>
             </div>
         `).join("");
+
+        renderAvisoVencimentoDocumentos(registros);
+    }
+
+    function diasAteVencimento(valor) {
+        const [ano, mes, dia] = String(valor || "").split("-").map(Number);
+        if (!ano || !mes || !dia) return null;
+        const vencimento = Date.UTC(ano, mes - 1, dia);
+        const agora = new Date();
+        const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+        return Math.ceil((vencimento - hoje) / 86400000);
+    }
+
+    function renderAvisoVencimentoDocumentos(registros) {
+        const proximos = registros
+            .filter((item) => !item.naoIndicado && !item.semValidade)
+            .map((item) => ({
+                item,
+                dias: diasAteVencimento(item.valores?.[2]),
+            }))
+            .filter(({ dias }) => dias !== null && dias >= 0 && dias <= 60)
+            .sort((a, b) => a.dias - b.dias);
+
+        if (!proximos.length) {
+            el.docsExpiryAlert.classList.add("hidden");
+            el.docsExpiryAlert.innerHTML = "";
+            return;
+        }
+
+        const itens = proximos.slice(0, 5).map(({ item, dias }) => {
+            const nome = item.medico || item.nome || item.valores?.[0] || "Cadastro sem nome";
+            const documento = item.documento || item.valores?.[1] || "Documento";
+            const prazo = dias === 0 ? "vence hoje" : `vence em ${dias} dia${dias === 1 ? "" : "s"}`;
+            return `<li><strong>${escapeHtml(documento)}</strong> — ${escapeHtml(nome)} <span>${prazo}</span></li>`;
+        }).join("");
+        const restantes = proximos.length - 5;
+
+        el.docsExpiryAlert.innerHTML = `
+            <span class="docs-expiry-icon" aria-hidden="true">!</span>
+            <div>
+                <strong>${proximos.length} documento${proximos.length === 1 ? "" : "s"} próximo${proximos.length === 1 ? "" : "s"} do vencimento</strong>
+                <p>Documentos com vencimento previsto para os próximos 60 dias:</p>
+                <ul>${itens}</ul>
+                ${restantes > 0 ? `<small>Mais ${restantes} documento${restantes === 1 ? "" : "s"} nessa situação.</small>` : ""}
+            </div>
+        `;
+        el.docsExpiryAlert.classList.remove("hidden");
     }
 
     function renderDocumentacao() {

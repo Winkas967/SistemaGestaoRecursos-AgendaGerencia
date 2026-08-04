@@ -20,7 +20,7 @@
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
     <div class="user-panel-actions">
         <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
-        {% if session["role"]|lower in ["tecnico", "gerencia"] %}
+        {% if session["role"]|lower in ["gerencia", "admin"] %}
         <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
         {% endif %}
     </div>

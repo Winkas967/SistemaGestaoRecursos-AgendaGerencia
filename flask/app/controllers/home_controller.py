@@ -3,7 +3,7 @@ from flask import redirect, render_template, session, request, url_for
 from conexao import db
 from controllers import main
 from model import Reserva, Usuario
-from services.auth import pode_ver_historico_geral, usuario_tecnico
+from services.auth import pode_ver_historico_geral, usuario_admin, usuario_tecnico
 from services.recursos import consulta_setores_ativos
 from services.reservas import ordenar_historico
 
@@ -34,8 +34,8 @@ def home():
         .all()
     )
 
-    usuarios = Usuario.query.order_by(Usuario.usuario.asc()).all() if usuario_tecnico() else []
-    setores = consulta_setores_ativos().all() if usuario_tecnico() else []
+    usuarios = Usuario.query.order_by(Usuario.usuario.asc()).all() if usuario_admin() else []
+    setores = consulta_setores_ativos().all() if usuario_admin() else []
 
     return render_template(
         "home.html",

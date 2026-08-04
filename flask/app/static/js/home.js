@@ -107,7 +107,7 @@ if (pesquisaUsuarios) {
         const linhas = document.querySelectorAll(".linha-usuario");
 
         linhas.forEach((linha) => {
-            const conteudo = `${linha.dataset.usuario} ${linha.dataset.role}`.toLowerCase();
+            const conteudo = `${linha.dataset.usuario} ${linha.dataset.role} ${linha.dataset.email || ""}`.toLowerCase();
             linha.style.display = conteudo.includes(texto) ? "" : "none";
         });
     });

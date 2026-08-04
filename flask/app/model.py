@@ -10,6 +10,7 @@ class Usuario(db.Model):
     usuario = db.Column(db.String(100), nullable=False)
     senha = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="user")
+    email = db.Column(db.String(255), nullable=True, unique=True)
 
     reservas = db.relationship("Reserva", back_populates="usuario")
     compromissos_agenda = db.relationship("AgendaCompromisso", back_populates="criador")
@@ -192,3 +193,24 @@ class AtaReuniao(db.Model):
     arquivo_dados = db.Column(db.LargeBinary(length=16777215), nullable=False)
     criado_em = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
     atualizado_em = db.Column(db.DateTime, nullable=True)
+
+
+class AvisoEmailEnviado(db.Model):
+    __tablename__ = "avisos_email_enviados"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(40), nullable=False, index=True)
+    referencia_id = db.Column(db.Integer, nullable=False, index=True)
+    destinatario = db.Column(db.String(255), nullable=False, index=True)
+    chave = db.Column(db.String(100), nullable=False)
+    enviado_em = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tipo",
+            "referencia_id",
+            "destinatario",
+            "chave",
+            name="uq_aviso_email_referencia_destinatario",
+        ),
+    )

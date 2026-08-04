@@ -8,7 +8,11 @@ def role_atual():
 
 
 def usuario_tecnico():
-    return role_atual() == "tecnico"
+    return role_atual() in ["tecnico", "admin"]
+
+
+def usuario_admin():
+    return role_atual() == "admin"
 
 
 def usuario_gerencia():
@@ -24,11 +28,11 @@ def usuario_gerencia_ou_rh():
 
 
 def pode_ver_relatorios():
-    return role_atual() in ["gerencia", "rh", "tecnico"]
+    return role_atual() in ["gerencia", "rh", "tecnico", "admin"]
 
 
 def pode_ver_historico_geral():
-    return role_atual() in ["gerencia", "rh", "tecnico"]
+    return role_atual() in ["gerencia", "rh", "tecnico", "admin"]
 
 
 def exigir_tecnico():
@@ -36,6 +40,16 @@ def exigir_tecnico():
         return redirect(url_for("main.login_page"))
 
     if not usuario_tecnico():
+        return "Acesso negado", 403
+
+    return None
+
+
+def exigir_admin():
+    if "usuario" not in session:
+        return redirect(url_for("main.login_page"))
+
+    if not usuario_admin():
         return "Acesso negado", 403
 
     return None

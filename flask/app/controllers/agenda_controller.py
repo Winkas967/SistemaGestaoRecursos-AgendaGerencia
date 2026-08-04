@@ -29,7 +29,7 @@ TAMANHO_MAXIMO_ATA = 15 * 1024 * 1024
 
 
 def pode_usar_agenda():
-    return session.get("role", "").lower() in ["tecnico", "gerencia"]
+    return session.get("role", "").lower() in ["gerencia", "admin"]
 
 
 def exigir_agenda():
