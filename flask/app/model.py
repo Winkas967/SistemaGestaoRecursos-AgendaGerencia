@@ -26,15 +26,15 @@ class Usuario(db.Model):
         return self.senha.startswith(("scrypt:", "pbkdf2:"))
 
 
-class TipoRecurso(db.Model):
-    __tablename__ = "tipos_recursos"
+class TipoRecurso(db.Model): # db.Model informa que a classe representa uma tabela
+    __tablename__ = "tipos_recursos" # define o nome da tabela no banco
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True) # db.Column define cada coluna da tabela
     nome = db.Column(db.String(100), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 
-    recursos = db.relationship("Recurso", back_populates="tipo_recurso")
+    recursos = db.relationship("Recurso", back_populates="tipo_recurso") # define cada relacionamento(Foreign key)
 
 
 class Setor(db.Model):
