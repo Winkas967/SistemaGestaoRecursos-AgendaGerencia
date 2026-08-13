@@ -1508,6 +1508,117 @@ textarea:focus {
     align-items: center;
 }
 
+.docs-doctor-card.is-disaccredited {
+    border-color: rgba(110, 121, 116, 0.45);
+    opacity: 0.92;
+}
+
+.docs-disaccredit-btn {
+    min-height: 42px;
+    padding: 0 14px;
+    color: var(--danger);
+    background: transparent;
+    border: 1px solid rgba(217, 75, 69, 0.4);
+    border-radius: 12px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.docs-disaccredit-btn:hover {
+    background: rgba(217, 75, 69, 0.1);
+    border-color: var(--danger);
+}
+
+.docs-disaccredit-btn.is-restore {
+    color: var(--verde-principal);
+    border-color: rgba(0, 153, 92, 0.4);
+}
+
+.docs-disaccredit-btn.is-restore:hover {
+    background: rgba(0, 153, 92, 0.1);
+    border-color: var(--verde-principal);
+}
+
+.docs-disaccredit-details {
+    display: grid;
+    gap: 4px;
+    max-width: 720px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    color: var(--text-muted);
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.docs-disaccredit-details strong {
+    color: var(--text);
+}
+
+.docs-disaccredit-details a {
+    width: fit-content;
+    margin-top: 3px;
+    color: var(--verde-principal);
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.docs-disaccredit-details a:hover {
+    text-decoration: underline;
+}
+
+.disaccredit-modal {
+    max-width: 620px;
+}
+
+.disaccredit-modal form {
+    display: grid;
+    gap: 16px;
+}
+
+.disaccredit-modal textarea {
+    min-height: 130px;
+    resize: vertical;
+}
+
+.optional-label {
+    margin-left: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.doctor-situation-option {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.doctor-situation-option input {
+    margin-top: 3px;
+    accent-color: var(--verde-principal);
+}
+
+.doctor-situation-option span {
+    display: grid;
+    gap: 2px;
+}
+
+.doctor-situation-option small {
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
 .docs-doctor-toggle,
 .docs-doctor-delete {
     display: inline-grid;

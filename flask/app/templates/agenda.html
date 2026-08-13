@@ -129,7 +129,9 @@
                             <option value="cooperado">Méd. cooperados</option>
                             <option value="laboratorio">Laboratórios</option>
                             <option value="hospital">Hospitais</option>
+                            <option value="diagnostico">Diagnósticos</option>
                             <option value="todos">Todos</option>
+                            <option value="descredenciados">Descredenciados</option>
                         </select>
                     </label>
                     <h2>Documentação da rede prestadora</h2>
@@ -355,6 +357,7 @@
                     <option value="cooperado">Médico cooperado</option>
                     <option value="laboratorio">Laboratório</option>
                     <option value="hospital">Hospital</option>
+                    <option value="diagnostico">Diagnóstico</option>
                 </select>
             </div>
             <p class="doctor-form-error hidden" id="doctorFormError" role="alert"></p>
@@ -362,6 +365,35 @@
             <div class="modal-actions">
                 <button class="btn" id="secondaryCancelDoctorBtn" type="button">Cancelar</button>
                 <button class="btn btn-primary" type="submit">Adicionar cadastro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="overlay" id="disaccreditOverlay">
+    <div class="modal disaccredit-modal">
+        <div class="modal-head">
+            <div>
+                <span class="eyebrow">Situação do cadastro</span>
+                <h2>Descredenciar cadastro</h2>
+                <p id="disaccreditDoctorName"></p>
+            </div>
+            <button type="button" class="close-btn" id="cancelDisaccreditBtn" aria-label="Fechar">&times;</button>
+        </div>
+        <form id="disaccreditForm">
+            <div class="field">
+                <label for="disaccreditReason">Motivo do descredenciamento</label>
+                <textarea id="disaccreditReason" rows="5" required maxlength="3000" placeholder="Descreva o motivo do descredenciamento"></textarea>
+            </div>
+            <div class="field">
+                <label for="disaccreditFile">Documento comprobatório <span class="optional-label">Opcional</span></label>
+                <input id="disaccreditFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                <small>PDF, DOC ou DOCX, com até 15 MB.</small>
+            </div>
+            <p class="doctor-form-error hidden" id="disaccreditFormError" role="alert"></p>
+            <div class="modal-actions">
+                <button class="btn" id="secondaryCancelDisaccreditBtn" type="button">Cancelar</button>
+                <button class="btn danger-btn" type="submit">Confirmar descredenciamento</button>
             </div>
         </form>
     </div>

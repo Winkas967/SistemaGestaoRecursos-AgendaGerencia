@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from html import escape
 
 from conexao import db
-from model import AvisoEmailEnviado, DocumentacaoMedicoCredenciado, Usuario
+from model import AvisoEmailEnviado, DocumentacaoMedicoCredenciado, MedicoCredenciado, Usuario
 
 
 REMETENTE = "avisosunimedssp@gmail.com"
@@ -46,6 +46,13 @@ def enviar_avisos_documentos_vencimento():
     if not destinatarios:
         return 0
 
+    nomes_descredenciados = {
+        medico.nome.strip().lower()
+        for medico in MedicoCredenciado.query.filter(
+            MedicoCredenciado.descredenciado.is_(True)
+        ).all()
+    }
+
     documentos = DocumentacaoMedicoCredenciado.query.filter(
         DocumentacaoMedicoCredenciado.data_vencimento.isnot(None),
         DocumentacaoMedicoCredenciado.sem_validade.is_(False),
@@ -55,8 +62,10 @@ def enviar_avisos_documentos_vencimento():
     enviados = 0
 
     for documento in documentos:
+        if documento.nome_medico.strip().lower() in nomes_descredenciados:
+            continue
         dias = (documento.data_vencimento - hoje).days
-        if dias != 60:
+        if dias > 60:
             continue
         chave = documento.data_vencimento.isoformat()
         pendentes = [
@@ -77,10 +86,20 @@ def enviar_avisos_documentos_vencimento():
             if documento.data_maxima_notificacao else "Não informada"
         )
         status = (documento.status or "PENDENTE").upper()
-        assunto = f"[Documentação] Atenção: {documento.documento} vence em 60 dias"
+        if dias == 0:
+            prazo = "vence hoje"
+            destaque_prazo = "Vence hoje"
+        elif dias == 1:
+            prazo = "vence em 1 dia"
+            destaque_prazo = "Falta 1 dia"
+        else:
+            prazo = f"vence em {dias} dias"
+            destaque_prazo = f"Faltam {dias} dias"
+
+        assunto = f"[Documentação] Atenção: {documento.documento} {prazo}"
         texto = (
             "AVISO DE VENCIMENTO DE DOCUMENTO\n\n"
-            "Faltam 60 dias para o vencimento do documento abaixo.\n"
+            f"{destaque_prazo} para o vencimento do documento abaixo.\n"
             "Providencie a conferência e a atualização dentro do prazo.\n\n"
             f"Cadastro: {documento.nome_medico}\n"
             f"Documento: {documento.documento}\n"
@@ -96,7 +115,7 @@ def enviar_avisos_documentos_vencimento():
 <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;background:#fff;border:1px solid #d9e7e0;border-radius:16px;overflow:hidden;">
 <tr><td style="background:#008f5a;padding:24px 30px;color:#fff;"><div style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.85;">Documentação da rede prestadora</div><div style="font-size:25px;font-weight:700;margin-top:7px;">Aviso de vencimento</div></td></tr>
 <tr><td style="padding:28px 30px;">
-<div style="background:#fff5db;border:1px solid #f0d58c;border-radius:12px;padding:17px 20px;margin-bottom:24px;"><div style="font-size:22px;font-weight:700;color:#a96b00;">Faltam 60 dias</div><div style="font-size:14px;line-height:1.55;color:#71501a;margin-top:5px;">Confira o documento e providencie sua atualização antes da data de vencimento.</div></div>
+<div style="background:#fff5db;border:1px solid #f0d58c;border-radius:12px;padding:17px 20px;margin-bottom:24px;"><div style="font-size:22px;font-weight:700;color:#a96b00;">{destaque_prazo}</div><div style="font-size:14px;line-height:1.55;color:#71501a;margin-top:5px;">Confira o documento e providencie sua atualização antes da data de vencimento.</div></div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:14px;">
 <tr><td style="padding:11px 0;color:#678074;width:190px;border-bottom:1px solid #edf2ef;">Cadastro</td><td style="padding:11px 0;font-weight:700;border-bottom:1px solid #edf2ef;">{escape(documento.nome_medico)}</td></tr>
 <tr><td style="padding:11px 0;color:#678074;border-bottom:1px solid #edf2ef;">Documento</td><td style="padding:11px 0;font-weight:700;border-bottom:1px solid #edf2ef;">{escape(documento.documento)}</td></tr>

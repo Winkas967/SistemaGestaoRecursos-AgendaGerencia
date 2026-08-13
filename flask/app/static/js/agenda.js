@@ -20,6 +20,7 @@
         cooperado: "Méd. cooperado",
         laboratorio: "Laboratório",
         hospital: "Hospital",
+        diagnostico: "Diagnóstico",
     };
 
     let state = {
@@ -37,6 +38,7 @@
         docsPage: 1,
         docsPageSize: 20,
         statusEditingId: null,
+        disaccreditDoctor: null,
         atas: [],
         atasAnos: [],
         atasCarregadas: false,
@@ -128,6 +130,14 @@
         docsPrevPage: document.getElementById("docsPrevPage"),
         docsNextPage: document.getElementById("docsNextPage"),
         docsPageInfo: document.getElementById("docsPageInfo"),
+        disaccreditOverlay: document.getElementById("disaccreditOverlay"),
+        disaccreditForm: document.getElementById("disaccreditForm"),
+        disaccreditDoctorName: document.getElementById("disaccreditDoctorName"),
+        disaccreditReason: document.getElementById("disaccreditReason"),
+        disaccreditFile: document.getElementById("disaccreditFile"),
+        disaccreditFormError: document.getElementById("disaccreditFormError"),
+        cancelDisaccreditBtn: document.getElementById("cancelDisaccreditBtn"),
+        secondaryCancelDisaccreditBtn: document.getElementById("secondaryCancelDisaccreditBtn"),
     };
 
     function toISODate(date) {
@@ -495,18 +505,23 @@
         const statusFiltro = el.docsStatusFilter.value;
         const busca = el.docsSearchInput.value.trim().toLowerCase();
         const categoria = el.docsCategoryFilter.value;
+        const mostrarDescredenciados = categoria === "descredenciados";
         const catalogo = new Map(
             (state.documentacao?.medicos || []).map((medico) => [medico.nome.toLowerCase(), medico])
         );
 
         if (!statusFiltro) {
             (state.documentacao?.medicos || []).forEach((medico) => {
-                if (categoria !== "todos" && (medico.tipo || "credenciado") !== categoria) return;
+                if (Boolean(medico.descredenciado) !== mostrarDescredenciados) return;
+                if (!mostrarDescredenciados && categoria !== "todos" && (medico.tipo || "credenciado") !== categoria) return;
                 if (busca && !medico.nome.toLowerCase().includes(busca)) return;
                 grupos.set(medico.nome, {
                     id: medico.id,
                     nome: medico.nome,
                     tipo: medico.tipo || "credenciado",
+                    descredenciado: Boolean(medico.descredenciado),
+                    motivoDescredenciamento: medico.motivoDescredenciamento || "",
+                    arquivoDescredenciamento: medico.arquivoDescredenciamento || null,
                     documentos: [],
                     conformes: 0,
                     pendentes: 0,
@@ -520,12 +535,16 @@
             const medico = item.medico || item.nome || "Sem médico informado";
             const cadastro = catalogo.get(medico.toLowerCase());
             const tipo = cadastro?.tipo || "credenciado";
-            if (categoria !== "todos" && tipo !== categoria) return;
+            if (Boolean(cadastro?.descredenciado) !== mostrarDescredenciados) return;
+            if (!mostrarDescredenciados && categoria !== "todos" && tipo !== categoria) return;
             if (!grupos.has(medico)) {
                 grupos.set(medico, {
                     id: cadastro?.id || null,
                     nome: medico,
                     tipo,
+                    descredenciado: Boolean(cadastro?.descredenciado),
+                    motivoDescredenciamento: cadastro?.motivoDescredenciamento || "",
+                    arquivoDescredenciamento: cadastro?.arquivoDescredenciamento || null,
                     documentos: [],
                     conformes: 0,
                     pendentes: 0,
@@ -676,9 +695,11 @@
             (state.documentacao?.medicos || []).map((medico) => [medico.nome.toLowerCase(), medico])
         );
         const registros = (state.documentacao?.registros || []).filter((item) => {
-            if (categoria === "todos") return true;
             const nomeCadastro = (item.medico || item.nome || item.valores?.[0] || "").toLowerCase();
-            const tipoCadastro = catalogo.get(nomeCadastro)?.tipo || "credenciado";
+            const cadastro = catalogo.get(nomeCadastro);
+            if (cadastro?.descredenciado) return false;
+            if (categoria === "todos") return true;
+            const tipoCadastro = cadastro?.tipo || "credenciado";
             return tipoCadastro === categoria;
         });
         const statusNormalizado = (item) => (item.status || "").trim().toUpperCase();
@@ -886,6 +907,13 @@
             });
         });
 
+        el.docsDoctorsList.querySelectorAll('[data-action="toggle-disaccredited"]').forEach((button) => {
+            button.addEventListener("click", () => {
+                const medico = medicosPagina[Number(button.dataset.index)];
+                if (medico) alterarSituacaoCredenciamento(medico);
+            });
+        });
+
         el.docsDoctorsList.querySelectorAll('[data-action="choose-status"]').forEach((button) => {
             button.addEventListener("click", () => abrirSeletorStatus(Number(button.dataset.id)));
         });
@@ -902,15 +930,25 @@
         ].filter(Boolean).join("");
 
         return `
-            <article class="docs-doctor-card">
+            <article class="docs-doctor-card${medico.descredenciado ? " is-disaccredited" : ""}">
                 <div class="docs-doctor-head">
                     <div>
                         <h3>${escapeHtml(medico.nome)}</h3>
                         <span class="docs-doctor-type">${DOCTOR_TYPE_LABELS[medico.tipo] || "Méd. credenciado"}</span>
                         <p>${total} documento${total === 1 ? "" : "s"} cadastrado${total === 1 ? "" : "s"}</p>
+                        ${medico.descredenciado ? `
+                            <div class="docs-disaccredit-details">
+                                <strong>Motivo:</strong>
+                                <span>${escapeHtml(medico.motivoDescredenciamento || "Não informado")}</span>
+                                ${medico.arquivoDescredenciamento ? `<a href="${escapeHtml(medico.arquivoDescredenciamento.url)}">Baixar documento do descredenciamento</a>` : ""}
+                            </div>
+                        ` : ""}
                         <div class="docs-doctor-statuses">${firstStatuses}</div>
                     </div>
                     <div class="docs-doctor-actions">
+                        <button class="docs-disaccredit-btn${medico.descredenciado ? " is-restore" : ""}" data-action="toggle-disaccredited" data-index="${index}" type="button">
+                            ${medico.descredenciado ? "Recredenciar" : "Descredenciar"}
+                        </button>
                         <button class="docs-doctor-delete" data-action="delete-doctor" data-index="${index}" type="button" title="Apagar cadastro e todos os documentos" aria-label="Apagar ${escapeHtml(medico.nome)} e todos os documentos">🗑</button>
                         <button class="docs-doctor-toggle" data-action="toggle-doctor" type="button" title="Abrir documentos" aria-label="Abrir ou fechar documentos" aria-expanded="false">▼</button>
                     </div>
@@ -1016,6 +1054,8 @@
             });
 
             fecharModalMedico();
+            el.docsCategoryFilter.value = tipo;
+            state.docsPage = 1;
             await carregarDocumentacao(true);
             showFeedback("Cadastro adicionado. Abra a seta para incluir documentos.");
 
@@ -1031,6 +1071,75 @@
             el.doctorFormError.textContent = error.message;
             el.doctorFormError.classList.remove("hidden");
             showFeedback(error.message, "error");
+        }
+    }
+
+    async function alterarSituacaoCredenciamento(medico) {
+        if (!medico.descredenciado) {
+            abrirFormularioDescredenciamento(medico);
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `Deseja recredenciar o cadastro “${medico.nome}”? Nenhum documento será apagado.`
+        );
+        if (!confirmar) return;
+
+        try {
+            await requestJson(`${DOCTORS_API_URL}/${medico.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ descredenciado: false }),
+            });
+            await carregarDocumentacao(true);
+            showFeedback("Cadastro recredenciado com sucesso.");
+        } catch (error) {
+            showFeedback(error.message, "error");
+        }
+    }
+
+    function abrirFormularioDescredenciamento(medico) {
+        state.disaccreditDoctor = medico;
+        el.disaccreditForm.reset();
+        el.disaccreditDoctorName.textContent = medico.nome;
+        el.disaccreditFormError.textContent = "";
+        el.disaccreditFormError.classList.add("hidden");
+        el.disaccreditOverlay.classList.add("open");
+        window.setTimeout(() => el.disaccreditReason.focus(), 50);
+    }
+
+    function fecharFormularioDescredenciamento() {
+        state.disaccreditDoctor = null;
+        el.disaccreditOverlay.classList.remove("open");
+        el.disaccreditForm.reset();
+    }
+
+    async function salvarDescredenciamento(event) {
+        event.preventDefault();
+        const medico = state.disaccreditDoctor;
+        const motivo = el.disaccreditReason.value.trim();
+        if (!medico || !motivo) return;
+
+        const formData = new FormData();
+        formData.append("descredenciado", "true");
+        formData.append("motivo", motivo);
+        const arquivo = el.disaccreditFile.files?.[0];
+        if (arquivo) formData.append("arquivo", arquivo);
+
+        try {
+            const response = await fetch(`${DOCTORS_API_URL}/${medico.id}`, {
+                method: "PATCH",
+                headers: { Accept: "application/json" },
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.erro || "Não foi possível descredenciar o cadastro.");
+
+            fecharFormularioDescredenciamento();
+            await carregarDocumentacao(true);
+            showFeedback("Cadastro movido para Descredenciados.");
+        } catch (error) {
+            el.disaccreditFormError.textContent = error.message;
+            el.disaccreditFormError.classList.remove("hidden");
         }
     }
 
@@ -1522,6 +1631,12 @@
         el.doctorOverlay.addEventListener("click", (event) => {
             if (event.target === el.doctorOverlay) fecharModalMedico();
         });
+        el.disaccreditForm.addEventListener("submit", salvarDescredenciamento);
+        el.cancelDisaccreditBtn.addEventListener("click", fecharFormularioDescredenciamento);
+        el.secondaryCancelDisaccreditBtn.addEventListener("click", fecharFormularioDescredenciamento);
+        el.disaccreditOverlay.addEventListener("click", (event) => {
+            if (event.target === el.disaccreditOverlay) fecharFormularioDescredenciamento();
+        });
         window.addEventListener("online", tentarSalvarDocumentosPendentes);
         window.addEventListener("beforeunload", (event) => {
             if (
@@ -1566,6 +1681,7 @@
                 el.confirmOverlay.classList.remove("open");
                 fecharSeletorStatus();
                 fecharModalMedico();
+                fecharFormularioDescredenciamento();
                 fecharFormularioAta();
             }
         });

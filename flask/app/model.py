@@ -176,6 +176,12 @@ class MedicoCredenciado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(160), nullable=False, unique=True)
     tipo = db.Column(db.String(20), nullable=False, default="credenciado", index=True)
+    descredenciado = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    motivo_descredenciamento = db.Column(db.Text, nullable=True)
+    descredenciado_em = db.Column(db.DateTime, nullable=True)
+    descredenciamento_arquivo_nome = db.Column(db.String(255), nullable=True)
+    descredenciamento_arquivo_mime = db.Column(db.String(120), nullable=True)
+    descredenciamento_arquivo_dados = db.Column(db.LargeBinary(length=16777215), nullable=True)
     criado_em = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
 
 

@@ -12,12 +12,14 @@ from services.agenda_pdf import gerar_pdf_agenda_mensal
 from services.atas_service import criar_ata, excluir_ata, listar_atas, obter_ata
 from services.documentacao_rede_service import (
     atualizar_documentacao_medico,
+    atualizar_situacao_medico_credenciado,
     carregar_documentacao_rede,
     criar_medico_credenciado,
     criar_documentacao_medico,
     excluir_documentacao_medico,
     excluir_documentacao_medico_em_lote,
     excluir_medico_credenciado,
+    obter_arquivo_descredenciamento,
     obter_arquivo_documentacao,
     salvar_arquivo_documentacao,
 )
@@ -26,6 +28,8 @@ from services.documentacao_rede_service import (
 STATUS_VALIDOS = {"agendado", "andamento", "concluido", "cancelado"}
 EXTENSOES_ATAS = {"pdf", "doc", "docx"}
 TAMANHO_MAXIMO_ATA = 15 * 1024 * 1024
+EXTENSOES_DESCREDENCIAMENTO = {"pdf", "doc", "docx"}
+TAMANHO_MAXIMO_DESCREDENCIAMENTO = 15 * 1024 * 1024
 
 
 def pode_usar_agenda():
@@ -234,6 +238,61 @@ def excluir_medico_credenciado_rede(id):
 
     dados = request.get_json(silent=True) or {}
     return jsonify(excluir_medico_credenciado(id, dados.get("ids")))
+
+
+@main.route("/api/agenda/medicos/<int:id>", methods=["PATCH"])
+def atualizar_situacao_medico_documentacao_rede(id):
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+
+    arquivo_dados = None
+    if request.mimetype == "multipart/form-data":
+        dados = request.form.to_dict()
+        arquivo = request.files.get("arquivo")
+        if arquivo and arquivo.filename:
+            nome_seguro = secure_filename(arquivo.filename)
+            extensao = nome_seguro.rsplit(".", 1)[-1].lower() if "." in nome_seguro else ""
+            if extensao not in EXTENSOES_DESCREDENCIAMENTO:
+                return erro_json("Anexe um arquivo PDF, DOC ou DOCX.")
+            conteudo = arquivo.read()
+            if len(conteudo) > TAMANHO_MAXIMO_DESCREDENCIAMENTO:
+                return erro_json("O anexo deve ter no máximo 15 MB.")
+            arquivo_dados = {
+                "nome": nome_seguro,
+                "mime": arquivo.mimetype,
+                "dados": conteudo,
+            }
+    else:
+        dados = request.get_json(silent=True) or {}
+
+    try:
+        medico = atualizar_situacao_medico_credenciado(
+            id,
+            dados,
+            arquivo_dados,
+        )
+    except ValueError as erro:
+        return erro_json(str(erro))
+    return jsonify(medico)
+
+
+@main.route("/api/agenda/medicos/<int:id>/descredenciamento/arquivo", methods=["GET"])
+def baixar_arquivo_descredenciamento_rede(id):
+    bloqueio = exigir_agenda()
+    if bloqueio:
+        return bloqueio
+
+    medico = obter_arquivo_descredenciamento(id)
+    if not medico.descredenciamento_arquivo_dados or not medico.descredenciamento_arquivo_nome:
+        return erro_json("Este cadastro não possui anexo de descredenciamento.", 404)
+
+    return send_file(
+        BytesIO(medico.descredenciamento_arquivo_dados),
+        mimetype=medico.descredenciamento_arquivo_mime or "application/octet-stream",
+        as_attachment=True,
+        download_name=medico.descredenciamento_arquivo_nome,
+    )
 
 
 @main.route("/api/agenda/documentacao/<int:id>", methods=["PATCH"])

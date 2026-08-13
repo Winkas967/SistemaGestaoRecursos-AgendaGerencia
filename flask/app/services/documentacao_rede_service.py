@@ -19,7 +19,7 @@ COLUNAS_MEDICO_CREDENCIADO = [
 CAMPOS_TEXTO = {"nome_medico", "documento", "documentacao"}
 CAMPOS_DATA = {"data_vencimento", "data_maxima_notificacao"}
 STATUS_PRE_DEFINIDOS = {"CONFORME", "PENDENTE", "NOTIFICADO"}
-TIPOS_PRE_DEFINIDOS = {"credenciado", "cooperado", "laboratorio", "hospital"}
+TIPOS_PRE_DEFINIDOS = {"credenciado", "cooperado", "laboratorio", "hospital", "diagnostico"}
 
 
 def garantir_coluna_tipo_medico():
@@ -33,6 +33,43 @@ def garantir_coluna_tipo_medico():
         "ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'credenciado'"
     ))
     db.session.commit()
+
+
+def garantir_coluna_descredenciado_medico():
+    db.create_all()
+    nome_tabela = "medicos_credenciados"
+    colunas = {coluna["name"] for coluna in inspect(db.engine).get_columns(nome_tabela)}
+    alteracoes = {
+        "descredenciado": "ADD COLUMN descredenciado BOOLEAN NOT NULL DEFAULT FALSE",
+        "motivo_descredenciamento": "ADD COLUMN motivo_descredenciamento TEXT NULL",
+        "descredenciado_em": "ADD COLUMN descredenciado_em DATETIME NULL",
+        "descredenciamento_arquivo_nome": "ADD COLUMN descredenciamento_arquivo_nome VARCHAR(255) NULL",
+        "descredenciamento_arquivo_mime": "ADD COLUMN descredenciamento_arquivo_mime VARCHAR(120) NULL",
+        "descredenciamento_arquivo_dados": "ADD COLUMN descredenciamento_arquivo_dados MEDIUMBLOB NULL",
+    }
+    for coluna, comando in alteracoes.items():
+        if coluna not in colunas:
+            db.session.execute(text(f"ALTER TABLE {nome_tabela} {comando}"))
+    db.session.commit()
+
+
+def medico_json(medico):
+    tem_arquivo = bool(
+        medico.descredenciamento_arquivo_nome
+        and medico.descredenciamento_arquivo_dados
+    )
+    return {
+        "id": medico.id,
+        "nome": medico.nome,
+        "tipo": medico.tipo,
+        "descredenciado": bool(medico.descredenciado),
+        "motivoDescredenciamento": medico.motivo_descredenciamento or "",
+        "descredenciadoEm": medico.descredenciado_em.isoformat() if medico.descredenciado_em else None,
+        "arquivoDescredenciamento": {
+            "nome": medico.descredenciamento_arquivo_nome,
+            "url": f"/api/agenda/medicos/{medico.id}/descredenciamento/arquivo",
+        } if tem_arquivo else None,
+    }
 
 
 def garantir_colunas_arquivo_documentacao():
@@ -181,6 +218,7 @@ def registro_json(registro, medico_nome=None):
 def carregar_documentacao_rede():
     db.create_all()
     garantir_coluna_tipo_medico()
+    garantir_coluna_descredenciado_medico()
     garantir_colunas_arquivo_documentacao()
     garantir_coluna_nao_indicado_documentacao()
 
@@ -204,15 +242,23 @@ def carregar_documentacao_rede():
             medico_atual = registro.nome_medico
 
         registros_json.append(registro_json(registro, medico_atual or "Sem médico informado"))
-    registros_avaliados = [item for item in registros_json if not item["naoIndicado"]]
-    nao_indicados = len(registros_json) - len(registros_avaliados)
+    medicos_cadastrados = MedicoCredenciado.query.order_by(MedicoCredenciado.nome.asc()).all()
+    nomes_descredenciados = {
+        medico.nome.strip().lower()
+        for medico in medicos_cadastrados
+        if medico.descredenciado
+    }
+    registros_ativos = [
+        item for item in registros_json
+        if (item["medico"] or "").strip().lower() not in nomes_descredenciados
+    ]
+    registros_avaliados = [item for item in registros_ativos if not item["naoIndicado"]]
+    nao_indicados = len(registros_ativos) - len(registros_avaliados)
     total = len(registros_avaliados)
     conformes = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "CONFORME")
     pendentes = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "PENDENTE")
     notificados = sum(1 for item in registros_avaliados if item["status"].strip().upper() == "NOTIFICADO")
     status60 = sum(1 for item in registros_avaliados if item["status60"].strip())
-
-    medicos_cadastrados = MedicoCredenciado.query.order_by(MedicoCredenciado.nome.asc()).all()
 
     return {
         "colunas": COLUNAS_MEDICO_CREDENCIADO,
@@ -222,7 +268,7 @@ def carregar_documentacao_rede():
         "percentualTexto": percentual_para_texto(conformes, total),
         "registros": registros_json,
         "medicos": [
-            {"id": medico.id, "nome": medico.nome, "tipo": medico.tipo}
+            medico_json(medico)
             for medico in medicos_cadastrados
         ],
         "resumo": {
@@ -239,6 +285,7 @@ def carregar_documentacao_rede():
 def criar_medico_credenciado(dados):
     db.create_all()
     garantir_coluna_tipo_medico()
+    garantir_coluna_descredenciado_medico()
 
     nome = limpar_texto((dados or {}).get("nome"))
     tipo = limpar_texto((dados or {}).get("tipo")).lower() or "credenciado"
@@ -256,15 +303,46 @@ def criar_medico_credenciado(dados):
     if existente or nome_em_documentos:
         raise ValueError("Já existe um cadastro com esse nome. Use outro nome ou remova o cadastro existente.")
 
-    medico = MedicoCredenciado(nome=nome, tipo=tipo)
+    medico = MedicoCredenciado(nome=nome, tipo=tipo, descredenciado=False)
     db.session.add(medico)
     db.session.commit()
-    return {"id": medico.id, "nome": medico.nome, "tipo": medico.tipo}
+    return medico_json(medico)
+
+
+def atualizar_situacao_medico_credenciado(id, dados, arquivo=None):
+    db.create_all()
+    garantir_coluna_descredenciado_medico()
+
+    medico = MedicoCredenciado.query.get_or_404(id)
+    valor = (dados or {}).get("descredenciado")
+    if valor is None:
+        raise ValueError("Informe a situação do cadastro.")
+
+    descredenciado = valor is True or limpar_texto(valor).lower() in {"1", "true", "sim", "on"}
+    if descredenciado:
+        motivo = limpar_texto((dados or {}).get("motivo"))
+        if not motivo:
+            raise ValueError("Informe o motivo do descredenciamento.")
+        medico.motivo_descredenciamento = motivo
+        medico.descredenciado_em = datetime.now()
+        if arquivo:
+            medico.descredenciamento_arquivo_nome = limpar_texto(arquivo.get("nome"))[:255]
+            medico.descredenciamento_arquivo_mime = limpar_texto(arquivo.get("mime"))[:120] or "application/octet-stream"
+            medico.descredenciamento_arquivo_dados = arquivo.get("dados")
+    medico.descredenciado = descredenciado
+    db.session.commit()
+    return medico_json(medico)
+
+
+def obter_arquivo_descredenciamento(id):
+    garantir_coluna_descredenciado_medico()
+    return MedicoCredenciado.query.get_or_404(id)
 
 
 def excluir_medico_credenciado(id, ids_documentos):
     db.create_all()
     garantir_coluna_tipo_medico()
+    garantir_coluna_descredenciado_medico()
 
     medico = MedicoCredenciado.query.get_or_404(id)
     resultado = excluir_documentacao_medico_em_lote(ids_documentos)
