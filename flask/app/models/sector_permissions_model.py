@@ -165,7 +165,7 @@ def save(setor_id, modulo_id, pode_visualizar=False, pode_criar=False, pode_edit
         #retorna true quando a operacao termina
         return True
 
-    except Exception:
+    except Exception as e:
         #desfaz a alteracao quando ocorre um erro
         if connection:
             connection.rollback()
