@@ -1,56 +1,51 @@
 import os
-import secrets
-
 from flask import Flask
 from dotenv import load_dotenv
 
+#carrega variaveis do arquivo .env
 load_dotenv()
 
-from conexao import db
-from route import main
-from services.passwords import proteger_senhas_existentes
-from services.email_scheduler import iniciar_agendador_email
-from services.usuarios_email import garantir_coluna_email_usuario
-from services.documentacao_rede_service import garantir_coluna_descredenciado_medico
-from waitress import serve
+from config import Config
 
-app = Flask(__name__)
+from routes import register_routes
 
-app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+#cria e configura a aplicacao
+def create_app():
+    #cria a aplicacao Flask
+    app = Flask(__name__)
+    
+    #carrega as config
+    app.config.from_object(Config)
+    
+    #impede o sistema de iniciar sem uma chave secreta
+    if not app.config["SECRET_KEY"]:
+        raise RuntimeError("SECRET_KEY não foi configurada no arquivo .env.")
+    
+    #registra blueprints
+    register_routes(app)
+    
+    #retorna a aplicacao pronta
+    return app
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-    "DATABASE_URL",
-    "mysql+pymysql://root:1234@localhost:3306/gestaorecursos",
-)
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_pre_ping": True,
-    "pool_recycle": 1800,
-}
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = os.getenv(
-    "SESSION_COOKIE_SECURE", "false"
-).strip().lower() in {"1", "true", "sim", "on"}
-
-db.init_app(app)
-
-app.register_blueprint(main)
-
-with app.app_context():
-    db.create_all()
-    garantir_coluna_email_usuario()
-    garantir_coluna_descredenciado_medico()
-    proteger_senhas_existentes()
-
-
+#inicia a aplicacao semoente quando este arquivo for executado
 if __name__ == "__main__":
-    iniciar_agendador_email(app)
-    debug = os.getenv("FLASK_DEBUG", "false").strip().lower() in {"1", "true", "sim", "on"}
-    host = os.getenv("HOST", "0.0.0.0")
+    # cria a aplicacao
+    app = create_app()
+    
+    #le as configuracoes do servidor
+    host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "5002"))
-    if debug:
-        app.run(host=host, port=port, debug=True, use_reloader=False)
-    else:
-        serve(app, host=host, port=port)
+    debug = os.getenv("FLASK_DEBUG", "false").lower() in {
+        "1",
+        "true",
+        "sim",
+        "on",
+    }
+    
+    #inicia o servidor de desenvolvimento
+    app.run(
+        host=host,
+        port=port,
+        debug=debug,
+    )
+    

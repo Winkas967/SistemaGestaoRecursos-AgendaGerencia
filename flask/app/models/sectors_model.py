@@ -1,131 +1,132 @@
 from database.connection import get_db_connection
 
-#representa um setor retornado pelo banco
-class sector:
-    #recebe os dados do setor
+
+# Representa um setor retornado pelo banco
+class Sector:
     def __init__(self, id, nome, ativo=True, criado_em=None):
         self.id = id
         self.nome = nome
         self.ativo = ativo
-        self.craido_em = criado_em
+        self.criado_em = criado_em
 
-    #converte o setor em dicionario
+    # Converte o setor em um dicionário
     def to_dict(self):
         return {
             "id": self.id,
             "nome": self.nome,
             "ativo": self.ativo,
-            "criado_em": self.craido_em
+            "criado_em": self.criado_em,
         }
 
-    #contem as consultas relacionadas aos setores
-class sectormodel:
 
-    #retorna setores ativos
+# Contém as consultas da tabela setores
+class SectorModel:
     @staticmethod
     def get_all():
         connection = None
         cursor = None
 
         try:
-            #abre conexao
-            connection, cursor = get_db_connection
-
-            #define consultas aos setores ativos
-            sql = """
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
                 SELECT id, nome, ativo, criado_em
-                FROM setores WHERE ativo = TRUE 
-                ORDER BY none """
-
-            #executa a consulta
-            cursor.execute(sql)
-
-            #busca os registros encontrados
-            registros = cursor.fetchall()
-
-            #converte cada registro em um objeto sector
-            return [
-                sector(**registros)
-                for registro in registros
-            ]
-
+                FROM setores
+                WHERE ativo = TRUE
+                ORDER BY nome
+                """
+            )
+            return [Sector(**registro) for registro in cursor.fetchall()]
         finally:
-            #fecha conexao e cursor
             if cursor:
                 cursor.close()
-
             if connection:
                 connection.close()
 
-    #procura setor pelo id
     @staticmethod
     def get_by_id(setor_id):
-            connection = None
-            cursor = None
-
-            try:
-                #abre a conexao
-                connection, cursor = get_db_connection
-
-                #define a consulta pelo ID
-                sql = """
-                    SELECT id, nome, ativo, craido_em
-                    FROM setores WHERE id = %s LIMIT 1 """
-
-                #executa o sql
-                cursor.execute(sql, (setor_id,))
-
-                #busca somente 1 registro
-                registro = cursor.fetchone()
-
-                #retorna none se o setor nao existir
-                if not registro:
-                    return None
-
-                #converte o registro em um objeto sector
-                return sector(**registro)
-
-            finally:
-                #fecha as conexoes
-                if cursor:
-                    cursor.close()
-
-                if connection:
-                    connection.close()
-
-    #retorna os modulos permitidos para um setor
-    @staticmethod
-    def get_permissions(setor_id):
         connection = None
         cursor = None
 
         try:
-            #abre a conexao
-            connection, cursot = get_db_connection
-
-            sql = """
-                SELECT m.id AS modulo.id,
-                    m.nome AS modulo.nome,
-                    m.codigo AS modulo.codigo,
-                    sm.pode_visualizar,
-                    sm.pode_criar,
-                    sm.pode_editar,
-                    sm_.pode_exluir,
-                FROM setores_modulos sm INNER JOIN modulos m ON m.id = sm.modulo_id
-                WHERE sm.setor_id = %s AND m.ativo = TRUE 
-                ORDER BY m.nome """
-
-            #executa a consulta com o setor recebido
-            cursor.execute(sql, (setor_id,))
-
-            #retorna as permissoes como dicionarios
-            return cursor.fetchall()
-
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
+                SELECT id, nome, ativo, criado_em
+                FROM setores
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (setor_id,),
+            )
+            registro = cursor.fetchone()
+            return Sector(**registro) if registro else None
         finally:
-            #fecha conexoes
             if cursor:
                 cursor.close()
-
+            if connection:
+                connection.close()
+                
+    @staticmethod
+    def get_by_name(name):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            cursor.execute(
+                """
+                    SELECT id, nome, ativo, criado_em
+                    FROM setores
+                    WHERE LOWER(nome) = LOWER(%s) ORDER BY id LIMIT 1
+                """, (name,),
+            )
+            
+            record = cursor.fetchone()
+            
+            return Sector(**record) if record else None
+        
+        finally:
+            if cursor:
+                cursor.close()
+                
+            if connection:
+                connection.close()
+                
+    #cadastra um novo setor
+    @staticmethod
+    def create(name):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            cursor.execute(
+                """
+                    INSERT INTO setores(nome, ativo)
+                    VALUES (%s, TRUE)
+                """,(name,),
+                
+            )
+            
+            sector_id = cursor.lastrowid
+            
+            connection.commit()
+            
+            return sector_id
+        
+        except Exception:
+            if connection:
+                connection.rollback()
+                
+            raise
+            
+        finally:
+            if cursor:
+                cursor.close()
+                
             if connection:
                 connection.close()
 
