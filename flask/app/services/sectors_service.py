@@ -47,4 +47,16 @@ class SectorService:
             raise RuntimeError("O setor foi criado, mas não pode ser consultado.")
         
         return created_sector.to_dict()
+
+    # Desativa um setor que não possui usuários ativos
+    @staticmethod
+    def deactivate(sector_id):
+        sector = SectorModel.get_by_id(sector_id)
+
+        if not sector or not sector.ativo:
+            raise ValueError("O setor informado não existe ou já está inativo.")
+        if SectorModel.count_active_users(sector_id) > 0:
+            raise ValueError("Não é possível remover um setor com usuários ativos.")
+
+        SectorModel.deactivate(sector_id)
         

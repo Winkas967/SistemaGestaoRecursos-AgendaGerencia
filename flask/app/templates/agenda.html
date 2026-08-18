@@ -15,7 +15,7 @@
 <body>
 <div class="agenda-page">
     <header class="agenda-topbar">
-        <a class="back-link" href="{{ url_for('main.home') }}">Voltar para Home</a>
+        <a class="back-link" href="{{ url_for('home_pages.home') }}">Voltar para Home</a>
         <div class="brand">
             <div class="brand-mark">+</div>
             <div>
@@ -46,12 +46,18 @@
     </header>
 
     <div class="agenda-tabs" role="tablist" aria-label="Acoes da agenda">
-        <button class="agenda-tab active" data-view="agenda" type="button">Agenda</button>
-        <button class="agenda-tab" data-view="documentacao" type="button">Documentação</button>
-        <button class="agenda-tab" data-view="atas" type="button">Atas</button>
+        {% if "agenda" in modulos_visiveis %}
+        <button class="agenda-tab{% if visualizacao_inicial == 'agenda' %} active{% endif %}" data-view="agenda" type="button">Agenda</button>
+        {% endif %}
+        {% if "documentacao" in modulos_visiveis %}
+        <button class="agenda-tab{% if visualizacao_inicial == 'documentacao' %} active{% endif %}" data-view="documentacao" type="button">Documentação</button>
+        {% endif %}
+        {% if "atas" in modulos_visiveis %}
+        <button class="agenda-tab{% if visualizacao_inicial == 'atas' %} active{% endif %}" data-view="atas" type="button">Atas</button>
+        {% endif %}
     </div>
 
-    <section class="agenda-view active" id="agendaView">
+    <section class="agenda-view{% if visualizacao_inicial == 'agenda' %} active{% endif %}" id="agendaView"{% if "agenda" not in modulos_visiveis %} hidden{% endif %}>
     <div class="agenda-view-actions">
         <button class="btn" id="exportMonthPdfBtn" type="button">Salvar mês em PDF</button>
         <button class="btn btn-primary" id="newApptBtn" type="button">Novo compromisso</button>
@@ -118,7 +124,7 @@
     </div>
     </section>
 
-    <section class="agenda-view" id="documentacaoView">
+    <section class="agenda-view{% if visualizacao_inicial == 'documentacao' %} active{% endif %}" id="documentacaoView"{% if "documentacao" not in modulos_visiveis %} hidden{% endif %}>
         <div class="panel docs-panel">
             <div class="docs-head">
                 <div>
@@ -176,7 +182,7 @@
         </div>
     </section>
 
-    <section class="agenda-view" id="atasView">
+    <section class="agenda-view{% if visualizacao_inicial == 'atas' %} active{% endif %}" id="atasView"{% if "atas" not in modulos_visiveis %} hidden{% endif %}>
         <div class="panel minutes-panel">
             <div class="minutes-head">
                 <div>

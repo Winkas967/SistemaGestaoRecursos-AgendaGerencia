@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import jsonify, session
+from flask import abort, jsonify, redirect, session, url_for
 
 #verifica sde existe um usuario conectado
 def login_required(function):
@@ -74,4 +74,31 @@ def permission_required(module_code, action="visualizar"):
         
         return decorated_function
     
+    return decorator
+
+# Protege uma página usando uma ou mais permissões de visualização
+def page_permission_required(*module_codes):
+    def decorator(function):
+        @wraps(function)
+        def decorated_function(*args, **kwargs):
+            if not session.get("user_id"):
+                return redirect(url_for("auth_pages.login_page"))
+
+            if str(session.get("role") or "").lower() == "admin":
+                return function(*args, **kwargs)
+
+            permissions = session.get("permissions", [])
+            can_view = any(
+                permission.get("modulo_codigo") in module_codes
+                and permission.get("pode_visualizar")
+                for permission in permissions
+            )
+
+            if not can_view:
+                abort(403)
+
+            return function(*args, **kwargs)
+
+        return decorated_function
+
     return decorator

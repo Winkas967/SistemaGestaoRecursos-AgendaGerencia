@@ -20,7 +20,7 @@
     <div class="user-panel-actions">
         <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
         {% if session["role"]|lower in ["gerencia", "admin"] %}
-        <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
+        <a class="password-toggle agenda-toggle" href="{{ url_for('agenda_pages.agenda') }}">Agenda</a>
         {% endif %}
     </div>
     <div class="user-avatar" aria-hidden="true"></div>
@@ -43,7 +43,7 @@
         </svg>
         <span id="themeLabel">Modo escuro</span>
     </button>
-    <form action="{{ url_for('main.logout') }}" method="GET">
+    <form action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
         <button type="submit">Sair</button>
     </form>
 </div>
@@ -67,20 +67,20 @@
 
             <div class="topbar-actions">
                 <nav class="nav-tabs" aria-label="Navegação principal">
-                    <a href="{{ url_for('main.home') }}">
+                    <a href="{{ url_for('home_pages.home') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
                         Home
                     </a>
-                    <a href="{{ url_for('main.equipamentos') }}">
+                    <a href="{{ url_for('resources_pages.equipamentos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="4" y="4" width="16" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg>
                         Equipamentos
                     </a>
-                    <a class="active" href="{{ url_for('main.reserva') }}">
+                    <a class="active" href="{{ url_for('resources_pages.reserva') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
                         Reserva
                     </a>
                     {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
-                    <a href="{{ url_for('main.relatorios') }}">
+                    <a href="{{ url_for('reports_pages.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
                     </a>
@@ -105,7 +105,7 @@
                 </div>
             </div>
 
-            <form class="reservation-form" action="{{ url_for('main.salvar_reserva') }}" method="POST">
+            <form class="reservation-form" action="#" method="POST" data-pending-endpoint="salvar-reserva">
                 <div class="form-grid">
                     <div class="form-field form-field-wide">
                         <label class="field-label" for="recurso_id">Equipamento</label>
@@ -175,7 +175,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <a class="secondary-action" href="{{ url_for('main.equipamentos') }}">Voltar</a>
+                <a class="secondary-action" href="{{ url_for('resources_pages.equipamentos') }}">Voltar</a>
                     <button type="submit" class="primary-action">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
                         Salvar reserva

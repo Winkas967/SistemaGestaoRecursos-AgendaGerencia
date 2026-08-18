@@ -64,7 +64,7 @@
                 {% endif %}
             {% endwith %}
 
-            <form action="{{ url_for('main.cadastro') }}" method="POST">
+            <form action="#" method="POST" data-pending-endpoint="cadastrar-usuario">
                 <div class="campo">
                     <label for="usuario">Usuário</label>
                     <input
@@ -91,7 +91,7 @@
 
                 <button type="submit">Cadastrar</button>
 
-                <a href="{{ url_for('main.login_page') }}" class="login-link">Já tenho conta — Entrar</a>
+                <a href="{{ url_for('auth_pages.login_page') }}" class="login-link">Já tenho conta — Entrar</a>
             </form>
 
             <div class="rodape">Unimed &copy; 2026 — Todos os direitos reservados</div>

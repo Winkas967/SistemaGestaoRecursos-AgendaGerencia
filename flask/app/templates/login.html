@@ -64,7 +64,14 @@
                 {% endif %}
             {% endwith %}
 
-            <form action="{{ url_for('main.login') }}" method="POST">
+            <div id="loginMessage" class="mensagem erro" hidden></div>
+
+            <form
+                id="loginForm"
+                action="{{ url_for('auth.login') }}"
+                method="POST"
+                data-home-url="/home"
+            >
                 <div class="campo">
                     <label for="usuario">Usuário</label>
                     <input
@@ -91,7 +98,7 @@
 
                 <button type="submit">Entrar</button>
 
-                <a href="{{ url_for('main.cadastro_page') }}" class="cadastro">Fazer cadastro</a>
+                <a href="{{ url_for('auth_pages.cadastro_page') }}" class="cadastro">Fazer cadastro</a>
             </form>
 
             <div class="rodape">Unimed &copy; 2026 — Todos os direitos reservados</div>

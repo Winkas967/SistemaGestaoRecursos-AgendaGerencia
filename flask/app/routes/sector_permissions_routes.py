@@ -42,8 +42,7 @@ def get_sector_permissions(sector_id):
         
 #salva a permissao de um modulo
 @sector_permissions_bp.route(
-    "/setores/<int:sector_id>/permissoes",
-    methods=["PUT"],
+    "/setores/<int:sector_id>/permissoes", methods=["PUT"],
 )
 @admin_required
 def save_sector_permission(sector_id):
@@ -56,7 +55,7 @@ def save_sector_permission(sector_id):
         )
         
         return jsonify({
-            "message": "Permisso~es atualizadas com sucesso.",
+            "message": "Permissões atualizadas com sucesso.",
             "permissoes": permissions,
         }), 200
         

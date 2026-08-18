@@ -306,3 +306,140 @@ if (calendarSelect) {
         window.location.href = url.toString();
     });
 }
+
+// ---------- Integracao com as APIs administrativas ----------
+
+// Envia dados em JSON e trata a resposta da API
+async function enviarJson(url, method, data = null) {
+    const options = {
+        method,
+        headers: {
+            "Content-Type": "application/json",
+        },
+    };
+
+    if (data !== null) {
+        options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(url, options);
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(result.error || "Não foi possível concluir a operação.");
+    }
+
+    return result;
+}
+
+// Reabre a aba de usuários depois de uma alteração
+function recarregarPainelUsuarios() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "usuarios");
+    window.location.href = url.toString();
+}
+
+// Encerra a sessão do usuário
+const logoutForm = document.getElementById("logoutForm");
+
+if (logoutForm) {
+    logoutForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            await enviarJson(logoutForm.action, "POST");
+            window.location.href = logoutForm.dataset.loginUrl;
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+}
+
+// Atualiza a role do usuário
+document.querySelectorAll(".role-update-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            await enviarJson(form.action, form.dataset.apiMethod, {
+                role_id: Number(form.elements.role_id.value),
+                setor_id: form.elements.setor_id.value || null,
+            });
+            recarregarPainelUsuarios();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});
+
+// Atualiza o e-mail do usuário
+document.querySelectorAll(".user-email-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            await enviarJson(form.action, form.dataset.apiMethod, {
+                email: form.elements.email.value,
+            });
+            recarregarPainelUsuarios();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});
+
+// Cadastra um novo setor
+const sectorAddForm = document.querySelector(".sector-add-form");
+
+if (sectorAddForm) {
+    sectorAddForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            await enviarJson(sectorAddForm.action, "POST", {
+                nome: sectorAddForm.elements.nome.value,
+            });
+            recarregarPainelUsuarios();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+}
+
+// Desativa um setor sem apagar seu histórico
+document.querySelectorAll("form[data-sector-id]").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (!window.confirm("Remover este setor?")) return;
+
+        try {
+            await enviarJson(form.action, form.dataset.apiMethod);
+            recarregarPainelUsuarios();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});
+
+// Redefine a senha de outro usuário
+const adminPasswordForm = document.querySelector("[data-admin-password-form]");
+
+if (adminPasswordForm) {
+    adminPasswordForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const userId = adminPasswordForm.elements.usuario_id.value;
+        const baseUrl = adminPasswordForm.action.replace(/\/$/, "");
+
+        try {
+            await enviarJson(`${baseUrl}/${userId}/senha`, adminPasswordForm.dataset.apiMethod, {
+                senha: adminPasswordForm.elements.senha.value,
+            });
+            fecharModalSenha();
+            window.alert("Senha atualizada com sucesso.");
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+}

@@ -10,7 +10,7 @@ auth_bp = Blueprint(
 )
 
 #autentica o usuario e cria sua sessao
-@auth_bp.route("/login", method=["POST"])
+@auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True) or {}
     
@@ -42,7 +42,7 @@ def login():
         }), 401
         
 #encerra a sessao do usuario
-@auth_bp.route("/logout", methos=["POST"])
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()
     
@@ -51,7 +51,7 @@ def logout():
     }), 200
     
 #retorna os dados do usuario conectado
-@auth_bp.route("/me", methosd=["GET"])
+@auth_bp.route("/me", methods=["GET"])
 def current_user():
     if not session.get("user_id"):
         return jsonify({

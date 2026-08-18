@@ -197,3 +197,58 @@ class UserModel:
             if connection:
                 connection.close()
 
+    # Atualiza os dados administrativos do usuário
+    @staticmethod
+    def update_profile(user_id, email, role_id, setor_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET email = %s, role_id = %s, setor_id = %s
+                WHERE id = %s
+                """,
+                (email, role_id, setor_id, user_id),
+            )
+            connection.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    # Atualiza somente a senha do usuário
+    @staticmethod
+    def update_password(user_id, password_hash):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET senha_hash = %s
+                WHERE id = %s
+                """,
+                (password_hash, user_id),
+            )
+            connection.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()

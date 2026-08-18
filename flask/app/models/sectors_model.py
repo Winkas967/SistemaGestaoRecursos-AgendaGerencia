@@ -130,3 +130,54 @@ class SectorModel:
             if connection:
                 connection.close()
 
+    # Conta os usuários ativos vinculados ao setor
+    @staticmethod
+    def count_active_users(sector_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM usuarios
+                WHERE setor_id = %s AND ativo = TRUE
+                """,
+                (sector_id,),
+            )
+            record = cursor.fetchone()
+            return int(record["total"])
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    # Desativa o setor sem apagar o histórico
+    @staticmethod
+    def deactivate(sector_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute(
+                """
+                UPDATE setores
+                SET ativo = FALSE
+                WHERE id = %s AND ativo = TRUE
+                """,
+                (sector_id,),
+            )
+            connection.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()

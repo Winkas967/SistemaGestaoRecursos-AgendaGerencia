@@ -19,8 +19,8 @@
 <div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
     <div class="user-panel-actions">
         <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
-        {% if session["role"]|lower in ["gerencia", "admin"] %}
-        <a class="password-toggle agenda-toggle" href="{{ url_for('main.agenda') }}">Agenda</a>
+        {% if "agenda" in modulos_visiveis or "documentacao" in modulos_visiveis or "atas" in modulos_visiveis %}
+        <a class="password-toggle agenda-toggle" href="{{ url_for('agenda_pages.agenda') }}">Agenda</a>
         {% endif %}
     </div>
     <div class="user-avatar" aria-hidden="true"></div>
@@ -43,7 +43,7 @@
         </svg>
         <span id="themeLabel">Modo escuro</span>
     </button>
-    <form action="{{ url_for('main.logout') }}" method="GET">
+    <form id="logoutForm" action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
         <button type="submit">Sair</button>
     </form>
 </div>
@@ -67,20 +67,22 @@
 
             <div class="topbar-actions">
                 <nav class="nav-tabs" aria-label="Navegação principal">
-                    <a class="active" href="{{ url_for('main.home') }}">
+                    <a class="active" href="{{ url_for('home_pages.home') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
                         Home
                     </a>
-                    <a href="{{ url_for('main.equipamentos') }}">
+                    {% if "recursos" in modulos_visiveis %}
+                    <a href="{{ url_for('resources_pages.equipamentos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="4" y="4" width="16" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg>
                         Equipamentos
                     </a>
-                    <a href="{{ url_for('main.reserva') }}">
+                    <a href="{{ url_for('resources_pages.reserva') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
                         Reserva
                     </a>
-                    {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
-                    <a href="{{ url_for('main.relatorios') }}">
+                    {% endif %}
+                    {% if "relatorios" in modulos_visiveis %}
+                    <a href="{{ url_for('reports_pages.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
                     </a>
@@ -129,8 +131,8 @@
                     </div>
                     {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                     <div class="history-export-actions">
-                        <a class="secondary-action" href="{{ url_for('main.exportar_historico_excel') }}">Excel</a>
-                        <a class="primary-action" href="{{ url_for('main.exportar_historico_pdf') }}">PDF</a>
+                        <a class="secondary-action" href="#" data-export-format="excel">Excel</a>
+                        <a class="primary-action" href="#" data-export-format="pdf">PDF</a>
                     </div>
                     {% endif %}
                     <span class="record-count">{{ agendamentos.total if agendamentos else 0 }}</span>
@@ -193,19 +195,19 @@
                 {% if agendamentos and (agendamentos.has_prev or agendamentos.has_next) %}
                 <div class="pagination">
                     {% if agendamentos.has_prev %}
-                        <a href="{{ url_for('main.home', page=agendamentos.prev_num) }}">← Anterior</a>
+                        <a href="{{ url_for('home_pages.home', page=agendamentos.prev_num) }}">← Anterior</a>
                     {% endif %}
                     {% for page in agendamentos.iter_pages() %}
                         {% if page %}
                             {% if page == agendamentos.page %}
                                 <span class="active">{{ page }}</span>
                             {% else %}
-                                <a href="{{ url_for('main.home', page=page) }}">{{ page }}</a>
+                                <a href="{{ url_for('home_pages.home', page=page) }}">{{ page }}</a>
                             {% endif %}
                         {% endif %}
                     {% endfor %}
                     {% if agendamentos.has_next %}
-                        <a href="{{ url_for('main.home', page=agendamentos.next_num) }}">Próxima →</a>
+                        <a href="{{ url_for('home_pages.home', page=agendamentos.next_num) }}">Próxima →</a>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -215,6 +217,7 @@
                     {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}Nenhum agendamento encontrado no sistema.{% else %}Você ainda não tem agendamentos. Faça uma reserva para começar.{% endif %}
                 </div>
             </div>
+
         </section>
 
         <section class="tab-panel" id="panel-aberto">
@@ -257,7 +260,7 @@
                                 <dd>{{ emp.motivo or "-" }}</dd>
                             </div>
                         </dl>
-                        <form class="devolver-form" action="{{ url_for('main.devolver_item', id=emp.id) }}" method="POST" onsubmit="return confirm('Confirmar devolução deste item?');">
+                    <form class="devolver-form" action="#" method="POST" data-emprestimo-id="{{ emp.id }}" onsubmit="return confirm('Confirmar devolução deste item?');">
                             <button type="submit" class="devolver-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></svg>
                                 Devolver
@@ -277,6 +280,74 @@
 
         {% if session["role"]|lower == "admin" %}
         <section class="tab-panel" id="panel-usuarios">
+            <div class="records-panel sector-admin-panel">
+                <div class="table-title-row">
+                    <div>
+                        <p class="eyebrow">Controle de acesso</p>
+                        <h2>Permissões dos setores</h2>
+                    </div>
+                </div>
+
+                {% if paineis_permissoes %}
+                    {% for painel in paineis_permissoes %}
+                    <div class="table-title-row">
+                        <div>
+                            <p class="eyebrow">Setor</p>
+                            <h2>{{ painel.setor.nome }}</h2>
+                        </div>
+                    </div>
+
+                    <div class="table-scroll users-table-scroll">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Módulo</th>
+                                    <th>Visualizar</th>
+                                    <th>Criar</th>
+                                    <th>Editar</th>
+                                    <th>Excluir</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for linha in painel.linhas %}
+                                <tr>
+                                    <td data-label="Módulo">{{ linha.modulo.nome }}</td>
+                                    <td data-label="Visualizar">
+                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_visualizar" type="checkbox" {% if linha.permissao.pode_visualizar %}checked{% endif %}>
+                                    </td>
+                                    <td data-label="Criar">
+                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_criar" type="checkbox" {% if linha.permissao.pode_criar %}checked{% endif %}>
+                                    </td>
+                                    <td data-label="Editar">
+                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_editar" type="checkbox" {% if linha.permissao.pode_editar %}checked{% endif %}>
+                                    </td>
+                                    <td data-label="Excluir">
+                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_excluir" type="checkbox" {% if linha.permissao.pode_excluir %}checked{% endif %}>
+                                    </td>
+                                    <td data-label="Ação">
+                                        <form
+                                            id="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}"
+                                            class="sector-permission-form"
+                                            action="{{ url_for('sector_permissions.save_sector_permission', sector_id=painel.setor.id) }}"
+                                            method="POST"
+                                            data-api-method="PUT"
+                                        >
+                                            <input name="modulo_id" type="hidden" value="{{ linha.modulo.id }}">
+                                            <button class="secondary-action role-save-btn" type="submit">Salvar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty">Cadastre um setor para definir suas permissões.</div>
+                {% endif %}
+            </div>
+
             <div class="records-panel">
                 <div class="table-title-row">
                     <div>
@@ -302,23 +373,27 @@
                         </thead>
                         <tbody>
                             {% for user in usuarios %}
-                            <tr class="linha-usuario" data-usuario="{{ user.usuario }}" data-role="{{ user.role }}" data-email="{{ user.email or '' }}">
+                            <tr class="linha-usuario" data-usuario="{{ user.usuario }}" data-role="{{ user.role_nome }}" data-email="{{ user.email or '' }}">
                                 <td data-label="Usuário">{{ user.usuario }}</td>
                                 <td data-label="Perfil">
-                                    <form class="role-update-form" action="{{ url_for('main.alterar_role_usuario') }}" method="POST">
+                                    <form class="role-update-form" action="{{ url_for('users.update_user', user_id=user.id) }}" method="POST" data-api-method="PATCH" data-user-id="{{ user.id }}">
                                         <input type="hidden" name="usuario_id" value="{{ user.id }}">
-                                        <select name="role" aria-label="Perfil de {{ user.usuario }}">
-                                            <option value="user" {% if user.role|lower == "user" %}selected{% endif %}>user</option>
-                                            <option value="gerencia" {% if user.role|lower == "gerencia" %}selected{% endif %}>gerencia</option>
-                                            <option value="rh" {% if user.role|lower == "rh" %}selected{% endif %}>rh</option>
-                                            <option value="tecnico" {% if user.role|lower == "tecnico" %}selected{% endif %}>tecnico</option>
-                                            <option value="admin" {% if user.role|lower == "admin" %}selected{% endif %}>admin</option>
+                                        <select name="role_id" aria-label="Perfil de {{ user.usuario }}">
+                                            {% for role in roles %}
+                                            <option value="{{ role.id }}" {% if user.role_id == role.id %}selected{% endif %}>{{ role.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <select name="setor_id" aria-label="Setor de {{ user.usuario }}">
+                                            <option value="">Sem setor</option>
+                                            {% for setor in setores %}
+                                            <option value="{{ setor.id }}" {% if user.setor_id == setor.id %}selected{% endif %}>{{ setor.nome }}</option>
+                                            {% endfor %}
                                         </select>
                                         <button type="submit" class="secondary-action role-save-btn">Salvar</button>
                                     </form>
                                 </td>
                                 <td data-label="E-mail para avisos">
-                                    <form class="user-email-form" action="{{ url_for('main.alterar_email_usuario') }}" method="POST">
+                                    <form class="user-email-form" action="{{ url_for('users.update_user', user_id=user.id) }}" method="POST" data-api-method="PATCH" data-user-id="{{ user.id }}">
                                         <input type="hidden" name="usuario_id" value="{{ user.id }}">
                                         <input
                                             type="email"
@@ -329,11 +404,7 @@
                                         >
                                         <button type="submit" class="secondary-action role-save-btn">Salvar</button>
                                     </form>
-                                    {% if user.role|lower in ["gerencia", "tecnico"] %}
-                                    <small class="email-notification-state active">Receberá avisos de vencimento da Documentação</small>
-                                    {% else %}
-                                    <small class="email-notification-state">O envio exige perfil Gerência ou Técnico</small>
-                                    {% endif %}
+                                    <small class="email-notification-state">E-mail cadastrado para o usuário</small>
                                 </td>
                                 <td data-label="Ação">
                                     <button
@@ -361,7 +432,7 @@
                     <span class="record-count">{{ setores|length }}</span>
                 </div>
 
-                <form class="sector-add-form" action="{{ url_for('main.adicionar_setor') }}" method="POST">
+                <form class="sector-add-form" action="{{ url_for('sectors.create_sector') }}" method="POST" data-api-form="json">
                     <div class="form-field">
                         <label class="field-label" for="novo_setor">Novo setor</label>
                         <input id="novo_setor" name="nome" type="text" placeholder="Ex: Financeiro, Gerência, Administração" required>
@@ -374,7 +445,7 @@
                     {% for setor in setores %}
                     <div class="sector-item">
                         <span>{{ setor.nome }}</span>
-                        <form action="{{ url_for('main.excluir_setor', id=setor.id) }}" method="POST" onsubmit="return confirm('Remover este setor?');">
+                        <form action="{{ url_for('sectors.delete_sector', sector_id=setor.id) }}" method="POST" data-api-method="DELETE" data-sector-id="{{ setor.id }}">
                             <button type="submit" class="danger-action">Remover</button>
                         </form>
                     </div>
@@ -398,7 +469,7 @@
                     <button type="button" class="modal-close" id="passwordModalClose" aria-label="Fechar">×</button>
                 </div>
 
-                <form action="{{ url_for('main.alterar_senha_usuario') }}" method="POST">
+                <form action="{{ url_for('users.get_users_bp') }}" method="POST" data-api-method="PATCH" data-admin-password-form>
                     <input type="hidden" id="modalUsuarioId" name="usuario_id">
                     <p class="modal-user">Usuário: <strong id="modalUsuarioNome">-</strong></p>
 
@@ -418,6 +489,6 @@
     </div>
 </main>
 
-<script src="{{ url_for('static', filename='js/home.js', v='20260731-1') }}"></script>
+<script src="{{ url_for('static', filename='js/home.js', v='20260818-1') }}"></script>
 </body>
 </html>

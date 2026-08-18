@@ -38,3 +38,17 @@ def create_sector():
         return jsonify({
             "error": str(error),
         }), 400
+
+#desativa um setor sem apagar seu historico
+@sectors_bp.route("/<int:sector_id>", methods=["DELETE"])
+@admin_required
+def delete_sector(sector_id):
+    try:
+        SectorService.deactivate(sector_id)
+        return jsonify({
+            "message": "Setor removido com sucesso.",
+        }), 200
+    except ValueError as error:
+        return jsonify({
+            "error": str(error),
+        }), 400
