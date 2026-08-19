@@ -4,6 +4,7 @@ from routes.sectors_routes import sectors_bp
 from routes.sector_permissions_routes import sector_permissions_bp
 from routes.users_routes import users_bp
 from routes.pages import page_blueprints
+from routes.resources_routes import resources_bp
 
 #registra todos os blueprints na aplicacao
 def register_routes(app):
@@ -21,6 +22,9 @@ def register_routes(app):
     
     #registra as rotas administrativas dos usuarios
     app.register_blueprint(users_bp)
+    
+    #registra as rotas da gestao de recursos
+    app.register_blueprint(resources_bp)
     
     #registra as rotas que entregam os templates
     for blueprint in page_blueprints:

@@ -443,3 +443,102 @@ if (adminPasswordForm) {
         }
     });
 }
+
+//monta os dados de um formulario de recurso
+function getResourceFormData(form) {
+    return {
+        nome: form.elements.nome.value,
+        tipo_recurso_id: Number(form.elements.tipo_recurso_id.value),
+        status: form.elements.status.value,
+        descricao: form.elements.descricao.value,
+    };
+}
+
+//cadastra um novo recurso
+const resourceCreateForm = document.querySelector(
+    ".resource-create-form"
+);
+
+if (resourceCreateForm) {
+    resourceCreateForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try{
+            await enviarJson(
+                resourceCreateForm.action,
+                resourceCreateForm.dataset.apiMethod,
+                getResourceFormData(resourceCreateForm),
+            );
+
+            window.location.reload();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+}
+
+//atualiza os dados de um recurso
+document.querySelectorAll(".resource-edit-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            await enviarJson(
+                form.action,
+                form.dataset.apiMethod,
+                getResourceFormData(form),
+            );
+
+            window.location.reload();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});
+
+//atualiza somente o status
+document.querySelector(".resource-status-form").forEach((form) => {
+    form.addEventListener("submit", async (event) =>{
+        event.preventDefault()
+
+        try {
+            await enviarJson(
+                form.action,
+                form.dataset.apiMethod,
+                {
+                    status: form.elements.status.value,
+                },
+            );
+
+            window.location.reload();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});
+
+//desativa um recurso
+document.querySelectorAll(".resource-delete-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const confirmed = window.confirm(
+            "Excluir esta equipamento?"
+        );
+
+        if ("confirmed") {
+            return;
+        }
+
+        try {
+            await enviarJson(
+                form.action,
+                form.dataset.apiMethod,
+            );
+
+            window.location.reload();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+});

@@ -127,7 +127,7 @@
                 <article class="resource-card">
                     <div>
                         <div class="resource-card-meta">
-                            <span class="setor-pill">{{ recurso.tipo_recurso.nome if recurso.tipo_recurso else "Recurso" }}</span>
+                            <span class="setor-pill">{{ recurso.tipo_recurso_nome or "Recurso" }}</span>
                             <span class="resource-status resource-status-{{ status_recurso }}">
                                 {% if status_recurso == "disponivel" %}
                                     Disponível
@@ -158,7 +158,7 @@
             {% endif %}
         </section>
 
-        {% if session["role"]|lower in ["tecnico", "admin"] %}
+        {% if pode_criar_recurso or pode_editar_recurso or pode_excluir_recurso %}
         {% include "_flash_messages.html" %}
 
         <section class="records-panel">
@@ -169,7 +169,8 @@
                 </div>
             </div>
 
-                <form class="reservation-form" action="#" method="POST" data-pending-endpoint="adicionar-equipamento">
+            {% if pode_criar_recurso %}
+                <form class="reservation-form resource-create-form" action="{{ url_for('resources.create_resource') }}" method="POST" data-api-method="POST">
                 <div class="form-grid">
                     <div class="form-field">
                         <label class="field-label" for="novo_nome">Nome</label>
@@ -199,12 +200,14 @@
                 <div class="form-actions">
                     <button type="submit" class="primary-action">Adicionar equipamento</button>
                 </div>
-            </form>
+                </form>
+            {% endif %}
 
             <div class="equipment-admin-grid">
                 {% for recurso in recursos %}
                 <div class="equipment-admin-item">
-                    <form class="equipment-admin-card" action="#" method="POST" data-resource-id="{{ recurso.id }}" data-pending-endpoint="editar-equipamento">
+                    {% if pode_editar_recurso %}
+                    <form class="equipment-admin-card resource-edit-form" action="{{ url_for('resources.update_resource', resource_id=recurso.id) }}" method="POST" data-api-method="PUT" data-resource-id="{{ recurso.id }}">
                         <label class="field-label" for="nome-{{ recurso.id }}">Nome</label>
                         <input id="nome-{{ recurso.id }}" name="nome" type="text" value="{{ recurso.nome }}" required>
 
@@ -227,14 +230,17 @@
 
                         <button type="submit" class="primary-action">Salvar</button>
                     </form>
-                        <form action="#" method="POST" data-resource-id="{{ recurso.id }}" data-pending-endpoint="excluir-equipamento" onsubmit="return confirm('Excluir este equipamento?');">
+                    {% endif %}
+                    {% if pode_excluir_recurso %}
+                        <form class="resource-delete-form" action="{{ url_for('resources.delete_resource', resource_id=recurso.id) }}" method="POST" data-api-method="DELETE" data-resource-id="{{ recurso.id }}">
                         <button type="submit" class="danger-action">Excluir {{ recurso.nome }}</button>
                     </form>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
         </section>
-        {% elif session["role"]|lower in ["gerencia", "rh"] %}
+        {% elif pode_editar_recurso %}
         <section class="records-panel">
             <div class="form-head">
                 <div>
@@ -246,9 +252,9 @@
             {% if recursos_gerencia %}
             <div class="equipment-admin-grid">
                 {% for recurso in recursos_gerencia %}
-                    <form class="equipment-admin-card equipment-status-card" action="#" method="POST" data-resource-id="{{ recurso.id }}" data-pending-endpoint="alterar-status-equipamento">
+                    <form class="equipment-admin-card equipment-status-card resource-status-form" action="{{ url_for('resources.update_resource_status', resource_id=recurso.id) }}" method="POST" data-api-method="PATCH" data-resource-id="{{ recurso.id }}">
                     <div class="equipment-status-head">
-                        <span class="setor-pill">{{ recurso.tipo_recurso.nome if recurso.tipo_recurso else "Recurso" }}</span>
+                                <span class="setor-pill">{{ recurso.tipo_recurso_nome or "Recurso" }}</span>
                         <strong>{{ recurso.nome }}</strong>
                     </div>
 
