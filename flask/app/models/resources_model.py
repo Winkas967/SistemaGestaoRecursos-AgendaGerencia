@@ -101,7 +101,7 @@ class ResourceModel:
                             FROM recursos r
                             INNER JOIN tipos_recursos tr ON tr.id = r.tipo_recurso_id
                             WHERE r.id = %s LIMIT 1
-                           """, (resource_id))
+                           """, (resource_id,))
             
             record = cursor.fetchone()
             
@@ -122,7 +122,7 @@ class ResourceModel:
         
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            INSERT INTO recursos(
@@ -148,7 +148,7 @@ class ResourceModel:
             if connection:
                 connection.rollback()
                 
-                raise
+            raise
             
         finally:
             if cursor:
@@ -165,14 +165,14 @@ class ResourceModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            UPDATE recursos
                            SET tipo_recurso_id = %s,
-                           nome = %s,
-                           descricao = %s,
-                           status = %s,
+                                nome = %s,
+                                descricao = %s,
+                                status = %s
                            WHERE id = %s AND ativo = TRUE 
                            """, (
                                resource.tipo_recurso_id,
@@ -191,7 +191,7 @@ class ResourceModel:
             if connection:
                 connection.rollback()
                 
-                raise
+            raise
             
         finally:
             if cursor:
@@ -207,7 +207,7 @@ class ResourceModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            UPDATE recursos SET status =%s
@@ -254,7 +254,7 @@ class ResourceModel:
             if connection:
                 connection.rollback()
                 
-                raise
+            raise
             
         finally:
             if cursor:

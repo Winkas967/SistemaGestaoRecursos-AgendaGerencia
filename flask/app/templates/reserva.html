@@ -105,7 +105,7 @@
                 </div>
             </div>
 
-            <form class="reservation-form" action="#" method="POST" data-pending-endpoint="salvar-reserva">
+            <form class="reservation-form" action="{{ url_for('reservations.create_reservation')}}" method="POST" data-api-method="POST">
                 <div class="form-grid">
                     <div class="form-field form-field-wide">
                         <label class="field-label" for="recurso_id">Equipamento</label>

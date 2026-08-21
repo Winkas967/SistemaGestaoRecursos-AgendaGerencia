@@ -2,6 +2,7 @@ from flask import Blueprint, redirect, render_template, session, url_for
 
 from services.sector_permissions_service import SectorPermissionService
 from services.users_service import UserService
+from services.reservations_service import ReservationService
 
 
 # Cria o grupo de páginas da área inicial
@@ -55,16 +56,35 @@ def home():
                     ),
                 })
 
-            sector_permission_panels.append({
-                "setor": sector,
-                "linhas": permission_rows,
-            })
+        sector_permission_panels.append({
+            "setor": sector,
+            "linhas": permission_rows,
+        })
+        
+        #verifica se um usuario e admin
+        is_admin = (
+            str(session.get("role") or "").lower()
+            == "admin"
+        )
+        
+        #busca as reservas exibidas na pag inicial
+        reservations = ReservationService.get_for_home(
+            user_id=session.get("user_id"),
+            is_admin=is_admin,
+        )
+        
+        #separa os agendamentos que ainda podem ser fechados
+        open_reservations = [
+            reservation
+            for reservation in reservations["items"]
+            if reservation["status"] in ("reservado", "em_uso")
+        ]
 
     return render_template(
         "home.html",
         tema="light",
-        agendamentos=None,
-        emprestimos_abertos=[],
+        agendamentos=reservations,
+        emprestimos_abertos=open_reservations,
         usuarios=users,
         setores=sectors,
         roles=roles,

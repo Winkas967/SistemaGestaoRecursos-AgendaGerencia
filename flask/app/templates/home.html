@@ -159,28 +159,28 @@
                             </tr>
                         </thead>
                         <tbody id="tabela-corpo">
-                            {% for item in agendamentos.items %}
+                            {% for item in agendamentos["items"] %}
                             <tr class="linha-agendamento" data-status="{{ item.status_calculado }}" data-devolucao="{{ item.devolucao_iso }}">
-                                <td data-label="Data" class="data">{{ item.data_reserva.strftime("%d/%m/%Y") }}</td>
+                                <td data-label="Data" class="data">{{ item.data_reserva_formatada }}</td>
                                 <td data-label="Data Final" class="data">
                                     {% if item.data_volta %}
-                                        {{ item.data_volta.strftime("%d/%m/%Y") }}
+                                        {{ item.data_volta_formatada }}
                                     {% else %}
-                                        Sem hora final
+                                        Sem data final
                                     {% endif %}
                                 </td>
                                 <td data-label="Hora" class="hora">
-                                    {{ item.hora_inicio.strftime("%H:%M") }}
+                                    {{ item.hora_inicio_formatada }}
                                     {% if item.hora_fim %}
-                                        - {{ item.hora_fim.strftime("%H:%M") }}
+                                        - {{ item.hora_fim_formatada }}
                                     {% elif item.viagem %}
                                         - Viagem
                                     {% endif %}
                                 </td>
                                 {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
-                                <td data-label="Responsável" class="responsavel">{{ item.responsavel or (item.usuario.usuario if item.usuario else "-") }}</td>
+                                <td data-label="Responsável" class="responsavel">{{ item.responsavel or item.usuario_nome or "-" }}</td>
                                 {% endif %}
-                                <td data-label="Equipamento" class="equipamento"><span class="setor-pill">{{ item.recurso.nome if item.recurso else "-" }}</span></td>
+                                <td data-label="Equipamento" class="equipamento"><span class="setor-pill">{{ item.recurso_nome or "-" }}</span></td>
                                 <td data-label="Local" class="local">{{ item.motivo or "-" }}</td>
                                 <td data-label="Status" class="status">
                                     <span class="status-pill status-{{ item.status_calculado }}">{{ item.status_label }}</span>
@@ -235,7 +235,7 @@
                     {% for emp in emprestimos_abertos %}
                     <article class="aberto-card">
                         <div class="aberto-card-head">
-                            <span class="setor-pill">{{ emp.recurso.nome if emp.recurso else "-" }}</span>
+                            <span class="setor-pill">{{ emp.recurso_nome or "-" }}</span>
                             <span class="dias-pill status-{{ emp.status_calculado }}">
                                 {{ emp.status_label }}
                             </span>
@@ -244,23 +244,23 @@
                             {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                             <div>
                                 <dt>Responsável</dt>
-                                <dd>{{ emp.responsavel or (emp.usuario.usuario if emp.usuario else "-") }}</dd>
+                                <dd>{{ emp.responsavel or emp.usuario_nome or "-" }}</dd>
                             </div>
                             {% endif %}
                             <div>
                                 <dt>Retirado em</dt>
-                                <dd>{{ emp.data_reserva.strftime("%d/%m/%Y") }}</dd>
+                                <dd>{{ emp.data_reserva_formatada }}</dd>
                             </div>
                             <div>
                                 <dt>Devolver em</dt>
-                                <dd>{{ (emp.data_volta or emp.data_reserva).strftime("%d/%m/%Y") }}</dd>
+                                <dd>{{ emp.data_volta_formatada or emp.data_reserva_formatada }}</dd>
                             </div>
                             <div>
                                 <dt>Local</dt>
                                 <dd>{{ emp.motivo or "-" }}</dd>
                             </div>
                         </dl>
-                    <form class="devolver-form" action="#" method="POST" data-emprestimo-id="{{ emp.id }}" onsubmit="return confirm('Confirmar devolução deste item?');">
+                        <form class="devolver-form" action="{{ url_for('reservations.return_reservation', reservation_id=emp.id) }}" method="POST" data-emprestimo-id="{{ emp.id }}" onsubmit="return confirm('Confirmar devolução deste item?');">
                             <button type="submit" class="devolver-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"></path><path d="M5 10h11a4 4 0 0 1 0 8h-1"></path></svg>
                                 Devolver

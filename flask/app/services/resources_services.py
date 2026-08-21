@@ -37,7 +37,7 @@ class ResourceService:
     def validade_data(data):
         name = str(data.get("nome") or "").strip()
         description = str(data.get("descricao") or "").strip() or None
-        status = str(data.get("status") or "disponivel").strip.lower()
+        status = str(data.get("status") or "disponivel").strip().lower()
         resource_type_id = data.get("tipo_recurso_id")
         
         if not name:

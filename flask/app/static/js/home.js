@@ -497,7 +497,7 @@ document.querySelectorAll(".resource-edit-form").forEach((form) => {
 });
 
 //atualiza somente o status
-document.querySelector(".resource-status-form").forEach((form) => {
+document.querySelectorAll(".resource-status-form").forEach((form) => {
     form.addEventListener("submit", async (event) =>{
         event.preventDefault()
 
@@ -542,3 +542,41 @@ document.querySelectorAll(".resource-delete-form").forEach((form) => {
         }
     });
 });
+
+//localiza o formulario de reservas
+const reservationForm = document.querySelector(".reservation-form")
+
+if (reservationForm) {
+    //envia a nova reserva para a api
+    reservationForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const resourceId = reservationForm.elements.recurso_id.value;
+
+        const data = {
+            recurso_id: Number(resourceId),
+            setor_id: reservationForm.elements.setor_id.value,
+            data_reserva: reservationForm.elements.data_reserva.value,
+            hora_inicio: reservationForm.elements.hora_inicio.value,
+            data_volta: reservationForm.elements.data_volta.value,
+            hora_fim: reservationForm.elements.hora_fim.value,
+            viagem: reservationForm.elements.viagem?.checked || false,
+            motivo: reservationForm.elements.motivo.value,
+            observacao: reservationForm.elements.observacao.value,
+        };
+
+        try {
+            await enviarJson(
+                reservationForm.action,
+                reservationForm.dataset.apiMethod,
+                data,
+            );
+
+            window.location.href = (
+                `/reserva?recurso_id=${resourceId}`
+            );
+        } catch (error) {
+            window.alert(error.message);
+        }
+    });
+}

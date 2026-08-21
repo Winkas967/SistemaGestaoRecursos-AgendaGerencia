@@ -35,7 +35,7 @@ class ResourceTypeModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            SELECT id, nome, descricao, ativo, criado_em
@@ -62,7 +62,7 @@ class ResourceTypeModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            SELECT id, nome, descricao, ativo, criado_em

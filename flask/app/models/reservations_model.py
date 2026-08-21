@@ -54,10 +54,26 @@ class Reservation:
             "setor_nome": self.setor_nome,
             "responsavel": self.responsavel,
             "motivo": self.motivo,
-            "data_reserva": self.data_reserva,
-            "data_volta": self.data_volta,
-            "hora_inicio": self.hora_inicio,
-            "hora_fim": self.hora_fim,
+            "data_reserva": (
+                str(self.data_reserva)
+                if self.data_reserva
+                else None
+            ),
+            "data_volta": (
+                str(self.data_volta)
+                if self.data_volta
+                else None
+            ),
+            "hora_inicio": (
+                str(self.hora_inicio)
+                if self.hora_inicio
+                else None
+            ),
+            "hora_fim": (
+                str(self.hora_fim)
+                if self.hora_fim
+                else None
+            ),
             "observacao": self.observacao,
             "viagem": self.viagem,
             "status": self.status,
@@ -251,7 +267,7 @@ class ReservationModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                             SELECT rv.id
@@ -302,5 +318,108 @@ class ReservationModel:
                 connection.close()
             
             
+    #lista as reservas exibidas na pagina inicial
+    @staticmethod
+    def get_for_home(user_id=None):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
             
+            query = """
+                SELECT
+                    rv.id,
+                    rv.recurso_id,
+                    r.nome AS recurso_nome,
+                    rv.usuario_id,
+                    u.usuario AS usuario_nome,
+                    rv.setor_id,
+                    s.nome AS setor_nome,
+                    rv.responsavel,
+                    rv.motivo,
+                    rv.data_reserva,
+                    rv.data_volta,
+                    rv.hora_inicio,
+                    rv.hora_fim,
+                    rv.observacao,
+                    rv.viagem,
+                    rv.status,
+                    rv.criado_em,
+                    rv.atualizado_em
+                FROM reservas rv
+                INNER JOIN recursos r
+                    ON r.id = rv.recurso_id
+                LEFT JOIN usuarios u
+                    ON u.id = rv.usuario_id
+                LEFT JOIN setores s
+                    ON s.id = rv.setor_id
+                WHERE rv.status <> 'cancelado'
+            """
             
+            parameters = ()
+            
+            #filtra pelo usuario quando ele nao for admin
+            if user_id is not None:
+                query += """
+                    AND rv.usuario_id = %s
+                """
+                
+                
+                parameters = (user_id,)
+                
+            query += """
+                ORDER BY
+                    rv.data_reserva DESC,
+                    rv.hora_inicio DESC
+            """
+            
+            cursor.execute(query, parameters)
+            
+            return [
+                Reservation(**record)
+                for record in cursor.fetchall()
+            ]
+            
+        finally:
+            if cursor:
+                cursor.close()
+            
+            if connection:
+                connection.close()
+                
+    #marca como reserva devolvida
+    @staticmethod
+    def mark_as_returned(reservation_id):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            cursor.execute("""
+                        UPDATE reservas
+                        SET
+                            status = 'devolvido',
+                            atualizado_em = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        AND status IN ('reservado', 'em_uso')
+                           """, (reservation_id,))
+            
+            updated = cursor.rowcount > 0
+            connection.commit()
+            
+            return updated
+        
+        except Exception:
+            if connection:
+                connection.rollback()
+                
+            raise
+        
+        finally:
+            if cursor:
+                cursor.close()
+                
+            if connection:
+                connection.close()
