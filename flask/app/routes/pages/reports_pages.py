@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file
 
-from utils.auth import admin_required
+from utils.auth import page_permission_required
 from services.report_services import ReportService
 from services.report_export_service import ReportExportService
 
@@ -13,7 +13,7 @@ reports_pages_bp = Blueprint(
 
 # Exibe a página de relatórios
 @reports_pages_bp.route("/relatorios", methods=["GET"])
-@admin_required
+@page_permission_required("relatorios")
 def relatorios():
     # Lê os filtros enviados pela página
     filtros = {
@@ -64,7 +64,7 @@ def relatorios():
     
 #exporta os relatorios para excel
 @reports_pages_bp.route("/relatorios/exportar/excel", methods=["GET"])
-@admin_required
+@page_permission_required("relatorios")
 def export_excel():
     #le filtros enviados pela pagina
     filtros = {

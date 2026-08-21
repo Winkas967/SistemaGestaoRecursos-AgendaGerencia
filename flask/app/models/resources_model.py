@@ -238,7 +238,7 @@ class ResourceModel:
         cursor = None
         
         try:
-            connection, cursor = get_db_connection
+            connection, cursor = get_db_connection()
             
             cursor.execute("""
                            UPDATE recursos SET ativo = FALSE

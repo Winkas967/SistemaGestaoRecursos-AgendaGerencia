@@ -56,10 +56,10 @@ def home():
                     ),
                 })
 
-        sector_permission_panels.append({
-            "setor": sector,
-            "linhas": permission_rows,
-        })
+            sector_permission_panels.append({
+                "setor": sector,
+                "linhas": permission_rows,
+            })
         
     #verifica se um usuario e admin
     is_admin = (

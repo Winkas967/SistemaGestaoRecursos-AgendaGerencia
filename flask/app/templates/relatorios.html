@@ -44,7 +44,7 @@
         </svg>
         <span id="themeLabel">Modo escuro</span>
     </button>
-    <form action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
+    <form class="logout-form" action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
         <button type="submit">Sair</button>
     </form>
 </div>
@@ -389,5 +389,6 @@
 </script>
 <script src="{{ url_for('static', filename='js/relatorios.js', v='20260722') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
+<script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>
 </html>

@@ -53,6 +53,13 @@ def equipamentos():
         or resource_permission.get("pode_excluir", False)
     )
     
+    #lista os modulos que o usuario pode visualizar
+    visible_modules = {
+        permission.get("modulo_codigo")
+        for permission in session.get("permissions", [])
+        if permission.get("pode_visualizar")
+    }
+    
     return render_template(
         "equipamentos.html", 
         tema="light", 
@@ -63,6 +70,7 @@ def equipamentos():
         pode_criar_recurso=can_create_resource,
         pode_editar_recurso=can_edit_resource,
         pode_excluir_recurso=can_delete_resource,
+        modulos_visiveis=visible_modules
     )
 
 
@@ -120,6 +128,13 @@ def reserva():
         schedule = ReservationService.get_schedule_by_resource(
             selected_resource["id"]
         )
+        
+        #lista os modulos que o usuario pode visualizar
+    visible_modules = {
+        permission.get("modulo_codigo")
+        for permission in session.get("permissions", [])
+        if permission.get("pode_visualizar")
+    }
     
     return render_template(
         "reserva.html",
@@ -129,4 +144,5 @@ def reserva():
         recurso_selecionado=selected_resource,
         agenda_ocupada=schedule,
         pode_viagem=True,
+        modulos_visiveis=visible_modules
         )

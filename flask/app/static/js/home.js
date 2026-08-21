@@ -339,22 +339,6 @@ function recarregarPainelUsuarios() {
     window.location.href = url.toString();
 }
 
-// Encerra a sessão do usuário
-const logoutForm = document.getElementById("logoutForm");
-
-if (logoutForm) {
-    logoutForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        try {
-            await enviarJson(logoutForm.action, "POST");
-            window.location.href = logoutForm.dataset.loginUrl;
-        } catch (error) {
-            window.alert(error.message);
-        }
-    });
-}
-
 // Atualiza a role do usuário
 document.querySelectorAll(".role-update-form").forEach((form) => {
     form.addEventListener("submit", async (event) => {
@@ -523,10 +507,10 @@ document.querySelectorAll(".resource-delete-form").forEach((form) => {
         event.preventDefault();
 
         const confirmed = window.confirm(
-            "Excluir esta equipamento?"
+            "Excluir este equipamento?"
         );
 
-        if ("confirmed") {
+        if (!confirmed) {
             return;
         }
 

@@ -43,7 +43,7 @@
         </svg>
         <span id="themeLabel">Modo escuro</span>
     </button>
-    <form id="logoutForm" action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
+    <form class="logout-form" action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
         <button type="submit">Sair</button>
     </form>
 </div>
@@ -81,7 +81,7 @@
                         Reserva
                     </a>
                     {% endif %}
-                    {% if session["role"]|lower == "admin" %}
+                    {% if "relatorios" in modulos_visiveis %}
                     <a href="{{ url_for('reports_pages.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
@@ -514,7 +514,8 @@
     </div>
 </main>
 
-<script src="{{ url_for('static', filename='js/home.js', v='20260818-1') }}"></script>
+<script src="{{ url_for('static', filename='js/home.js', v='20260821-2') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
+<script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>
 </html>

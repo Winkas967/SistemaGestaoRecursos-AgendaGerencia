@@ -60,6 +60,22 @@ class ReservationService:
             raise ValueError(
                 f"O campo {field_name} possui um horário inválido."
             )
+
+    #formata um horario para hora e minuto
+    @staticmethod
+    def format_time(value):
+        if not value:
+            return None
+
+        parts = str(value).split(":")
+
+        if len(parts) < 2:
+            return str(value)
+
+        try:
+            return f"{int(parts[0]):02d}:{parts[1]}"
+        except ValueError:
+            return str(value)
             
     #valida os dados da reserva
     @staticmethod
@@ -287,8 +303,12 @@ class ReservationService:
                 ).strftime("%d/%m/%Y")
                 
             schedule[reservation_date]["horarios"].append({
-                "inicio": reservation["hora_inicio"][:5],
-                "fim": reservation["hora_fim"][:5],
+                "inicio": ReservationService.format_time(
+                    reservation["hora_inicio"]
+                ),
+                "fim": ReservationService.format_time(
+                    reservation["hora_fim"]
+                ),
                 "data_fim": end_date,
                 "responsavel": reservation["responsavel"],
                 "status": reservation["status"]
@@ -335,15 +355,16 @@ class ReservationService:
             )
             
             data["hora_inicio_formatada"] = (
-                str(reservation.hora_inicio)[:5]
-                if reservation.hora_inicio
-                else "-"
+                ReservationService.format_time(
+                    reservation.hora_inicio
+                )
+                or "-"
             )
 
             data["hora_fim_formatada"] = (
-                str(reservation.hora_fim)[:5]
-                if reservation.hora_fim
-                else None
+                ReservationService.format_time(
+                    reservation.hora_fim
+                )
             )
 
             data["status_calculado"] = status
