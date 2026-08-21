@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, session
 
 from services.auth_service import AuthService
+from utils.auth import login_required
 
 #cria o grupo de rotaas de autenticacao
 auth_bp = Blueprint(
@@ -69,3 +70,25 @@ def current_user():
         },
         "permissions": session.get("permissions", [])
     }), 200
+
+#altera a senha do proprio usuario conectado
+@auth_bp.route("/alterar-senha", methods=["PATCH"])
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+
+    try:
+        AuthService.change_password(
+            session.get("user_id"),
+            data.get("senha_atual"),
+            data.get("nova_senha"),
+            data.get("confirmar_senha"),
+        )
+
+        return jsonify({
+            "message": "Senha alterada com sucesso.",
+        }), 200
+    except ValueError as error:
+        return jsonify({
+            "error": str(error),
+        }), 400

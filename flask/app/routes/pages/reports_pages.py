@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file
 
-from utils.auth import page_permission_required
+from utils.auth import admin_required
 from services.report_services import ReportService
-
+from services.report_export_service import ReportExportService
 
 # Cria o grupo de páginas de relatórios
 reports_pages_bp = Blueprint(
@@ -13,7 +13,7 @@ reports_pages_bp = Blueprint(
 
 # Exibe a página de relatórios
 @reports_pages_bp.route("/relatorios", methods=["GET"])
-@page_permission_required("relatorios")
+@admin_required
 def relatorios():
     # Lê os filtros enviados pela página
     filtros = {
@@ -59,4 +59,49 @@ def relatorios():
         dados_status=dados_status,
         dados_hora=dados_hora,
         dados_responsavel=dados_responsavel,
+    )
+    
+    
+#exporta os relatorios para excel
+@reports_pages_bp.route("/relatorios/exportar/excel", methods=["GET"])
+@admin_required
+def export_excel():
+    #le filtros enviados pela pagina
+    filtros = {
+        "dataInicio": str(
+            request.args.get("dataInicio") or ""
+        ).strip(),
+        
+        "dataFim": str(
+            request.args.get("dataFim") or ""
+        ).strip(),
+        
+        "setor": str(
+            request.args.get("setor") or ""
+        ).strip(),
+    }
+    
+    try:
+        #cria o arquivo excel na memoria
+        excel_file = (
+            ReportExportService.generate_excel(
+                filtros
+            )
+        )
+    
+    except ValueError as error:
+        #mostra erro de validacao
+        flash(str(error), "erro")
+        
+        return redirect(url_for("reports_pages.relatorios"))
+    
+    #envia o arquivo para dowload
+    return send_file(
+        excel_file,
+        mimetype=(
+            "apllication/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
+        as_attachment=True,
+        download_name="relatorio_reserva.xlsx",    
     )

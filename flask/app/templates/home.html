@@ -81,7 +81,7 @@
                         Reserva
                     </a>
                     {% endif %}
-                    {% if "relatorios" in modulos_visiveis %}
+                    {% if session["role"]|lower == "admin" %}
                     <a href="{{ url_for('reports_pages.relatorios') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
                         Relatórios
@@ -131,8 +131,7 @@
                     </div>
                     {% if session["role"]|lower in ["gerencia", "rh", "tecnico", "admin"] %}
                     <div class="history-export-actions">
-                        <a class="secondary-action" href="#" data-export-format="excel">Excel</a>
-                        <a class="primary-action" href="#" data-export-format="pdf">PDF</a>
+                        <a class="secondary-action" href="{{ url_for('reports_pages.export_excel') }}">Excel</a>
                     </div>
                     {% endif %}
                     <span class="record-count">{{ agendamentos.total if agendamentos else 0 }}</span>
@@ -285,64 +284,90 @@
                     <div>
                         <p class="eyebrow">Controle de acesso</p>
                         <h2>Permissões dos setores</h2>
+                        <p class="permission-panel-intro">Escolha o que os funcionários de cada setor podem visualizar e alterar no sistema.</p>
                     </div>
                 </div>
 
                 {% if paineis_permissoes %}
+                <div class="sector-permission-list">
                     {% for painel in paineis_permissoes %}
-                    <div class="table-title-row">
-                        <div>
-                            <p class="eyebrow">Setor</p>
-                            <h2>{{ painel.setor.nome }}</h2>
-                        </div>
-                    </div>
+                    <details class="sector-permission-group" open>
+                        <summary class="sector-permission-summary">
+                            <span class="sector-permission-icon" aria-hidden="true">{{ painel.setor.nome[:1]|upper }}</span>
+                            <span class="sector-permission-heading">
+                                <small>Setor</small>
+                                <strong>{{ painel.setor.nome }}</strong>
+                            </span>
+                            <span class="sector-permission-count">{{ painel.linhas|length }} módulos</span>
+                            <span class="sector-permission-arrow" aria-hidden="true"></span>
+                        </summary>
 
-                    <div class="table-scroll users-table-scroll">
-                        <table class="users-table">
-                            <thead>
-                                <tr>
-                                    <th>Módulo</th>
-                                    <th>Visualizar</th>
-                                    <th>Criar</th>
-                                    <th>Editar</th>
-                                    <th>Excluir</th>
-                                    <th>Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for linha in painel.linhas %}
-                                <tr>
-                                    <td data-label="Módulo">{{ linha.modulo.nome }}</td>
-                                    <td data-label="Visualizar">
-                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_visualizar" type="checkbox" {% if linha.permissao.pode_visualizar %}checked{% endif %}>
-                                    </td>
-                                    <td data-label="Criar">
-                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_criar" type="checkbox" {% if linha.permissao.pode_criar %}checked{% endif %}>
-                                    </td>
-                                    <td data-label="Editar">
-                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_editar" type="checkbox" {% if linha.permissao.pode_editar %}checked{% endif %}>
-                                    </td>
-                                    <td data-label="Excluir">
-                                        <input form="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}" name="pode_excluir" type="checkbox" {% if linha.permissao.pode_excluir %}checked{% endif %}>
-                                    </td>
-                                    <td data-label="Ação">
-                                        <form
-                                            id="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}"
-                                            class="sector-permission-form"
-                                            action="{{ url_for('sector_permissions.save_sector_permission', sector_id=painel.setor.id) }}"
-                                            method="POST"
-                                            data-api-method="PUT"
-                                        >
-                                            <input name="modulo_id" type="hidden" value="{{ linha.modulo.id }}">
-                                            <button class="secondary-action role-save-btn" type="submit">Salvar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                        <div class="permission-module-grid">
+                            {% for linha in painel.linhas %}
+                            <article class="permission-module-card">
+                                <div class="permission-module-head">
+                                    <div>
+                                        <span class="permission-module-label">Módulo</span>
+                                        <h3>{{ linha.modulo.nome }}</h3>
+                                    </div>
+                                    <span class="permission-module-state">Definir acesso</span>
+                                </div>
+
+                                <form
+                                    id="permission-{{ painel.setor.id }}-{{ linha.modulo.id }}"
+                                    class="sector-permission-form"
+                                    action="{{ url_for('sector_permissions.save_sector_permission', sector_id=painel.setor.id) }}"
+                                    method="POST"
+                                    data-api-method="PUT"
+                                >
+                                    <input name="modulo_id" type="hidden" value="{{ linha.modulo.id }}">
+
+                                    <div class="permission-options">
+                                        <label class="permission-option">
+                                            <span class="permission-option-copy">
+                                                <strong>Visualizar {{ linha.modulo.nome }}</strong>
+                                                <small>Permite abrir e consultar este módulo.</small>
+                                            </span>
+                                            <input name="pode_visualizar" type="checkbox" {% if linha.permissao.pode_visualizar %}checked{% endif %}>
+                                            <span class="permission-switch" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="permission-option">
+                                            <span class="permission-option-copy">
+                                                <strong>Criar em {{ linha.modulo.nome }}</strong>
+                                                <small>Permite cadastrar novos registros.</small>
+                                            </span>
+                                            <input name="pode_criar" type="checkbox" {% if linha.permissao.pode_criar %}checked{% endif %}>
+                                            <span class="permission-switch" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="permission-option">
+                                            <span class="permission-option-copy">
+                                                <strong>Editar em {{ linha.modulo.nome }}</strong>
+                                                <small>Permite atualizar registros existentes.</small>
+                                            </span>
+                                            <input name="pode_editar" type="checkbox" {% if linha.permissao.pode_editar %}checked{% endif %}>
+                                            <span class="permission-switch" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="permission-option permission-option-danger">
+                                            <span class="permission-option-copy">
+                                                <strong>Excluir em {{ linha.modulo.nome }}</strong>
+                                                <small>Permite remover registros deste módulo.</small>
+                                            </span>
+                                            <input name="pode_excluir" type="checkbox" {% if linha.permissao.pode_excluir %}checked{% endif %}>
+                                            <span class="permission-switch" aria-hidden="true"></span>
+                                        </label>
+                                    </div>
+
+                                    <button class="primary-action permission-save-btn" type="submit">Salvar permissões de {{ linha.modulo.nome }}</button>
+                                </form>
+                            </article>
+                            {% endfor %}
+                        </div>
+                    </details>
                     {% endfor %}
+                </div>
                 {% else %}
                 <div class="empty">Cadastre um setor para definir suas permissões.</div>
                 {% endif %}
@@ -490,5 +515,6 @@
 </main>
 
 <script src="{{ url_for('static', filename='js/home.js', v='20260818-1') }}"></script>
+<script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 </body>
 </html>

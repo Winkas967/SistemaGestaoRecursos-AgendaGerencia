@@ -61,24 +61,24 @@ def home():
             "linhas": permission_rows,
         })
         
-        #verifica se um usuario e admin
-        is_admin = (
-            str(session.get("role") or "").lower()
-            == "admin"
-        )
-        
-        #busca as reservas exibidas na pag inicial
-        reservations = ReservationService.get_for_home(
-            user_id=session.get("user_id"),
-            is_admin=is_admin,
-        )
-        
-        #separa os agendamentos que ainda podem ser fechados
-        open_reservations = [
-            reservation
-            for reservation in reservations["items"]
-            if reservation["status"] in ("reservado", "em_uso")
-        ]
+    #verifica se um usuario e admin
+    is_admin = (
+        str(session.get("role") or "").lower()
+        == "admin"
+    )
+    
+    #busca as reservas exibidas na pag inicial
+    reservations = ReservationService.get_for_home(
+        user_id=session.get("user_id"),
+        is_admin=is_admin,
+    )
+    
+    #separa os agendamentos que ainda podem ser fechados
+    open_reservations = [
+        reservation
+        for reservation in reservations["items"]
+        if reservation["status"] in ("reservado", "em_uso")
+    ]
 
     return render_template(
         "home.html",

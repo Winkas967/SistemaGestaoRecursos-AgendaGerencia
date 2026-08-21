@@ -580,3 +580,31 @@ if (reservationForm) {
         }
     });
 }
+
+//salva as permissoes de cada modulo do setor
+document.querySelectorAll(".sector-permission-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const data = {
+            modulo_id: Number(form.elements.modulo_id.value),
+            pode_visualizar: form.elements.pode_visualizar.checked,
+            pode_criar: form.elements.pode_criar.checked,
+            pode_editar: form.elements.pode_editar.checked,
+            pode_excluir: form.elements.pode_excluir.checked,
+        };
+
+        try {
+            await enviarJson(
+                form.action,
+                form.dataset.apiMethod,
+                data,
+            );
+
+            window.alert("Permissões atualizadas com sucesso.");
+            window.location.reload();
+        } catch (error) {
+            window.alert(error.message);
+        }
+    })
+})

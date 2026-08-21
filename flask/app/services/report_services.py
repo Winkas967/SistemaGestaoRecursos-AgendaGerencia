@@ -378,3 +378,49 @@ class ReportService:
             )
         ),
     }
+        
+        
+    #prepara as reservas detalhadas para a exportacao
+    @staticmethod
+    def get_reservation_details(filters=None):
+        prepared_filters = (
+            ReportService.prepare_filters(filters)
+        )
+        
+        #busca as reservas do banco
+        records = (
+            ReportModel.get_reservation_details(
+                **prepared_filters
+            )
+        )
+        
+        #define os nomes apresentados no excel
+        status_labels = {
+            "reservado": "Reservado",
+            "em_uso": "Em uso",
+            "devolvido": "Devolvido",
+            "cancelado": "Cancelado"
+        }
+        
+        #prepara os valores de cada reserva
+        for record in records:
+            status = str(
+                record.get("status") or ""
+            ).lower()
+            
+            record["status"] = status_labels.get(
+                status,
+                status.replace("_"," ").title(),
+            )
+            
+            #substitui valores vazios
+            for field in [
+                "data_volta",
+                "hora_fim",
+                "motivo",
+                "observacao"
+            ]:
+                if record.get(field) is None:
+                    record[field] = ""
+                    
+        return records

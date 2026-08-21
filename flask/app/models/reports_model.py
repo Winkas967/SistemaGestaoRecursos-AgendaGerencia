@@ -451,3 +451,95 @@ class ReportModel:
                 
             if connection:
                 connection.close()
+                
+    #busca as reservas detalhadas ao relatorio
+    @staticmethod
+    def get_reservation_details(
+        start_date=None,
+        end_date=None,
+        sector=None,
+    ):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            #prepara os filtros da consulta
+            filter_sql, parameters = (
+                ReportModel.build_filters(
+                    start_date=start_date,
+                    end_date=end_date,
+                    sector=sector
+                )
+            )
+            
+            # Monta a consulta das reservas
+            query = f"""
+                SELECT
+                    rv.id,
+                    DATE_FORMAT(
+                        rv.data_reserva,
+                        '%%d/%%m/%%Y'
+                    ) AS data_reserva,
+                    DATE_FORMAT(
+                        rv.data_volta,
+                        '%%d/%%m/%%Y'
+                    ) AS data_volta,
+                    TIME_FORMAT(
+                        rv.hora_inicio,
+                        '%%H:%%i'
+                    ) AS hora_inicio,
+                    TIME_FORMAT(
+                        rv.hora_fim,
+                        '%%H:%%i'
+                    ) AS hora_fim,
+                    r.nome AS recurso,
+                    COALESCE(
+                        NULLIF(rv.responsavel, ''),
+                        u.usuario,
+                        'Não informado'
+                    ) AS responsavel,
+                    COALESCE(
+                        s.nome,
+                        'Sem setor'
+                    ) AS setor,
+                    rv.motivo,
+                    rv.observacao,
+                    CASE
+                        WHEN rv.viagem = TRUE
+                        THEN 'Sim'
+                        ELSE 'Não'
+                    END AS viagem,
+                    rv.status
+                FROM reservas rv
+                INNER JOIN recursos r
+                    ON r.id = rv.recurso_id
+                LEFT JOIN usuarios u
+                    ON u.id = rv.usuario_id
+                LEFT JOIN setores s
+                    ON s.id = rv.setor_id
+                WHERE 1 = 1
+                {filter_sql}
+                ORDER BY
+                    rv.data_reserva DESC,
+                    rv.hora_inicio DESC
+            """
+
+            # Executa a consulta
+            cursor.execute(
+                query,
+                parameters,
+            )
+
+
+            #retorna todas as reservas
+            return cursor.fetchall()
+        
+        finally:
+            if cursor:
+                cursor.close()
+                
+            if connection:
+                connection.close()
+            
