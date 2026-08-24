@@ -7,6 +7,7 @@ from routes.pages import page_blueprints
 from routes.resources_routes import resources_bp
 from routes.reservations_routes import reservations_bp
 from routes.agenda_routes import agenda_bp
+from routes.minutes_routes import minutes_bp
 
 #registra todos os blueprints na aplicacao
 def register_routes(app):
@@ -33,6 +34,9 @@ def register_routes(app):
     
     #registra as rotas dos compromissos da agenda
     app.register_blueprint(agenda_bp)
+    
+    #registra as rotas das atas
+    app.register_blueprint(minutes_bp)
     
     #registra as rotas que entregam os templates
     for blueprint in page_blueprints:
