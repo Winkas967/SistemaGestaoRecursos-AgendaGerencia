@@ -113,6 +113,7 @@
         doctorForm: document.getElementById("doctorForm"),
         doctorName: document.getElementById("doctorName"),
         doctorType: document.getElementById("doctorType"),
+        doctorEmail: document.getElementById("doctorEmail"),
         doctorFormError: document.getElementById("doctorFormError"),
         cancelDoctorBtn: document.getElementById("cancelDoctorBtn"),
         secondaryCancelDoctorBtn: document.getElementById("secondaryCancelDoctorBtn"),
@@ -896,6 +897,10 @@
             button.addEventListener("click", () => criarDocumentoParaMedico(button.dataset.medico));
         });
 
+        el.docsDoctorsList.querySelectorAll('[data-action="save-provider-email"]').forEach((button) => {
+            button.addEventListener("click", () => salvarEmailMedico(button));
+        });
+
         el.docsDoctorsList.querySelectorAll('[data-action="delete-docs"]').forEach((button) => {
             button.addEventListener("click", () => excluirRegistroDocumentacao(Number(button.dataset.id)));
         });
@@ -936,6 +941,14 @@
                         <h3>${escapeHtml(medico.nome)}</h3>
                         <span class="docs-doctor-type">${DOCTOR_TYPE_LABELS[medico.tipo] || "Méd. credenciado"}</span>
                         <p>${total} documento${total === 1 ? "" : "s"} cadastrado${total === 1 ? "" : "s"}</p>
+                        <div class="docs-provider-email">
+                            <label for="provider-email-${medico.id}">E-mail para avisos</label>
+                            <div>
+                                <input id="provider-email-${medico.id}" type="email" maxlength="255" value="${escapeHtml(medico.emailNotificacao || "")}" placeholder="medico@exemplo.com.br">
+                                <button class="btn" data-action="save-provider-email" data-id="${medico.id}" type="button">Salvar e-mail</button>
+                            </div>
+                            <small>${medico.emailNotificacao && medico.receberAvisos ? "Avisos de vencimento ativados" : "Nenhum e-mail de aviso cadastrado"}</small>
+                        </div>
                         ${medico.descredenciado ? `
                             <div class="docs-disaccredit-details">
                                 <strong>Motivo:</strong>
@@ -1045,12 +1058,13 @@
         event.preventDefault();
         const nome = el.doctorName.value.trim();
         const tipo = el.doctorType.value;
+        const emailNotificacao = el.doctorEmail.value.trim();
         if (!nome) return;
 
         try {
             const novo = await requestJson(DOCTORS_API_URL, {
                 method: "POST",
-                body: JSON.stringify({ nome, tipo }),
+                body: JSON.stringify({ nome, tipo, emailNotificacao }),
             });
 
             fecharModalMedico();
@@ -1071,6 +1085,31 @@
             el.doctorFormError.textContent = error.message;
             el.doctorFormError.classList.remove("hidden");
             showFeedback(error.message, "error");
+        }
+    }
+
+    async function salvarEmailMedico(button) {
+        const providerId = Number(button.dataset.id);
+        const container = button.closest(".docs-provider-email");
+        const input = container.querySelector('input[type="email"]');
+        const emailNotificacao = input.value.trim();
+        button.disabled = true;
+        button.textContent = "Salvando...";
+
+        try {
+            await requestJson(`${DOCTORS_API_URL}/${providerId}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    emailNotificacao,
+                    receberAvisos: Boolean(emailNotificacao),
+                }),
+            });
+            await carregarDocumentacao(true);
+            showFeedback(emailNotificacao ? "E-mail de avisos atualizado." : "E-mail de avisos removido.");
+        } catch (error) {
+            showFeedback(error.message, "error");
+            button.disabled = false;
+            button.textContent = "Salvar e-mail";
         }
     }
 

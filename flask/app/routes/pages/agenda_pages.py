@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, session
+from flask import Blueprint, flash, redirect, render_template, request, send_file, session, url_for
 
+from services.agenda_pdf_service import AgendaPdfService
 from utils.auth import page_permission_required
 
 
@@ -33,4 +34,24 @@ def agenda():
         tema="light",
         modulos_visiveis=visible_modules,
         visualizacao_inicial=initial_view,
+    )
+
+
+# Exporta os compromissos do mês selecionado em PDF
+@agenda_pages_bp.route("/agenda/pdf", methods=["GET"])
+@page_permission_required("agenda")
+def export_month_pdf():
+    try:
+        year = int(request.args.get("ano", ""))
+        month = int(request.args.get("mes", ""))
+        pdf_file = AgendaPdfService.generate_month(year, month)
+    except (TypeError, ValueError) as error:
+        flash(str(error), "erro")
+        return redirect(url_for("agenda_pages.agenda"))
+
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"agenda-{year}-{month:02d}.pdf",
     )

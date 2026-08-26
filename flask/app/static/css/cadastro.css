@@ -222,7 +222,8 @@ body::before {
     color: var(--text-muted);
 }
 
-.campo input {
+.campo input,
+.campo select {
     width: 100%;
     min-height: 46px;
     padding: 12px 13px;
@@ -239,7 +240,8 @@ body::before {
     color: color-mix(in srgb, var(--text-muted), transparent 28%);
 }
 
-.campo input:focus {
+.campo input:focus,
+.campo select:focus {
     border-color: var(--verde-principal);
     box-shadow: 0 0 0 4px rgba(0, 153, 92, 0.16);
     background-color: var(--card-bg);

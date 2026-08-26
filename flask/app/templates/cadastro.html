@@ -64,7 +64,7 @@
                 {% endif %}
             {% endwith %}
 
-            <form action="#" method="POST" data-pending-endpoint="cadastrar-usuario">
+            <form action="{{ url_for('auth_pages.cadastro_page') }}" method="POST">
                 <div class="campo">
                     <label for="usuario">Usuário</label>
                     <input
@@ -87,6 +87,16 @@
                         autocomplete="new-password"
                         required
                     >
+                </div>
+
+                <div class="campo">
+                    <label for="setor_id">Setor</label>
+                    <select id="setor_id" name="setor_id" required>
+                        <option value="">Selecione seu setor</option>
+                        {% for setor in setores %}
+                            <option value="{{ setor.id }}"{% if request.form.get('setor_id') == setor.id|string %} selected{% endif %}>{{ setor.nome }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <button type="submit">Cadastrar</button>

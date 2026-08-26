@@ -1492,6 +1492,54 @@ textarea:focus {
     font-weight: 800;
 }
 
+.docs-provider-email {
+    max-width: 570px;
+    margin-top: 12px;
+}
+
+.docs-provider-email > label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.docs-provider-email > div {
+    display: flex;
+    gap: 8px;
+}
+
+.docs-provider-email input {
+    flex: 1;
+    min-width: 220px;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.docs-provider-email small {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+@media (max-width: 620px) {
+    .docs-provider-email > div {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .docs-provider-email input {
+        min-width: 0;
+    }
+}
+
 .docs-doctor-statuses,
 .docs-doctor-actions {
     display: flex;

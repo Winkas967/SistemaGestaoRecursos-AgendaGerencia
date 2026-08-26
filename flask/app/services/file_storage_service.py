@@ -178,7 +178,13 @@ class FileStorageService:
             raise ValueError("O caminho do arquivo é inválido.")
         
         if absolute_path.is_file():
-            absolute_path.unlink()
+            try:
+                absolute_path.unlink()
+            except OSError as error:
+                raise ValueError(
+                    "O arquivo está em uso e não pode ser excluído agora. "
+                    "Feche o arquivo e tente novamente."
+                ) from error
             
         FileModel.delete(file_record.id)
         

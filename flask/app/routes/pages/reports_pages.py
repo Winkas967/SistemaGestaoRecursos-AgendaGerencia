@@ -99,7 +99,7 @@ def export_excel():
     return send_file(
         excel_file,
         mimetype=(
-            "apllication/vnd.openxmlformats-"
+            "application/vnd.openxmlformats-"
             "officedocument.spreadsheetml.sheet"
         ),
         as_attachment=True,

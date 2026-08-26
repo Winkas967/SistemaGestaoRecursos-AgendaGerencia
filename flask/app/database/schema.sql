@@ -309,6 +309,7 @@ CREATE TABLE IF NOT EXISTS avisos_email_enviados (
     KEY idx_avisos_documento_id (documento_id),
     KEY idx_avisos_prestador_id (prestador_id),
     KEY idx_avisos_email_destinatario (email_destinatario),
+    UNIQUE KEY uq_aviso_documento_email_chave (documento_id, email_destinatario, chave),
     CONSTRAINT fk_avisos_documento
         FOREIGN KEY (documento_id) REFERENCES documentos_prestador (id)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -316,4 +317,3 @@ CREATE TABLE IF NOT EXISTS avisos_email_enviados (
         FOREIGN KEY (prestador_id) REFERENCES prestadores (id)
         ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-

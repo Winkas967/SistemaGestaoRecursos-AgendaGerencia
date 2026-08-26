@@ -240,13 +240,13 @@ class MinutesService:
         minute = MinutesService.get_by_id(minute_id)
         
         file_id = minute.arquivo_id
-        
+
+        if file_id:
+            FileStorageService.delete(file_id)
+
         deleted = MinuteModel.delete(minute.id)
         
         if not deleted:
             raise ValueError("Não foi possível excluir a ata.")
         
-        if file_id:
-            FileStorageService.delete(file_id)
-            
         return True

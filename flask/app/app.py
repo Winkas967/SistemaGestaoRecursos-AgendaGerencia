@@ -8,6 +8,7 @@ load_dotenv()
 from config import Config
 
 from routes import register_routes
+from services.email_notifications_scheduler import start_email_notifications_scheduler
 
 #cria e configura a aplicacao
 def create_app():
@@ -23,6 +24,9 @@ def create_app():
     
     #registra blueprints
     register_routes(app)
+
+    #verifica os vencimentos ao iniciar e repete enquanto o sistema estiver ativo
+    start_email_notifications_scheduler(app)
     
     #retorna a aplicacao pronta
     return app
