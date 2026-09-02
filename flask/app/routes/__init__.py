@@ -11,6 +11,7 @@ from routes.minutes_routes import minutes_bp
 from routes.documents_routes import documents_bp
 from routes.providers_routes import providers_bp
 from routes.settings_routes import settings_bp
+from routes.evaluations_routes import evaluations_bp
 
 #registra todos os blueprints na aplicacao
 def register_routes(app):
@@ -49,6 +50,9 @@ def register_routes(app):
     
     #registra as rotas das configuracoes gerais
     app.register_blueprint(settings_bp)
+    
+    #registra as rotas das avaliacoes
+    app.register_blueprint(evaluations_bp)
     
     #registra as rotas que entregam os templates
     for blueprint in page_blueprints:

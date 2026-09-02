@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260902-11') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260902-12') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -312,28 +312,8 @@
                     <label><span>Categoria</span><select disabled><option>Todas as categorias</option></select></label>
                 </div>
                 <div class="evaluation-process-table-head"><span>Cadastro</span><span>Etapa atual</span><span>Progresso</span><span>Atualização</span><span></span></div>
-                <div class="evaluation-process-items">
-                    <article class="evaluation-process-item">
-                        <div class="evaluation-process-provider"><i>CE</i><span><strong>Clínica Exemplo</strong><small>Diagnóstico</small></span></div>
-                        <span class="evaluation-process-stage is-progress">Checklist</span>
-                        <div class="evaluation-process-progress"><span><i style="width: 66%"></i></span><small>2 de 3 etapas</small></div>
-                        <time>Hoje, 09:30</time>
-                        <label class="btn evaluation-continue-button" for="evaluationProcessDetail">Continuar</label>
-                    </article>
-                    <article class="evaluation-process-item">
-                        <div class="evaluation-process-provider"><i>DJ</i><span><strong>Dr. João da Silva</strong><small>Méd. cooperado</small></span></div>
-                        <span class="evaluation-process-stage">Termo de adesão</span>
-                        <div class="evaluation-process-progress"><span><i style="width: 33%"></i></span><small>1 de 3 etapas</small></div>
-                        <time>Ontem, 14:20</time>
-                        <label class="btn evaluation-continue-button" for="evaluationProcessDetail">Continuar</label>
-                    </article>
-                    <article class="evaluation-process-item is-complete">
-                        <div class="evaluation-process-provider"><i>HS</i><span><strong>Hospital Saúde</strong><small>Hospital</small></span></div>
-                        <span class="evaluation-process-stage is-complete">Concluída</span>
-                        <div class="evaluation-process-progress"><span><i style="width: 100%"></i></span><small>3 de 3 etapas</small></div>
-                        <time>28 ago. 2026</time>
-                        <label class="btn evaluation-continue-button" for="evaluationProcessDetail">Visualizar</label>
-                    </article>
+                <div class="evaluation-process-items" id="evaluationProcessItems">
+                    <div class="evaluation-list-message">Carregando avaliações...</div>
                 </div>
             </div>
 
@@ -341,10 +321,10 @@
                 <div class="evaluation-selected-provider">
                     <label class="evaluation-back-button" for="evaluationProcessList">← <span>Voltar para avaliações</span></label>
                     <div class="evaluation-selected-main">
-                        <div class="evaluation-selected-avatar">CE</div>
-                        <div><span>Avaliação de</span><h3>Clínica Exemplo</h3><p>Diagnóstico • Processo em andamento</p></div>
+                        <div class="evaluation-selected-avatar" id="evaluationSelectedAvatar">--</div>
+                        <div><span>Avaliação de</span><h3 id="evaluationSelectedName">Selecione uma avaliação</h3><p id="evaluationSelectedSubtitle">Processo de avaliação</p></div>
                     </div>
-                    <div class="evaluation-selected-meta"><span>Etapa atual</span><strong>Termo de adesão</strong></div>
+                    <div class="evaluation-selected-meta"><span>Etapa atual</span><strong id="evaluationSelectedStage">--</strong></div>
                 </div>
 
             <div class="evaluation-workflow">
@@ -372,26 +352,26 @@
                 <div class="evaluation-stage evaluation-stage-term">
                     <div class="evaluation-stage-head">
                         <div><span>Etapa 1</span><h3>Termo de adesão</h3><p>Informe o posicionamento do cadastro e anexe o termo correspondente.</p></div>
-                        <span class="evaluation-stage-status">Aguardando preenchimento</span>
+                        <span class="evaluation-stage-status" id="evaluationTermStatus">Aguardando preenchimento</span>
                     </div>
                     <div class="evaluation-term-body">
                         <fieldset class="evaluation-choice-group evaluation-term-choices">
                             <legend><span>Posicionamento do cadastro</span><small>Selecione uma das opções abaixo</small></legend>
                             <div class="evaluation-choice-options">
                                 <label class="is-accepted">
-                                    <input type="radio" name="prototypeAcceptance">
+                                    <input type="radio" name="evaluationTermPosition" value="aceitou">
                                     <span class="evaluation-choice-icon" aria-hidden="true">✓</span>
                                     <span><strong>Aceitou</strong><small>Adesão confirmada</small></span>
                                     <i aria-hidden="true"></i>
                                 </label>
                                 <label class="is-refused">
-                                    <input type="radio" name="prototypeAcceptance">
+                                    <input type="radio" name="evaluationTermPosition" value="recusou">
                                     <span class="evaluation-choice-icon" aria-hidden="true">×</span>
                                     <span><strong>Recusou</strong><small>Adesão recusada</small></span>
                                     <i aria-hidden="true"></i>
                                 </label>
                                 <label class="is-waiting">
-                                    <input type="radio" name="prototypeAcceptance">
+                                    <input type="radio" name="evaluationTermPosition" value="sem_posicionamento">
                                     <span class="evaluation-choice-icon" aria-hidden="true">...</span>
                                     <span><strong>Sem posicionamento</strong><small>Aguardando resposta</small></span>
                                     <i aria-hidden="true"></i>
@@ -406,12 +386,15 @@
                                 <div><strong>Documento do termo</strong><p>Anexe o termo assinado ou o documento relacionado ao posicionamento.</p></div>
                             </div>
                             <div class="evaluation-upload-action">
-                                <div><strong>Nenhum arquivo selecionado</strong><small>PDF, DOC, DOCX, JPG ou PNG</small></div>
-                                <button class="btn" type="button" disabled>Escolher arquivo</button>
+                                <div><strong id="evaluationTermFileName">Nenhum arquivo selecionado</strong><small>PDF, DOC, DOCX, JPG ou PNG</small></div>
+                                <input id="evaluationTermFile" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" hidden>
+                                <label class="btn" for="evaluationTermFile">Escolher arquivo</label>
                             </div>
+                            <a class="evaluation-term-download hidden" id="evaluationTermDownload" href="#">Baixar termo atual</a>
                         </div>
                     </div>
-                    <div class="evaluation-stage-actions"><button class="btn btn-primary" type="button" disabled>Salvar e continuar</button></div>
+                    <p class="evaluation-form-message hidden" id="evaluationTermMessage"></p>
+                    <div class="evaluation-stage-actions"><button class="btn btn-primary" id="evaluationTermSaveButton" type="button">Salvar e continuar</button></div>
                 </div>
 
                 <div class="evaluation-stage evaluation-stage-checklist">
@@ -513,11 +496,8 @@
         <div class="evaluation-new-modal-body">
             <label class="evaluation-new-field">
                 <span>Cadastro</span>
-                <select>
-                    <option value="">Selecione um cadastro</option>
-                    <option>Clínica Exemplo — Diagnóstico</option>
-                    <option>Dr. João da Silva — Méd. cooperado</option>
-                    <option>Hospital Saúde — Hospital</option>
+                <select id="evaluationProviderSelect">
+                    <option value="">Carregando cadastros...</option>
                 </select>
                 <small>Serão listados apenas os cadastros que ainda não possuem uma avaliação em andamento.</small>
             </label>
@@ -525,10 +505,11 @@
                 <span class="evaluation-new-info-icon" aria-hidden="true">i</span>
                 <div><strong>Um único processo por cadastro</strong><p>Depois de iniciado, o cadastro permanecerá vinculado ao termo de adesão, ao checklist e ao feedback final.</p></div>
             </div>
+            <p class="evaluation-form-message hidden" id="evaluationNewError"></p>
         </div>
         <footer class="evaluation-new-modal-actions">
             <button class="btn" data-evaluation-modal-close type="button">Cancelar</button>
-            <button class="btn btn-primary" type="button" disabled>Iniciar avaliação</button>
+            <button class="btn btn-primary" id="evaluationStartButton" type="button" disabled>Iniciar avaliação</button>
         </footer>
     </div>
 </div>
@@ -758,6 +739,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260902-10') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260902-12') }}"></script>
 </body>
 </html>

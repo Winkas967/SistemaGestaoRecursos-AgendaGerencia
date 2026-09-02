@@ -684,6 +684,21 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     gap: 10px;
 }
 
+.evaluation-list-message {
+    padding: 34px 20px;
+    color: var(--text-muted);
+    background: var(--input-bg);
+    border: 1px dashed var(--border);
+    border-radius: 15px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.evaluation-list-message.is-error {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
 .evaluation-process-item {
     min-height: 82px;
     padding: 14px 16px;
@@ -1535,6 +1550,42 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 
 .evaluation-upload-action .btn {
     flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.evaluation-term-download {
+    align-self: flex-end;
+    margin-top: 11px;
+    color: var(--verde-principal);
+    font-size: 11px;
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.evaluation-term-download:hover {
+    text-decoration: underline;
+}
+
+.evaluation-term-download.hidden,
+.evaluation-form-message.hidden {
+    display: none;
+}
+
+.evaluation-form-message {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.evaluation-form-message.success {
+    color: var(--verde-principal);
+    background: color-mix(in srgb, var(--verde-principal) 8%, transparent);
+    border-color: color-mix(in srgb, var(--verde-principal) 25%, transparent);
 }
 
 .evaluation-upload-box,

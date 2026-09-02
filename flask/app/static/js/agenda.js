@@ -6,6 +6,7 @@
     const DOCTORS_API_URL = "/api/agenda/medicos";
     const MINUTES_API_URL = "/api/agenda/atas";
     const EMAIL_SETTINGS_API_URL = "/api/configuracoes/avisos-documentacao";
+    const EVALUATIONS_API_URL = "/api/avaliacoes";
     const THEME_KEY = "agendaTheme";
     const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -46,6 +47,11 @@
         atasLoading: false,
         emailNotificationsEnabled: null,
         emailNotificationsLoading: false,
+        avaliacoes: [],
+        avaliacoesCarregadas: false,
+        avaliacoesLoading: false,
+        avaliacaoSelecionada: null,
+        termoAdesao: null,
     };
 
     const el = {
@@ -148,6 +154,26 @@
         evaluationNewTrigger: document.getElementById("evaluationNewTrigger"),
         evaluationNewOverlay: document.querySelector(".evaluation-new-overlay"),
         evaluationModalCloseButtons: document.querySelectorAll("[data-evaluation-modal-close]"),
+        evaluationProcessItems: document.getElementById("evaluationProcessItems"),
+        evaluationProcessList: document.getElementById("evaluationProcessList"),
+        evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
+        evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
+        evaluationStartButton: document.getElementById("evaluationStartButton"),
+        evaluationNewError: document.getElementById("evaluationNewError"),
+        evaluationSelectedAvatar: document.getElementById("evaluationSelectedAvatar"),
+        evaluationSelectedName: document.getElementById("evaluationSelectedName"),
+        evaluationSelectedSubtitle: document.getElementById("evaluationSelectedSubtitle"),
+        evaluationSelectedStage: document.getElementById("evaluationSelectedStage"),
+        evaluationStepTerm: document.getElementById("evaluationStepTerm"),
+        evaluationStepChecklist: document.getElementById("evaluationStepChecklist"),
+        evaluationStepFeedback: document.getElementById("evaluationStepFeedback"),
+        evaluationTermStatus: document.getElementById("evaluationTermStatus"),
+        evaluationTermFile: document.getElementById("evaluationTermFile"),
+        evaluationTermFileName: document.getElementById("evaluationTermFileName"),
+        evaluationTermDownload: document.getElementById("evaluationTermDownload"),
+        evaluationTermMessage: document.getElementById("evaluationTermMessage"),
+        evaluationTermSaveButton: document.getElementById("evaluationTermSaveButton"),
+        evaluationTermPositions: document.querySelectorAll('[name="evaluationTermPosition"]'),
     };
 
     function toISODate(date) {
@@ -209,6 +235,9 @@
         }
         if (view === "atas" && !state.atasCarregadas && !state.atasLoading) {
             carregarAtas();
+        }
+        if (view === "avaliacao" && !state.avaliacoesCarregadas && !state.avaliacoesLoading) {
+            carregarAvaliacoes();
         }
     }
 
@@ -421,6 +450,229 @@
         }
 
         return data;
+    }
+
+    const EVALUATION_STAGE_LABELS = {
+        termo_adesao: "Termo de adesão",
+        checklist: "Checklist",
+        feedback: "Feedback",
+        concluida: "Concluída",
+        concluido: "Concluída",
+    };
+
+    function evaluationInitials(name) {
+        return String(name || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0].toUpperCase())
+            .join("") || "--";
+    }
+
+    function evaluationProgress(item) {
+        if (item.status === "concluida" || item.status === "concluido") return { percent: 100, text: "3 de 3 etapas" };
+        if (item.etapaAtual === "feedback") return { percent: 100, text: "3 de 3 etapas" };
+        if (item.etapaAtual === "checklist") return { percent: 66, text: "2 de 3 etapas" };
+        return { percent: 33, text: "1 de 3 etapas" };
+    }
+
+    function formatEvaluationDate(value) {
+        if (!value) return "Sem atualização";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Sem atualização";
+        return new Intl.DateTimeFormat("pt-BR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        }).format(date);
+    }
+
+    function setEvaluationMessage(element, message = "", type = "error") {
+        if (!element) return;
+        element.textContent = message;
+        element.className = `evaluation-form-message ${type}`;
+        element.classList.toggle("hidden", !message);
+    }
+
+    function renderAvaliacoes() {
+        if (!el.evaluationProcessItems) return;
+        if (!state.avaliacoes.length) {
+            el.evaluationProcessItems.innerHTML = '<div class="evaluation-list-message">Nenhuma avaliação iniciada. Clique em “Iniciar nova avaliação” para começar.</div>';
+            return;
+        }
+
+        el.evaluationProcessItems.innerHTML = state.avaliacoes.map((item) => {
+            const complete = item.status === "concluida" || item.status === "concluido";
+            const progress = evaluationProgress(item);
+            return `
+                <article class="evaluation-process-item${complete ? " is-complete" : ""}">
+                    <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")}</small></span></div>
+                    <span class="evaluation-process-stage${complete ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual)}</span>
+                    <div class="evaluation-process-progress"><span><i style="width: ${progress.percent}%"></i></span><small>${progress.text}</small></div>
+                    <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
+                    <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${complete ? "Visualizar" : "Continuar"}</button>
+                </article>`;
+        }).join("");
+    }
+
+    async function carregarAvaliacoes(force = false) {
+        if (state.avaliacoesLoading || (state.avaliacoesCarregadas && !force)) return;
+        state.avaliacoesLoading = true;
+        if (!state.avaliacoesCarregadas && el.evaluationProcessItems) {
+            el.evaluationProcessItems.innerHTML = '<div class="evaluation-list-message">Carregando avaliações...</div>';
+        }
+        try {
+            const data = await requestJson(EVALUATIONS_API_URL);
+            state.avaliacoes = Array.isArray(data.registros) ? data.registros : [];
+            state.avaliacoesCarregadas = true;
+            renderAvaliacoes();
+        } catch (error) {
+            if (el.evaluationProcessItems) el.evaluationProcessItems.innerHTML = `<div class="evaluation-list-message is-error">${escapeHtml(error.message)}</div>`;
+        } finally {
+            state.avaliacoesLoading = false;
+        }
+    }
+
+    function closeEvaluationModal() {
+        el.evaluationNewOverlay?.classList.remove("open");
+        document.body.classList.remove("modal-open");
+        setEvaluationMessage(el.evaluationNewError);
+    }
+
+    async function openEvaluationModal() {
+        if (!el.evaluationNewOverlay) return;
+        el.evaluationNewOverlay.classList.add("open");
+        document.body.classList.add("modal-open");
+        setEvaluationMessage(el.evaluationNewError);
+        el.evaluationProviderSelect.disabled = true;
+        el.evaluationStartButton.disabled = true;
+        el.evaluationProviderSelect.innerHTML = '<option value="">Carregando cadastros...</option>';
+        try {
+            const data = await requestJson(`${EVALUATIONS_API_URL}/cadastros-disponiveis`);
+            const providers = Array.isArray(data.registros) ? data.registros : [];
+            el.evaluationProviderSelect.innerHTML = providers.length
+                ? '<option value="">Selecione um cadastro</option>' + providers.map((provider) => `<option value="${Number(provider.id)}">${escapeHtml(provider.nome)} — ${escapeHtml(provider.categoriaNome || "Sem categoria")}</option>`).join("")
+                : '<option value="">Nenhum cadastro disponível</option>';
+            el.evaluationProviderSelect.disabled = !providers.length;
+        } catch (error) {
+            el.evaluationProviderSelect.innerHTML = '<option value="">Não foi possível carregar</option>';
+            setEvaluationMessage(el.evaluationNewError, error.message);
+        }
+    }
+
+    async function iniciarAvaliacao() {
+        const providerId = Number(el.evaluationProviderSelect?.value);
+        if (!providerId) {
+            setEvaluationMessage(el.evaluationNewError, "Selecione um cadastro para iniciar a avaliação.");
+            return;
+        }
+        el.evaluationStartButton.disabled = true;
+        el.evaluationStartButton.textContent = "Iniciando...";
+        try {
+            const evaluation = await requestJson(EVALUATIONS_API_URL, {
+                method: "POST",
+                body: JSON.stringify({ prestadorId: providerId }),
+            });
+            closeEvaluationModal();
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            await abrirAvaliacao(evaluation.id);
+            showFeedback("Avaliação iniciada com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationNewError, error.message);
+        } finally {
+            el.evaluationStartButton.textContent = "Iniciar avaliação";
+            el.evaluationStartButton.disabled = !el.evaluationProviderSelect?.value;
+        }
+    }
+
+    function renderTermoAdesao() {
+        const term = state.termoAdesao;
+        el.evaluationTermPositions.forEach((input) => {
+            input.checked = term?.posicionamento === input.value;
+        });
+        el.evaluationTermFile.value = "";
+        el.evaluationTermFileName.textContent = term?.arquivo?.nome || "Nenhum arquivo selecionado";
+        el.evaluationTermStatus.textContent = term ? "Termo registrado" : "Aguardando preenchimento";
+        if (term?.arquivo?.url) {
+            el.evaluationTermDownload.href = term.arquivo.url;
+            el.evaluationTermDownload.classList.remove("hidden");
+        } else {
+            el.evaluationTermDownload.href = "#";
+            el.evaluationTermDownload.classList.add("hidden");
+        }
+        setEvaluationMessage(el.evaluationTermMessage);
+    }
+
+    function renderAvaliacaoSelecionada() {
+        const item = state.avaliacaoSelecionada;
+        if (!item) return;
+        el.evaluationSelectedAvatar.textContent = evaluationInitials(item.prestadorNome);
+        el.evaluationSelectedName.textContent = item.prestadorNome;
+        el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • ${item.status === "em_andamento" ? "Processo em andamento" : "Processo concluído"}`;
+        el.evaluationSelectedStage.textContent = EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
+        renderTermoAdesao();
+    }
+
+    async function abrirAvaliacao(id) {
+        try {
+            const [evaluation, termData] = await Promise.all([
+                requestJson(`${EVALUATIONS_API_URL}/${id}`),
+                requestJson(`${EVALUATIONS_API_URL}/${id}/termo`),
+            ]);
+            state.avaliacaoSelecionada = evaluation;
+            state.termoAdesao = termData.termo || null;
+            renderAvaliacaoSelecionada();
+            el.evaluationProcessDetail.checked = true;
+            if (evaluation.etapaAtual === "feedback") el.evaluationStepFeedback.checked = true;
+            else if (evaluation.etapaAtual === "checklist") el.evaluationStepChecklist.checked = true;
+            else el.evaluationStepTerm.checked = true;
+        } catch (error) {
+            showFeedback(error.message, "error");
+        }
+    }
+
+    async function salvarTermoAdesao() {
+        const evaluation = state.avaliacaoSelecionada;
+        const position = Array.from(el.evaluationTermPositions).find((input) => input.checked)?.value;
+        if (!evaluation) return;
+        if (!position) {
+            setEvaluationMessage(el.evaluationTermMessage, "Selecione o posicionamento do cadastro.");
+            return;
+        }
+        const file = el.evaluationTermFile.files?.[0];
+        if (!file && !state.termoAdesao?.arquivo) {
+            setEvaluationMessage(el.evaluationTermMessage, "Anexe o documento do termo de adesão.");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("posicionamento", position);
+        if (file) formData.append("arquivo", file);
+        el.evaluationTermSaveButton.disabled = true;
+        el.evaluationTermSaveButton.textContent = "Salvando...";
+        setEvaluationMessage(el.evaluationTermMessage);
+        try {
+            const response = await fetch(`${EVALUATIONS_API_URL}/${evaluation.id}/termo`, {
+                method: "PUT",
+                headers: { Accept: "application/json" },
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.erro || "Não foi possível salvar o termo.");
+            state.termoAdesao = data;
+            state.avaliacaoSelecionada.etapaAtual = data.avaliacaoEtapaAtual || "checklist";
+            renderAvaliacaoSelecionada();
+            el.evaluationStepChecklist.checked = true;
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            showFeedback("Termo de adesão salvo com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationTermMessage, error.message);
+        } finally {
+            el.evaluationTermSaveButton.disabled = false;
+            el.evaluationTermSaveButton.textContent = "Salvar e continuar";
+        }
     }
 
     function renderEstadoAvisosGlobais() {
@@ -1730,16 +1982,25 @@
             tab.addEventListener("click", () => switchView(tab.dataset.view));
         });
         if (el.evaluationNewTrigger && el.evaluationNewOverlay) {
-            el.evaluationNewTrigger.addEventListener("click", () => {
-                el.evaluationNewOverlay.classList.add("open");
-                document.body.classList.add("modal-open");
-            });
+            el.evaluationNewTrigger.addEventListener("click", openEvaluationModal);
             el.evaluationModalCloseButtons.forEach((button) => {
-                button.addEventListener("click", () => {
-                    el.evaluationNewOverlay.classList.remove("open");
-                    document.body.classList.remove("modal-open");
-                });
+                button.addEventListener("click", closeEvaluationModal);
             });
+            el.evaluationProviderSelect.addEventListener("change", () => {
+                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value;
+                setEvaluationMessage(el.evaluationNewError);
+            });
+            el.evaluationStartButton.addEventListener("click", iniciarAvaliacao);
+            el.evaluationProcessItems.addEventListener("click", (event) => {
+                const button = event.target.closest("[data-evaluation-open]");
+                if (button) abrirAvaliacao(Number(button.dataset.evaluationOpen));
+            });
+            el.evaluationTermFile.addEventListener("change", () => {
+                el.evaluationTermFileName.textContent = el.evaluationTermFile.files?.[0]?.name || state.termoAdesao?.arquivo?.nome || "Nenhum arquivo selecionado";
+                setEvaluationMessage(el.evaluationTermMessage);
+            });
+            el.evaluationTermPositions.forEach((input) => input.addEventListener("change", () => setEvaluationMessage(el.evaluationTermMessage)));
+            el.evaluationTermSaveButton.addEventListener("click", salvarTermoAdesao);
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);
@@ -1874,10 +2135,7 @@
                 fecharModalMedico();
                 fecharFormularioDescredenciamento();
                 fecharFormularioAta();
-                if (el.evaluationNewOverlay) {
-                    el.evaluationNewOverlay.classList.remove("open");
-                    document.body.classList.remove("modal-open");
-                }
+                closeEvaluationModal();
             }
         });
         document.addEventListener("click", (event) => {
