@@ -5,6 +5,7 @@
     const DOCS_API_URL = "/api/agenda/documentacao";
     const DOCTORS_API_URL = "/api/agenda/medicos";
     const MINUTES_API_URL = "/api/agenda/atas";
+    const EMAIL_SETTINGS_API_URL = "/api/configuracoes/avisos-documentacao";
     const THEME_KEY = "agendaTheme";
     const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -43,6 +44,8 @@
         atasAnos: [],
         atasCarregadas: false,
         atasLoading: false,
+        emailNotificationsEnabled: null,
+        emailNotificationsLoading: false,
     };
 
     const el = {
@@ -118,6 +121,9 @@
         cancelDoctorBtn: document.getElementById("cancelDoctorBtn"),
         secondaryCancelDoctorBtn: document.getElementById("secondaryCancelDoctorBtn"),
         newDocsBtn: document.getElementById("newDocsBtn"),
+        docsEmailGlobalControl: document.getElementById("docsEmailGlobalControl"),
+        docsEmailGlobalStatus: document.getElementById("docsEmailGlobalStatus"),
+        docsEmailGlobalButton: document.getElementById("docsEmailGlobalButton"),
         docsDirtyCount: document.getElementById("docsDirtyCount"),
         docsPercentText: document.getElementById("docsPercentText"),
         docsSummary: document.getElementById("docsSummary"),
@@ -139,6 +145,9 @@
         disaccreditFormError: document.getElementById("disaccreditFormError"),
         cancelDisaccreditBtn: document.getElementById("cancelDisaccreditBtn"),
         secondaryCancelDisaccreditBtn: document.getElementById("secondaryCancelDisaccreditBtn"),
+        evaluationNewTrigger: document.getElementById("evaluationNewTrigger"),
+        evaluationNewOverlay: document.querySelector(".evaluation-new-overlay"),
+        evaluationModalCloseButtons: document.querySelectorAll("[data-evaluation-modal-close]"),
     };
 
     function toISODate(date) {
@@ -194,6 +203,9 @@
 
         if (view === "documentacao" && !state.documentacao && !state.docsLoading) {
             carregarDocumentacao();
+        }
+        if (view === "documentacao" && state.emailNotificationsEnabled === null && !state.emailNotificationsLoading) {
+            carregarEstadoAvisosGlobais();
         }
         if (view === "atas" && !state.atasCarregadas && !state.atasLoading) {
             carregarAtas();
@@ -405,10 +417,83 @@
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw new Error(data.erro || "Não foi possível concluir a ação.");
+            throw new Error(data.erro || data.error || "Não foi possível concluir a ação.");
         }
 
         return data;
+    }
+
+    function renderEstadoAvisosGlobais() {
+        if (!el.docsEmailGlobalControl) return;
+
+        const enabled = state.emailNotificationsEnabled;
+        const loading = state.emailNotificationsLoading;
+        el.docsEmailGlobalControl.classList.toggle("is-active", enabled === true);
+        el.docsEmailGlobalControl.classList.toggle("is-paused", enabled === false);
+        el.docsEmailGlobalButton.disabled = loading;
+
+        if (loading) {
+            el.docsEmailGlobalStatus.textContent = "Consultando envios...";
+            el.docsEmailGlobalButton.textContent = "Aguarde...";
+            return;
+        }
+
+        if (enabled === null) {
+            el.docsEmailGlobalStatus.textContent = "Não foi possível consultar os envios";
+            el.docsEmailGlobalButton.textContent = "Tentar novamente";
+            return;
+        }
+
+        el.docsEmailGlobalStatus.textContent = enabled
+            ? "Envios automáticos ativos"
+            : "Todos os envios estão pausados";
+        el.docsEmailGlobalButton.textContent = enabled
+            ? "Pausar todos"
+            : "Ativar todos";
+    }
+
+    async function carregarEstadoAvisosGlobais() {
+        state.emailNotificationsLoading = true;
+        renderEstadoAvisosGlobais();
+
+        try {
+            const result = await requestJson(EMAIL_SETTINGS_API_URL);
+            state.emailNotificationsEnabled = Boolean(result.ativo);
+        } catch (error) {
+            state.emailNotificationsEnabled = null;
+            showFeedback(error.message, "error");
+        } finally {
+            state.emailNotificationsLoading = false;
+            renderEstadoAvisosGlobais();
+        }
+    }
+
+    async function alternarAvisosGlobais() {
+        if (state.emailNotificationsEnabled === null) {
+            await carregarEstadoAvisosGlobais();
+            return;
+        }
+
+        const enabled = !state.emailNotificationsEnabled;
+        if (!enabled && !window.confirm("Deseja pausar os avisos de documentação para todos os cadastros?")) return;
+
+        state.emailNotificationsLoading = true;
+        renderEstadoAvisosGlobais();
+        try {
+            const result = await requestJson(EMAIL_SETTINGS_API_URL, {
+                method: "PATCH",
+                body: JSON.stringify({ ativo: enabled }),
+            });
+            state.emailNotificationsEnabled = Boolean(result.ativo);
+            showFeedback(result.ativo
+                ? "Os avisos de documentação foram ativados para todos."
+                : "Os avisos de documentação foram pausados para todos.");
+        } catch (error) {
+            showFeedback(error.message, "error");
+        } finally {
+            state.emailNotificationsLoading = false;
+            renderEstadoAvisosGlobais();
+        }
     }
 
     async function enviarArquivoDocumentacao(id, input) {
@@ -521,6 +606,8 @@
                     nome: medico.nome,
                     tipo: medico.tipo || "credenciado",
                     descredenciado: Boolean(medico.descredenciado),
+                    emailNotificacao: medico.emailNotificacao || "",
+                    receberAvisos: Boolean(medico.receberAvisos),
                     motivoDescredenciamento: medico.motivoDescredenciamento || "",
                     arquivoDescredenciamento: medico.arquivoDescredenciamento || null,
                     documentos: [],
@@ -544,6 +631,8 @@
                     nome: medico,
                     tipo,
                     descredenciado: Boolean(cadastro?.descredenciado),
+                    emailNotificacao: cadastro?.emailNotificacao || "",
+                    receberAvisos: Boolean(cadastro?.receberAvisos),
                     motivoDescredenciamento: cadastro?.motivoDescredenciamento || "",
                     arquivoDescredenciamento: cadastro?.arquivoDescredenciamento || null,
                     documentos: [],
@@ -901,6 +990,10 @@
             button.addEventListener("click", () => salvarEmailMedico(button));
         });
 
+        el.docsDoctorsList.querySelectorAll('[data-action="toggle-provider-notifications"]').forEach((button) => {
+            button.addEventListener("click", () => alternarAvisosMedico(button));
+        });
+
         el.docsDoctorsList.querySelectorAll('[data-action="delete-docs"]').forEach((button) => {
             button.addEventListener("click", () => excluirRegistroDocumentacao(Number(button.dataset.id)));
         });
@@ -947,7 +1040,16 @@
                                 <input id="provider-email-${medico.id}" type="email" maxlength="255" value="${escapeHtml(medico.emailNotificacao || "")}" placeholder="medico@exemplo.com.br">
                                 <button class="btn" data-action="save-provider-email" data-id="${medico.id}" type="button">Salvar e-mail</button>
                             </div>
-                            <small>${medico.emailNotificacao && medico.receberAvisos ? "Avisos de vencimento ativados" : "Nenhum e-mail de aviso cadastrado"}</small>
+                            <div class="docs-provider-notification-control${medico.receberAvisos ? " is-active" : " is-paused"}">
+                                <span>${!medico.emailNotificacao
+                                    ? "Cadastre um e-mail para ativar os avisos"
+                                    : medico.receberAvisos
+                                        ? "Avisos ativos para este cadastro"
+                                        : "Avisos pausados para este cadastro"}</span>
+                                <button class="docs-provider-notification-button" data-action="toggle-provider-notifications" data-id="${medico.id}" data-enabled="${medico.receberAvisos ? "true" : "false"}" type="button" ${medico.emailNotificacao ? "" : "disabled"}>
+                                    ${medico.receberAvisos ? "Pausar" : "Ativar"}
+                                </button>
+                            </div>
                         </div>
                         ${medico.descredenciado ? `
                             <div class="docs-disaccredit-details">
@@ -1093,6 +1195,10 @@
         const container = button.closest(".docs-provider-email");
         const input = container.querySelector('input[type="email"]');
         const emailNotificacao = input.value.trim();
+        const medico = state.documentacao?.medicos?.find((item) => Number(item.id) === providerId);
+        const receberAvisos = medico?.emailNotificacao
+            ? Boolean(medico.receberAvisos)
+            : Boolean(emailNotificacao);
         button.disabled = true;
         button.textContent = "Salvando...";
 
@@ -1101,7 +1207,7 @@
                 method: "PATCH",
                 body: JSON.stringify({
                     emailNotificacao,
-                    receberAvisos: Boolean(emailNotificacao),
+                    receberAvisos: emailNotificacao ? receberAvisos : false,
                 }),
             });
             await carregarDocumentacao(true);
@@ -1110,6 +1216,37 @@
             showFeedback(error.message, "error");
             button.disabled = false;
             button.textContent = "Salvar e-mail";
+        }
+    }
+
+    async function alternarAvisosMedico(button) {
+        const providerId = Number(button.dataset.id);
+        const medico = state.documentacao?.medicos?.find((item) => Number(item.id) === providerId);
+        if (!medico?.emailNotificacao) {
+            showFeedback("Cadastre um e-mail antes de ativar os avisos.", "error");
+            return;
+        }
+
+        const enabled = button.dataset.enabled !== "true";
+        button.disabled = true;
+        button.textContent = enabled ? "Ativando..." : "Pausando...";
+
+        try {
+            await requestJson(`${DOCTORS_API_URL}/${providerId}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    emailNotificacao: medico.emailNotificacao,
+                    receberAvisos: enabled,
+                }),
+            });
+            await carregarDocumentacao(true);
+            showFeedback(enabled
+                ? `Avisos ativados para ${medico.nome}.`
+                : `Avisos pausados para ${medico.nome}.`);
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = enabled ? "Ativar" : "Pausar";
+            showFeedback(error.message, "error");
         }
     }
 
@@ -1592,6 +1729,18 @@
         el.agendaTabs.forEach((tab) => {
             tab.addEventListener("click", () => switchView(tab.dataset.view));
         });
+        if (el.evaluationNewTrigger && el.evaluationNewOverlay) {
+            el.evaluationNewTrigger.addEventListener("click", () => {
+                el.evaluationNewOverlay.classList.add("open");
+                document.body.classList.add("modal-open");
+            });
+            el.evaluationModalCloseButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    el.evaluationNewOverlay.classList.remove("open");
+                    document.body.classList.remove("modal-open");
+                });
+            });
+        }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);
         });
@@ -1659,6 +1808,9 @@
         el.statusOverlay.querySelectorAll("[data-status-option]").forEach((button) => {
             button.addEventListener("click", () => escolherStatusDocumento(button.dataset.statusOption));
         });
+        if (el.docsEmailGlobalButton) {
+            el.docsEmailGlobalButton.addEventListener("click", alternarAvisosGlobais);
+        }
         el.newDocsBtn.addEventListener("click", abrirModalMedico);
         el.doctorForm.addEventListener("submit", criarRegistroDocumentacao);
         el.doctorName.addEventListener("input", () => {
@@ -1722,6 +1874,10 @@
                 fecharModalMedico();
                 fecharFormularioDescredenciamento();
                 fecharFormularioAta();
+                if (el.evaluationNewOverlay) {
+                    el.evaluationNewOverlay.classList.remove("open");
+                    document.body.classList.remove("modal-open");
+                }
             }
         });
         document.addEventListener("click", (event) => {
@@ -1735,6 +1891,9 @@
         initTheme();
         bindEvents();
         carregarCompromissos();
+        if (el.documentacaoView?.classList.contains("active")) {
+            carregarEstadoAvisosGlobais();
+        }
     }
 
     init();

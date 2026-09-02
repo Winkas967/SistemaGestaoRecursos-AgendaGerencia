@@ -4,14 +4,21 @@ from email.message import EmailMessage
 from html import escape
 
 from models.notification_model import NotificationModel
+from services.settings_service import SettingsService
 
 
 class EmailNotificationsService:
     # Envia todos os avisos elegíveis que ainda não foram registrados
     @staticmethod
     def send_due_notifications():
+        result = {"encontrados": 0, "enviados": 0, "ignorados": 0, "erros": 0, "pausado": False}
+        
+        if not SettingsService.email_notifications_enabled():
+            result["pausado"] = True
+            
+            return result
+        
         settings = EmailNotificationsService._settings()
-        result = {"encontrados": 0, "enviados": 0, "ignorados": 0, "erros": 0}
 
         for item in NotificationModel.get_due_documents():
             result["encontrados"] += 1
