@@ -5,6 +5,7 @@ class Evaluation:
     def __init__(
         self,
         prestador_id,
+        ano_referencia,
         iniciado_por_id=None,
         id=None,
         etapa_atual="termo_adesao",
@@ -15,6 +16,7 @@ class Evaluation:
     ):
         self.id = id
         self.prestador_id = prestador_id
+        self.ano_referencia = ano_referencia
         self.etapa_atual = etapa_atual
         self.status = status
         self.iniciado_por_id = iniciado_por_id
@@ -39,6 +41,7 @@ class EvaluationModel:
                 SELECT
                     av.id,
                     av.prestador_id,
+                    av.ano_referencia,
                     p.nome AS prestador_nome,
                     p.categoria_id,
                     cp.nome AS categoria_nome,
@@ -82,6 +85,7 @@ class EvaluationModel:
                 SELECT
                     av.id,
                     av.prestador_id,
+                    av.ano_referencia,
                     p.nome AS prestador_nome,
                     p.categoria_id,
                     cp.nome AS categoria_nome,
@@ -123,6 +127,7 @@ class EvaluationModel:
                 SELECT
                     id,
                     prestador_id,
+                    ano_referencia,
                     etapa_atual,
                     status,
                     iniciado_por_id,
@@ -158,13 +163,15 @@ class EvaluationModel:
             cursor.execute("""
                 INSERT INTO avaliacoes_prestador (
                     prestador_id,
+                    ano_referencia,
                     etapa_atual,
                     status,
                     iniciado_por_id
                 )
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 evaluation.prestador_id,
+                evaluation.ano_referencia,
                 evaluation.etapa_atual,
                 evaluation.status,
                 evaluation.iniciado_por_id,

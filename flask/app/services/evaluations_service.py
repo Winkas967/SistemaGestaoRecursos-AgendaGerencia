@@ -1,3 +1,5 @@
+from datetime import date
+
 from models.evaluations_model import Evaluation, EvaluationModel
 from models.providers_model import ProviderModel
 
@@ -13,6 +15,7 @@ class EvaluationService:
         return {
             "id": evaluation["id"],
             "prestadorId": evaluation["prestador_id"],
+            "anoReferencia": evaluation["ano_referencia"],
             "prestadorNome": evaluation["prestador_nome"],
             "categoriaId": evaluation["categoria_id"],
             "categoriaNome": evaluation["categoria_nome"],
@@ -87,12 +90,26 @@ class EvaluationService:
     
     #inicia uma nova avaliacao para um cadastro
     @staticmethod
-    def create(provider_id, user_id):
+    def create(provider_id, reference_year, user_id):
         try:
             provider_id = int(provider_id)
             
         except (TypeError, ValueError):
             raise ValueError("O cadastro informado é inválido.")
+
+        try:
+            reference_year = int(reference_year)
+
+        except (TypeError, ValueError):
+            raise ValueError("O ano de referência informado é inválido.")
+
+        current_year = date.today().year
+
+        if reference_year < 2000 or reference_year > current_year + 1:
+            raise ValueError(
+                "O ano de referência deve estar entre "
+                f"2000 e {current_year + 1}."
+            )
         
         provider = ProviderModel.get_by_id(provider_id)
         
@@ -111,6 +128,7 @@ class EvaluationService:
         
         evaluation = Evaluation(
             prestador_id=provider.id,
+            ano_referencia=reference_year,
             iniciado_por_id=user_id,
             etapa_atual="termo_adesao",
             status="em_andamento"

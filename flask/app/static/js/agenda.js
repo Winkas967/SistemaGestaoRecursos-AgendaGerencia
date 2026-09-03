@@ -158,6 +158,7 @@
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
+        evaluationReferenceYear: document.getElementById("evaluationReferenceYear"),
         evaluationStartButton: document.getElementById("evaluationStartButton"),
         evaluationNewError: document.getElementById("evaluationNewError"),
         evaluationSelectedAvatar: document.getElementById("evaluationSelectedAvatar"),
@@ -507,7 +508,7 @@
             const progress = evaluationProgress(item);
             return `
                 <article class="evaluation-process-item${complete ? " is-complete" : ""}">
-                    <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")}</small></span></div>
+                    <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")} • ${escapeHtml(item.anoReferencia || "Sem ano")}</small></span></div>
                     <span class="evaluation-process-stage${complete ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual)}</span>
                     <div class="evaluation-process-progress"><span><i style="width: ${progress.percent}%"></i></span><small>${progress.text}</small></div>
                     <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
@@ -547,6 +548,9 @@
         setEvaluationMessage(el.evaluationNewError);
         el.evaluationProviderSelect.disabled = true;
         el.evaluationStartButton.disabled = true;
+        const currentYear = new Date().getFullYear();
+        el.evaluationReferenceYear.value = currentYear;
+        el.evaluationReferenceYear.max = currentYear + 1;
         el.evaluationProviderSelect.innerHTML = '<option value="">Carregando cadastros...</option>';
         try {
             const data = await requestJson(`${EVALUATIONS_API_URL}/cadastros-disponiveis`);
@@ -563,8 +567,14 @@
 
     async function iniciarAvaliacao() {
         const providerId = Number(el.evaluationProviderSelect?.value);
+        const referenceYear = Number(el.evaluationReferenceYear?.value);
         if (!providerId) {
             setEvaluationMessage(el.evaluationNewError, "Selecione um cadastro para iniciar a avaliação.");
+            return;
+        }
+        const currentYear = new Date().getFullYear();
+        if (!Number.isInteger(referenceYear) || referenceYear < 2000 || referenceYear > currentYear + 1) {
+            setEvaluationMessage(el.evaluationNewError, `Informe um ano entre 2000 e ${currentYear + 1}.`);
             return;
         }
         el.evaluationStartButton.disabled = true;
@@ -572,7 +582,10 @@
         try {
             const evaluation = await requestJson(EVALUATIONS_API_URL, {
                 method: "POST",
-                body: JSON.stringify({ prestadorId: providerId }),
+                body: JSON.stringify({
+                    prestadorId: providerId,
+                    anoReferencia: referenceYear,
+                }),
             });
             closeEvaluationModal();
             state.avaliacoesCarregadas = false;
@@ -583,7 +596,10 @@
             setEvaluationMessage(el.evaluationNewError, error.message);
         } finally {
             el.evaluationStartButton.textContent = "Iniciar avaliação";
-            el.evaluationStartButton.disabled = !el.evaluationProviderSelect?.value;
+            el.evaluationStartButton.disabled = (
+                !el.evaluationProviderSelect?.value ||
+                !el.evaluationReferenceYear?.value
+            );
         }
     }
 
@@ -610,7 +626,7 @@
         if (!item) return;
         el.evaluationSelectedAvatar.textContent = evaluationInitials(item.prestadorNome);
         el.evaluationSelectedName.textContent = item.prestadorNome;
-        el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • ${item.status === "em_andamento" ? "Processo em andamento" : "Processo concluído"}`;
+        el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${item.status === "em_andamento" ? "Processo em andamento" : "Processo concluído"}`;
         el.evaluationSelectedStage.textContent = EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
         renderTermoAdesao();
     }
@@ -1987,7 +2003,11 @@
                 button.addEventListener("click", closeEvaluationModal);
             });
             el.evaluationProviderSelect.addEventListener("change", () => {
-                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value;
+                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value || !el.evaluationReferenceYear.value;
+                setEvaluationMessage(el.evaluationNewError);
+            });
+            el.evaluationReferenceYear.addEventListener("input", () => {
+                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value || !el.evaluationReferenceYear.value;
                 setEvaluationMessage(el.evaluationNewError);
             });
             el.evaluationStartButton.addEventListener("click", iniciarAvaliacao);

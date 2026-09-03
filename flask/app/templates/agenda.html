@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260902-12') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260903-1') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -501,6 +501,11 @@
                 </select>
                 <small>Serão listados apenas os cadastros que ainda não possuem uma avaliação em andamento.</small>
             </label>
+            <label class="evaluation-new-field">
+                <span>Ano de referência</span>
+                <input id="evaluationReferenceYear" type="number" min="2000" step="1" inputmode="numeric" required>
+                <small>Este ano identificará o processo no histórico de avaliações do cadastro.</small>
+            </label>
             <div class="evaluation-new-info">
                 <span class="evaluation-new-info-icon" aria-hidden="true">i</span>
                 <div><strong>Um único processo por cadastro</strong><p>Depois de iniciado, o cadastro permanecerá vinculado ao termo de adesão, ao checklist e ao feedback final.</p></div>
@@ -739,6 +744,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260902-12') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260903-1') }}"></script>
 </body>
 </html>

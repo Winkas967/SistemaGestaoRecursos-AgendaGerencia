@@ -538,7 +538,8 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     font-weight: 900;
 }
 
-.evaluation-new-field select {
+.evaluation-new-field select,
+.evaluation-new-field input {
     width: 100%;
     min-height: 47px;
 }

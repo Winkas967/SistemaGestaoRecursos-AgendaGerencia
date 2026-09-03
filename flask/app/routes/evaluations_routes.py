@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request, send_file, session
 from services.evaluations_service import EvaluationService
 from utils.auth import permission_required
 from services.adhesion_terms_service import AdhesionTermService
+from services.checklists_service import ChecklistService
 
 #cria o grupo de rotas das avaliacoes
 evaluations_bp = Blueprint(
@@ -62,10 +63,16 @@ def create_evaluation():
         return jsonify({
             "erro": "Informe o cadastro que será avaliado."
         }),400
+
+    if "anoReferencia" not in data:
+        return jsonify({
+            "erro": "Informe o ano de referência da avaliação."
+        }), 400
         
     try:
         evaluation = EvaluationService.create(
             provider_id=data.get("prestadorId"),
+            reference_year=data.get("anoReferencia"),
             user_id=session.get("user_id")
         )
         
@@ -142,6 +149,21 @@ def download_adhesion_term_file(evaluation_id):
             mimetype=file_record.mime_type
         )
         
+    except ValueError as error:
+        return jsonify({
+            "erro": str(error)
+        }), 404
+        
+        
+#carrega o checklist correspondente a avaliacao
+@evaluations_bp.route("/<int:evaluation_id>/checklist", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def get_evaluation_checklist(evaluation_id):
+    try:
+        checklist = ChecklistService.get_by_evaluation(evaluation_id)
+        
+        return jsonify(checklist), 200
+    
     except ValueError as error:
         return jsonify({
             "erro": str(error)

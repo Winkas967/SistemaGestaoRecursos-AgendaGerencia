@@ -189,3 +189,131 @@ class ChecklistModel:
                 
             if connection:
                 connection.close()
+                
+                
+    #insere ou atualiza as respostas do checklist
+    @staticmethod
+    def save_answers(checklist_evaluation_id, answers):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            query = """
+                INSERT INTO checklist_respostas (
+                    checklist_avaliacao_id,
+                    pergunta_id,
+                    resposta,
+                    observacao,
+                    respondido_em
+                )
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE
+                    resposta = VALUES(resposta),
+                    observacao = VALUES(observacao),
+                    respondido_em = CURRENT_TIMESTAMP
+            """
+
+            values = [
+                (
+                    checklist_evaluation_id,
+                    answer["pergunta_id"],
+                    answer["resposta"],
+                    answer.get("observacao"),
+                )
+                for answer in answers
+            ]
+            
+            if values:
+                cursor.executemany(query, values)
+                
+            connection.commit()
+            
+            return len(values)
+        
+        except Exception:
+            if connection:
+                connection.rollback()
+                
+            raise
+        
+        finally:
+            if cursor:
+                cursor.close()
+                
+            if connection:
+                connection.close()
+                
+                
+    #atualiza os dados gerais do checklist
+    @staticmethod
+    def update_evaluation_checklist(checklist_id, data, user_id=None):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            cursor.execute("""
+                UPDATE checklists_avaliacao
+                SET
+                    nome_fantasia = %s,
+                    cnpj = %s,
+                    endereco = %s,
+                    numero_endereco = %s,
+                    bairro = %s,
+                    municipio = %s,
+                    responsavel = %s,
+                    telefone = %s,
+                    data_visita = %s,
+                    data_entrega_relatorio = %s,
+                    observacoes_gerais = %s,
+                    acordo = %s,
+                    auditor_nome = %s,
+                    auditado_nome = %s,
+                    auditado_cargo = %s,
+                    testemunha_1_nome = %s,
+                    testemunha_2_nome = %s,
+                    preenchido_por_id = %s,
+                    status = 'em_preenchimento'
+                WHERE id = %s
+            """, (
+                data.get("nome_fantasia"),
+                data.get("cnpj"),
+                data.get("endereco"),
+                data.get("numero_endereco"),
+                data.get("bairro"),
+                data.get("municipio"),
+                data.get("responsavel"),
+                data.get("telefone"),
+                data.get("data_visita"),
+                data.get("data_entrega_relatorio"),
+                data.get("observacoes_gerais"),
+                data.get("acordo"),
+                data.get("auditor_nome"),
+                data.get("auditado_nome"),
+                data.get("auditado_cargo"),
+                data.get("testemunha_1_nome"),
+                data.get("testemunha_2_nome"),
+                user_id,
+                checklist_id,
+            ))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+
+            raise
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
