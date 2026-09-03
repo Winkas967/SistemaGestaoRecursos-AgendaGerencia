@@ -14,6 +14,7 @@ class EvaluationService:
             "id": evaluation["id"],
             "prestadorId": evaluation["prestador_id"],
             "prestadorNome": evaluation["prestador_nome"],
+            "categoriaId": evaluation["categoria_id"],
             "categoriaNome": evaluation["categoria_nome"],
             "categoriaSlug": evaluation["categoria_slug"],
             "etapaAtual": evaluation["etapa_atual"],
