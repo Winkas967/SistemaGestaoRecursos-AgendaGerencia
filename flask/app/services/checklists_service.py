@@ -44,6 +44,11 @@ class ChecklistService:
         structure = ChecklistModel.get_structure(checklist["modelo_id"])
         answers = ChecklistModel.get_answers(checklist["id"])
         feedback = ChecklistFeedbackModel.get_by_checklist(checklist["id"])
+        classification = None
+        if checklist["classificacao_estrelas"] is not None:
+            classification = ChecklistFeedbackModel.get_classification(
+                checklist["classificacao_estrelas"]
+            )
         return {
             "avaliacaoId": evaluation["id"],
             "checklistId": checklist["id"],
@@ -68,11 +73,20 @@ class ChecklistService:
             "observacoesGerais": checklist["observacoes_gerais"],
             "resultadoPercentual": checklist["resultado_percentual"],
             "classificacaoEstrelas": checklist["classificacao_estrelas"],
+            "retornoMeses": (
+                classification["retorno_meses"] if classification else None
+            ),
+            "permiteConcluirFeedback": (
+                bool(classification["permite_conclusao"])
+                if classification else None
+            ),
             "criadoEm": checklist["criado_em"],
             "concluidoEm": checklist["concluido_em"],
             "feedback": {
                 "id": feedback["id"],
                 "conteudo": feedback["conteudo"],
+                "classificacaoEstrelas": feedback["classificacao_estrelas"],
+                "retornoMeses": feedback["retorno_meses"],
                 "status": feedback["status"],
                 "concluidoEm": feedback["concluido_em"],
             } if feedback else None,

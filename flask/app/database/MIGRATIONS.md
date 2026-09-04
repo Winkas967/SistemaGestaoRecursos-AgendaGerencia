@@ -8,5 +8,6 @@ Execute os arquivos abaixo no banco de produção, nesta ordem:
 4. `migrations/20260903_evaluations.sql` — avaliações, termo de adesão e ano de referência.
 5. `checklists.sql` — tabelas, modelos, vínculos, seções e 124 perguntas dos checklists.
 6. `migrations/20260904_multiple_checklists_feedback.sql` — permite vários checklists por avaliação e um feedback independente para cada checklist.
+7. `migrations/20260904_feedback_documents_email.sql` — adiciona a classificação, os PDFs e o histórico de envio dos feedbacks.
 
-Antes de aplicar em produção, faça backup do banco e execute os arquivos usando o banco correto. Os scripts de 3 a 5 preservam os registros existentes e podem ser executados novamente.
+Antes de aplicar em produção, faça backup do banco e execute os arquivos usando o banco correto. A migração 7 deve ser executada somente uma vez em cada banco.

@@ -241,8 +241,7 @@ def complete_evaluation_checklist(evaluation_id, checklist_id):
 @permission_required("avaliacao", "visualizar")
 def get_checklist_feedback(evaluation_id, checklist_id):
     try:
-        feedback = ChecklistFeedbackService.get(evaluation_id, checklist_id)
-        return jsonify({"feedback": feedback}), 200
+        return jsonify(ChecklistFeedbackService.get(evaluation_id, checklist_id)), 200
     except ValueError as error:
         return jsonify({"erro": str(error)}), 404
 

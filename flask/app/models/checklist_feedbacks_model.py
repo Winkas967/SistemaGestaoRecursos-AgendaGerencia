@@ -17,6 +17,11 @@ class ChecklistFeedbackModel:
                     id,
                     checklist_avaliacao_id,
                     conteudo,
+                    classificacao_estrelas,
+                    retorno_meses,
+                    arquivo_relatorio_id,
+                    arquivo_certificado_id,
+                    documentos_gerados_em,
                     status,
                     registrado_por_id,
                     concluido_em,
@@ -25,6 +30,30 @@ class ChecklistFeedbackModel:
                 FROM checklist_feedbacks
                 WHERE checklist_avaliacao_id = %s
             """, (checklist_id,))
+            return cursor.fetchone()
+
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    # Busca a regra correspondente à quantidade de estrelas
+    @staticmethod
+    def get_classification(stars):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute("""
+                SELECT
+                    estrelas,
+                    retorno_meses,
+                    permite_conclusao
+                FROM classificacoes_checklist
+                WHERE estrelas = %s
+            """, (stars,))
             return cursor.fetchone()
 
         finally:
@@ -69,7 +98,7 @@ class ChecklistFeedbackModel:
 
     # Conclui o feedback de um checklist
     @staticmethod
-    def complete(checklist_id, content, user_id):
+    def complete(checklist_id, content, stars, return_months, user_id):
         connection = None
         cursor = None
 
@@ -79,17 +108,27 @@ class ChecklistFeedbackModel:
                 INSERT INTO checklist_feedbacks (
                     checklist_avaliacao_id,
                     conteudo,
+                    classificacao_estrelas,
+                    retorno_meses,
                     status,
                     registrado_por_id,
                     concluido_em
                 )
-                VALUES (%s, %s, 'concluido', %s, CURRENT_TIMESTAMP)
+                VALUES (%s, %s, %s, %s, 'concluido', %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE
                     conteudo = VALUES(conteudo),
+                    classificacao_estrelas = VALUES(classificacao_estrelas),
+                    retorno_meses = VALUES(retorno_meses),
                     status = 'concluido',
                     registrado_por_id = VALUES(registrado_por_id),
                     concluido_em = CURRENT_TIMESTAMP
-            """, (checklist_id, content, user_id))
+            """, (
+                checklist_id,
+                content,
+                stars,
+                return_months,
+                user_id,
+            ))
             connection.commit()
             return ChecklistFeedbackModel.get_by_checklist(checklist_id)
 

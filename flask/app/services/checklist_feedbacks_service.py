@@ -16,6 +16,11 @@ class ChecklistFeedbackService:
             "id": feedback["id"],
             "checklistId": feedback["checklist_avaliacao_id"],
             "conteudo": feedback["conteudo"],
+            "classificacaoEstrelas": feedback["classificacao_estrelas"],
+            "retornoMeses": feedback["retorno_meses"],
+            "arquivoRelatorioId": feedback["arquivo_relatorio_id"],
+            "arquivoCertificadoId": feedback["arquivo_certificado_id"],
+            "documentosGeradosEm": feedback["documentos_gerados_em"],
             "status": feedback["status"],
             "registradoPorId": feedback["registrado_por_id"],
             "concluidoEm": feedback["concluido_em"],
@@ -34,13 +39,35 @@ class ChecklistFeedbackService:
 
         return checklist
 
+    # Busca e valida a regra calculada para o checklist
+    @staticmethod
+    def get_classification_rule(checklist):
+        stars = checklist["classificacao_estrelas"]
+        if stars is None:
+            raise ValueError("O checklist ainda não possui uma classificação.")
+
+        rule = ChecklistFeedbackModel.get_classification(stars)
+        if not rule:
+            raise ValueError("Não existe uma regra configurada para esta classificação.")
+
+        return rule
+
     # Busca o feedback do checklist
     @staticmethod
     def get(evaluation_id, checklist_id):
-        ChecklistFeedbackService.get_checklist(evaluation_id, checklist_id)
-        return ChecklistFeedbackService.to_dict(
+        checklist = ChecklistFeedbackService.get_checklist(evaluation_id, checklist_id)
+        feedback = ChecklistFeedbackService.to_dict(
             ChecklistFeedbackModel.get_by_checklist(checklist_id)
         )
+        rule = None
+        if checklist["classificacao_estrelas"] is not None:
+            classification = ChecklistFeedbackService.get_classification_rule(checklist)
+            rule = {
+                "estrelas": classification["estrelas"],
+                "retornoMeses": classification["retorno_meses"],
+                "permiteConclusao": bool(classification["permite_conclusao"]),
+            }
+        return {"feedback": feedback, "classificacao": rule}
 
     # Salva o rascunho do feedback
     @staticmethod
@@ -73,6 +100,13 @@ class ChecklistFeedbackService:
         if checklist["status"] != "concluido":
             raise ValueError("Conclua o checklist antes de concluir o feedback.")
 
+        rule = ChecklistFeedbackService.get_classification_rule(checklist)
+        if not rule["permite_conclusao"]:
+            raise ValueError(
+                "Checklists com zero estrelas não permitem concluir o feedback, "
+                "gerar relatório, emitir certificado ou enviar e-mail."
+            )
+
         existing = ChecklistFeedbackModel.get_by_checklist(checklist_id)
         if existing and existing["status"] == "concluido":
             raise ValueError("Este feedback já foi concluído.")
@@ -82,5 +116,11 @@ class ChecklistFeedbackService:
             raise ValueError("Escreva o feedback antes de concluí-lo.")
 
         return ChecklistFeedbackService.to_dict(
-            ChecklistFeedbackModel.complete(checklist_id, content, user_id)
+            ChecklistFeedbackModel.complete(
+                checklist_id,
+                content,
+                rule["estrelas"],
+                rule["retorno_meses"],
+                user_id,
+            )
         )
