@@ -52,6 +52,9 @@
         avaliacoesLoading: false,
         avaliacaoSelecionada: null,
         termoAdesao: null,
+        checklistsAvaliacao: [],
+        checklistExpandedId: null,
+        feedbackChecklistId: null,
     };
 
     const el = {
@@ -175,6 +178,15 @@
         evaluationTermMessage: document.getElementById("evaluationTermMessage"),
         evaluationTermSaveButton: document.getElementById("evaluationTermSaveButton"),
         evaluationTermPositions: document.querySelectorAll('[name="evaluationTermPosition"]'),
+        evaluationChecklistAddButton: document.getElementById("evaluationChecklistAddButton"),
+        evaluationChecklistsMessage: document.getElementById("evaluationChecklistsMessage"),
+        evaluationChecklistsList: document.getElementById("evaluationChecklistsList"),
+        evaluationFeedbackStatus: document.getElementById("evaluationFeedbackStatus"),
+        evaluationFeedbackChecklistSelect: document.getElementById("evaluationFeedbackChecklistSelect"),
+        evaluationFeedbackContent: document.getElementById("evaluationFeedbackContent"),
+        evaluationFeedbackMessage: document.getElementById("evaluationFeedbackMessage"),
+        evaluationFeedbackSaveButton: document.getElementById("evaluationFeedbackSaveButton"),
+        evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
     };
 
     function toISODate(date) {
@@ -621,6 +633,412 @@
         setEvaluationMessage(el.evaluationTermMessage);
     }
 
+    function checklistDateValue(value) {
+        if (!value) return "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toISOString().slice(0, 10);
+    }
+
+    function updateChecklistProgress() {
+        if (!el.evaluationChecklistQuestions) return;
+        const total = el.evaluationChecklistQuestions.querySelectorAll(".evaluation-checklist-question").length;
+        const answered = el.evaluationChecklistQuestions.querySelectorAll('.evaluation-checklist-question input[type="radio"]:checked').length;
+        el.evaluationChecklistProgress.textContent = `${answered} de ${total}`;
+        el.evaluationChecklistStatus.textContent = total && answered === total
+            ? "Preenchimento completo"
+            : answered
+                ? "Preenchimento em andamento"
+                : "Aguardando preenchimento";
+
+        const canComplete = Boolean(
+            total
+            && answered === total
+            && state.avaliacaoSelecionada?.status === "em_andamento"
+            && state.avaliacaoSelecionada?.etapaAtual === "checklist"
+            && state.checklistAvaliacao?.status !== "concluido"
+        );
+        el.evaluationChecklistCompleteButton.disabled = !canComplete;
+    }
+
+    function renderChecklist() {
+        const checklist = state.checklistAvaliacao;
+        if (!checklist || !el.evaluationChecklistQuestions) return;
+
+        el.evaluationChecklistTitle.textContent = checklist.modelo?.nome || "Checklist de avaliação";
+        el.evaluationChecklistDescription.textContent = `Critérios aplicáveis a ${checklist.cadastro?.categoriaNome || "esta categoria"}.`;
+        el.evaluationChecklistModel.textContent = `${checklist.modelo?.nome || "--"} — versão ${checklist.modelo?.versao || "--"}`;
+        el.evaluationChecklistYear.textContent = checklist.anoReferencia || "--";
+        const hasResult = checklist.resultadoPercentual !== null && checklist.resultadoPercentual !== undefined;
+        const stars = Number(checklist.classificacaoEstrelas);
+        el.evaluationChecklistResult.textContent = hasResult
+            ? `${Number(checklist.resultadoPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+            : "--";
+        el.evaluationChecklistStars.textContent = hasResult && Number.isInteger(stars)
+            ? `${"★".repeat(Math.max(0, Math.min(5, stars)))}${"☆".repeat(Math.max(0, 5 - Math.min(5, stars)))}`
+            : "--";
+        el.evaluationChecklistStars.setAttribute(
+            "aria-label",
+            hasResult && Number.isInteger(stars)
+                ? `${stars} de 5 estrelas`
+                : "Classificação ainda não calculada"
+        );
+        el.evaluationChecklistVisitDate.value = checklistDateValue(checklist.dataVisita);
+        el.evaluationChecklistReportDate.value = checklistDateValue(checklist.dataEntregaRelatorio);
+        el.evaluationChecklistGeneralNotes.value = checklist.observacoesGerais || "";
+        setEvaluationMessage(el.evaluationChecklistMessage);
+
+        const sections = Array.isArray(checklist.secoes) ? checklist.secoes : [];
+        if (!sections.length) {
+            el.evaluationChecklistQuestions.innerHTML = '<div class="evaluation-checklist-loading is-error">Este modelo não possui perguntas configuradas.</div>';
+            el.evaluationChecklistSaveButton.disabled = true;
+            updateChecklistProgress();
+            return;
+        }
+
+        const answerOptions = [
+            ["conforme", "Conforme"],
+            ["parcialmente_conforme", "Parcialmente conforme"],
+            ["nao_conforme", "Não conforme"],
+            ["nao_se_aplica", "Não se aplica"],
+        ];
+
+        el.evaluationChecklistQuestions.innerHTML = sections.map((section) => `
+            <section class="evaluation-checklist-section">
+                <header><h4>${escapeHtml(section.nome)}</h4><span>${section.perguntas.length} ${section.perguntas.length === 1 ? "pergunta" : "perguntas"}</span></header>
+                <div class="evaluation-checklist-section-items">
+                    ${section.perguntas.map((question) => `
+                        <article class="evaluation-checklist-question" data-checklist-question="${Number(question.id)}">
+                            <span class="evaluation-checklist-question-number">${escapeHtml(question.numero)}</span>
+                            <div class="evaluation-checklist-question-copy"><p>${escapeHtml(question.pergunta)}</p></div>
+                            <div class="evaluation-checklist-answer">
+                                <div class="evaluation-checklist-answer-options">
+                                    ${answerOptions.map(([value, label]) => `
+                                        <label data-answer="${value}">
+                                            <input type="radio" name="checklistQuestion${Number(question.id)}" value="${value}"${question.resposta === value ? " checked" : ""}>
+                                            <span>${label}</span>
+                                        </label>`).join("")}
+                                </div>
+                            </div>
+                            ${question.permiteObservacao ? `<textarea class="evaluation-checklist-observation" rows="2" placeholder="Observação opcional">${escapeHtml(question.observacao || "")}</textarea>` : ""}
+                        </article>`).join("")}
+                </div>
+            </section>`).join("");
+
+        el.evaluationChecklistSaveButton.disabled = state.avaliacaoSelecionada?.status !== "em_andamento";
+        updateChecklistProgress();
+        renderChecklistHistory();
+    }
+
+    function renderChecklistHistory() {
+        if (!el.evaluationChecklistHistory || !state.avaliacaoSelecionada) return;
+        const providerId = Number(state.avaliacaoSelecionada.prestadorId);
+        const history = state.avaliacoes
+            .filter((item) => (
+                Number(item.prestadorId) === providerId
+                && Number(item.id) !== Number(state.avaliacaoSelecionada.id)
+                && item.etapaAtual !== "termo_adesao"
+            ))
+            .sort((a, b) => Number(b.anoReferencia || 0) - Number(a.anoReferencia || 0));
+
+        el.evaluationChecklistHistory.innerHTML = history.length
+            ? history.map((item) => {
+                const selected = Number(item.id) === Number(state.avaliacaoSelecionada.id);
+                return `<button class="evaluation-checklist-history-item${selected ? " is-current" : ""}" type="button" data-checklist-history-open="${Number(item.id)}">
+                    <span><strong>${escapeHtml(item.anoReferencia || "Sem ano")}</strong><small>${escapeHtml(EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual)}</small></span>
+                    <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
+                    <i>${selected ? "Aberto" : "Visualizar"}</i>
+                </button>`;
+            }).join("")
+            : '<p class="evaluation-checklist-history-empty">Nenhum checklist anterior para este cadastro.</p>';
+    }
+
+    function toggleChecklist() {
+        state.checklistCollapsed = !state.checklistCollapsed;
+        el.evaluationChecklistExpandable.hidden = state.checklistCollapsed;
+        el.evaluationChecklistCollapseButton.title = state.checklistCollapsed ? "Expandir checklist" : "Recolher checklist";
+        el.evaluationChecklistCollapseButton.setAttribute("aria-expanded", String(!state.checklistCollapsed));
+    }
+
+    function checklistPayload() {
+        const answers = Array.from(el.evaluationChecklistQuestions.querySelectorAll(".evaluation-checklist-question"))
+            .map((question) => {
+                const selected = question.querySelector('input[type="radio"]:checked');
+                if (!selected) return null;
+                return {
+                    perguntaId: Number(question.dataset.checklistQuestion),
+                    resposta: selected.value,
+                    observacao: question.querySelector(".evaluation-checklist-observation")?.value.trim() || null,
+                };
+            })
+            .filter(Boolean);
+
+        return {
+            dataVisita: el.evaluationChecklistVisitDate.value || null,
+            dataEntregaRelatorio: el.evaluationChecklistReportDate.value || null,
+            observacoesGerais: el.evaluationChecklistGeneralNotes.value.trim() || null,
+            respostas: answers,
+        };
+    }
+
+    async function salvarChecklistRascunho() {
+        const evaluation = state.avaliacaoSelecionada;
+        if (!evaluation) return;
+        el.evaluationChecklistSaveButton.disabled = true;
+        el.evaluationChecklistSaveButton.textContent = "Salvando...";
+        setEvaluationMessage(el.evaluationChecklistMessage);
+        try {
+            const checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklist`, {
+                method: "PUT",
+                body: JSON.stringify(checklistPayload()),
+            });
+            state.checklistAvaliacao = checklist;
+            renderChecklist();
+            showFeedback("Rascunho do checklist salvo com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationChecklistMessage, error.message);
+        } finally {
+            el.evaluationChecklistSaveButton.textContent = "Salvar rascunho";
+            el.evaluationChecklistSaveButton.disabled = state.avaliacaoSelecionada?.status !== "em_andamento";
+        }
+    }
+
+    async function concluirChecklist() {
+        const evaluation = state.avaliacaoSelecionada;
+        if (!evaluation) return;
+
+        const total = el.evaluationChecklistQuestions.querySelectorAll(".evaluation-checklist-question").length;
+        const answered = el.evaluationChecklistQuestions.querySelectorAll('.evaluation-checklist-question input[type="radio"]:checked').length;
+        if (!total || answered !== total) {
+            setEvaluationMessage(el.evaluationChecklistMessage, "Responda todas as perguntas antes de concluir o checklist.");
+            return;
+        }
+
+        if (!window.confirm("Deseja concluir o checklist? Depois da conclusão, a avaliação seguirá para o feedback.")) return;
+
+        el.evaluationChecklistSaveButton.disabled = true;
+        el.evaluationChecklistCompleteButton.disabled = true;
+        el.evaluationChecklistCompleteButton.textContent = "Concluindo...";
+        setEvaluationMessage(el.evaluationChecklistMessage);
+
+        try {
+            await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklist`, {
+                method: "PUT",
+                body: JSON.stringify(checklistPayload()),
+            });
+
+            const checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklist/concluir`, {
+                method: "POST",
+            });
+
+            state.checklistAvaliacao = checklist;
+            state.avaliacaoSelecionada.etapaAtual = "feedback";
+            renderAvaliacaoSelecionada();
+            el.evaluationStepFeedback.checked = true;
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            showFeedback(`Checklist concluído: ${checklist.resultadoPercentual}% • ${checklist.classificacaoEstrelas} estrela(s).`);
+        } catch (error) {
+            setEvaluationMessage(el.evaluationChecklistMessage, error.message);
+            updateChecklistProgress();
+        } finally {
+            el.evaluationChecklistCompleteButton.textContent = "Concluir checklist";
+            el.evaluationChecklistSaveButton.disabled = state.avaliacaoSelecionada?.status !== "em_andamento"
+                || state.checklistAvaliacao?.status === "concluido";
+            updateChecklistProgress();
+        }
+    }
+
+    function checklistCardPayload(card) {
+        const answers = Array.from(card.querySelectorAll("[data-checklist-question]"))
+            .map((question) => {
+                const selected = question.querySelector('input[type="radio"]:checked');
+                if (!selected) return null;
+                return {
+                    perguntaId: Number(question.dataset.checklistQuestion),
+                    resposta: selected.value,
+                    observacao: question.querySelector("[data-checklist-observation]")?.value.trim() || null,
+                };
+            })
+            .filter(Boolean);
+        return {
+            dataVisita: card.querySelector('[data-checklist-field="dataVisita"]')?.value || null,
+            dataEntregaRelatorio: card.querySelector('[data-checklist-field="dataEntregaRelatorio"]')?.value || null,
+            observacoesGerais: card.querySelector('[data-checklist-field="observacoesGerais"]')?.value.trim() || null,
+            respostas: answers,
+        };
+    }
+
+    function checklistCardProgress(checklist) {
+        const questions = (checklist.secoes || []).flatMap((section) => section.perguntas || []);
+        const answered = questions.filter((question) => question.resposta).length;
+        return { total: questions.length, answered };
+    }
+
+    function renderChecklistCards() {
+        if (!el.evaluationChecklistsList) return;
+        const checklists = state.checklistsAvaliacao || [];
+        el.evaluationChecklistAddButton.disabled = (
+            state.avaliacaoSelecionada?.status !== "em_andamento"
+            || state.avaliacaoSelecionada?.etapaAtual === "termo_adesao"
+        );
+        if (!checklists.length) {
+            el.evaluationChecklistsList.innerHTML = '<div class="evaluation-checklist-loading">Nenhum checklist criado. Clique em “Novo checklist” para iniciar.</div>';
+            return;
+        }
+
+        el.evaluationChecklistsList.innerHTML = checklists.map((checklist) => {
+            const expanded = Number(state.checklistExpandedId) === Number(checklist.checklistId);
+            const completed = checklist.status === "concluido";
+            const progress = checklistCardProgress(checklist);
+            const hasResult = checklist.resultadoPercentual !== null && checklist.resultadoPercentual !== undefined;
+            const stars = Number(checklist.classificacaoEstrelas || 0);
+            const result = hasResult
+                ? `${Number(checklist.resultadoPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+                : "--";
+            const starsText = hasResult ? `${"★".repeat(stars)}${"☆".repeat(5 - stars)}` : "--";
+            const disabled = completed ? " disabled" : "";
+            const answerOptions = [
+                ["conforme", "Conforme"],
+                ["parcialmente_conforme", "Parcialmente conforme"],
+                ["nao_conforme", "Não conforme"],
+                ["nao_se_aplica", "Não se aplica"],
+            ];
+            return `<article class="evaluation-checklist-card${expanded ? " is-open" : ""}" data-checklist-card="${Number(checklist.checklistId)}">
+                <header class="evaluation-checklist-card-head">
+                    <button type="button" class="evaluation-checklist-card-main" data-action="toggle-checklist" data-id="${Number(checklist.checklistId)}">
+                        <span><small>Checklist ${Number(checklist.numero)}</small><strong>${escapeHtml(checklist.modelo?.nome || "Checklist")}</strong></span>
+                        <span class="evaluation-checklist-card-meta"><b class="${completed ? "is-complete" : ""}">${completed ? "Concluído" : `${progress.answered} de ${progress.total}`}</b><time>${escapeHtml(formatEvaluationDate(checklist.dataVisita || checklist.criadoEm))}</time></span>
+                    </button>
+                    <button type="button" class="evaluation-checklist-card-toggle" data-action="toggle-checklist" data-id="${Number(checklist.checklistId)}" aria-expanded="${expanded}" aria-label="Abrir ou fechar checklist">▼</button>
+                </header>
+                <div class="evaluation-checklist-card-body"${expanded ? "" : " hidden"}>
+                    <div class="evaluation-checklist-summary">
+                        <div><span>Modelo</span><strong>${escapeHtml(checklist.modelo?.nome || "--")} — versão ${escapeHtml(checklist.modelo?.versao || "--")}</strong></div>
+                        <div><span>Criado em</span><strong>${escapeHtml(formatEvaluationDate(checklist.criadoEm))}</strong></div>
+                        <div><span>Progresso</span><strong>${progress.answered} de ${progress.total}</strong></div>
+                        <div><span>Resultado</span><strong>${result}</strong></div>
+                        <div><span>Classificação</span><strong class="evaluation-checklist-stars">${starsText}</strong></div>
+                    </div>
+                    <div class="evaluation-checklist-general">
+                        <label><span>Data da visita</span><input data-checklist-field="dataVisita" type="date" value="${checklistDateValue(checklist.dataVisita)}"${disabled}></label>
+                        <label><span>Data da entrega do relatório</span><input data-checklist-field="dataEntregaRelatorio" type="date" value="${checklistDateValue(checklist.dataEntregaRelatorio)}"${disabled}></label>
+                        <label class="evaluation-checklist-general-wide"><span>Observações gerais</span><textarea data-checklist-field="observacoesGerais" rows="4"${disabled}>${escapeHtml(checklist.observacoesGerais || "")}</textarea></label>
+                    </div>
+                    <div class="evaluation-checklist-questions">
+                        ${(checklist.secoes || []).map((section) => `<section class="evaluation-checklist-section">
+                            <header><h4>${escapeHtml(section.nome)}</h4><span>${section.perguntas.length} perguntas</span></header>
+                            <div class="evaluation-checklist-section-items">${section.perguntas.map((question) => `<article class="evaluation-checklist-question" data-checklist-question="${Number(question.id)}">
+                                <span class="evaluation-checklist-question-number">${escapeHtml(question.numero)}</span>
+                                <div class="evaluation-checklist-question-copy"><p>${escapeHtml(question.pergunta)}</p></div>
+                                <div class="evaluation-checklist-answer"><div class="evaluation-checklist-answer-options">${answerOptions.map(([value, label]) => `<label data-answer="${value}"><input type="radio" name="checklist${Number(checklist.checklistId)}Question${Number(question.id)}" value="${value}"${question.resposta === value ? " checked" : ""}${disabled}><span>${label}</span></label>`).join("")}</div></div>
+                                ${question.permiteObservacao ? `<textarea data-checklist-observation class="evaluation-checklist-observation" rows="2" placeholder="Observação opcional"${disabled}>${escapeHtml(question.observacao || "")}</textarea>` : ""}
+                            </article>`).join("")}</div>
+                        </section>`).join("")}
+                    </div>
+                    <p class="evaluation-form-message hidden" data-checklist-message></p>
+                    ${completed ? `<div class="evaluation-stage-actions"><span class="evaluation-feedback-state">${checklist.feedback?.status === "concluido" ? "Feedback concluído" : "Feedback pendente"}</span><button class="btn btn-primary" type="button" data-action="open-feedback">${checklist.feedback?.status === "concluido" ? "Visualizar feedback" : "Abrir feedback"}</button></div>` : `<div class="evaluation-stage-actions"><button class="btn" type="button" data-action="save-checklist">Salvar rascunho</button><button class="btn btn-primary" type="button" data-action="complete-checklist"${progress.total && progress.answered === progress.total ? "" : " disabled"}>Concluir checklist</button></div>`}
+                </div>
+            </article>`;
+        }).join("");
+    }
+
+    async function criarNovoChecklist() {
+        const evaluation = state.avaliacaoSelecionada;
+        if (!evaluation) return;
+        el.evaluationChecklistAddButton.disabled = true;
+        setEvaluationMessage(el.evaluationChecklistsMessage);
+        try {
+            const checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists`, { method: "POST" });
+            state.checklistsAvaliacao.unshift(checklist);
+            state.checklistExpandedId = checklist.checklistId;
+            renderChecklistCards();
+            showFeedback(`Checklist ${checklist.numero} criado com sucesso.`);
+        } catch (error) {
+            setEvaluationMessage(el.evaluationChecklistsMessage, error.message);
+        } finally {
+            el.evaluationChecklistAddButton.disabled = false;
+        }
+    }
+
+    async function salvarChecklistCard(card, conclude = false) {
+        const evaluation = state.avaliacaoSelecionada;
+        const checklistId = Number(card.dataset.checklistCard);
+        const message = card.querySelector("[data-checklist-message]");
+        setEvaluationMessage(message);
+        try {
+            let checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}`, {
+                method: "PUT",
+                body: JSON.stringify(checklistCardPayload(card)),
+            });
+            if (conclude) {
+                checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}/concluir`, { method: "POST" });
+            }
+            state.checklistsAvaliacao = state.checklistsAvaliacao.map((item) => item.checklistId === checklistId ? checklist : item);
+            renderChecklistCards();
+            if (conclude) {
+                state.feedbackChecklistId = checklistId;
+                renderFeedbackStage();
+                el.evaluationStepFeedback.checked = true;
+            }
+            showFeedback(conclude ? `Checklist concluído: ${checklist.resultadoPercentual}% • ${checklist.classificacaoEstrelas} estrela(s).` : "Rascunho salvo com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(message, error.message);
+        }
+    }
+
+    function renderFeedbackStage() {
+        const completed = state.checklistsAvaliacao.filter((item) => item.status === "concluido");
+        if (!completed.some((item) => item.checklistId === state.feedbackChecklistId)) {
+            state.feedbackChecklistId = completed[0]?.checklistId || null;
+        }
+        el.evaluationFeedbackChecklistSelect.innerHTML = completed.length
+            ? completed.map((item) => `<option value="${Number(item.checklistId)}"${item.checklistId === state.feedbackChecklistId ? " selected" : ""}>Checklist ${Number(item.numero)} — ${escapeHtml(formatEvaluationDate(item.dataVisita || item.criadoEm))} — ${Number(item.resultadoPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%</option>`).join("")
+            : '<option value="">Nenhum checklist concluído</option>';
+
+        const checklist = completed.find((item) => item.checklistId === state.feedbackChecklistId);
+        const feedbackCompleted = checklist?.feedback?.status === "concluido";
+        el.evaluationFeedbackChecklistSelect.disabled = !completed.length;
+        el.evaluationFeedbackContent.value = checklist?.feedback?.conteudo || "";
+        el.evaluationFeedbackContent.disabled = !checklist || feedbackCompleted;
+        el.evaluationFeedbackSaveButton.disabled = !checklist || feedbackCompleted;
+        el.evaluationFeedbackCompleteButton.disabled = !checklist || feedbackCompleted;
+        el.evaluationFeedbackStatus.textContent = !checklist
+            ? "Aguardando checklist concluído"
+            : feedbackCompleted
+                ? "Feedback concluído"
+                : `Checklist ${checklist.numero} selecionado`;
+        setEvaluationMessage(el.evaluationFeedbackMessage);
+    }
+
+    function abrirFeedback(checklistId) {
+        state.feedbackChecklistId = checklistId;
+        renderFeedbackStage();
+        el.evaluationStepFeedback.checked = true;
+    }
+
+    async function salvarFeedback(conclude = false) {
+        const evaluation = state.avaliacaoSelecionada;
+        const checklistId = Number(state.feedbackChecklistId);
+        if (!evaluation || !checklistId) return;
+        const content = el.evaluationFeedbackContent.value.trim();
+        setEvaluationMessage(el.evaluationFeedbackMessage);
+        try {
+            const suffix = conclude ? "/feedback/concluir" : "/feedback";
+            const feedback = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}${suffix}`, {
+                method: conclude ? "POST" : "PUT",
+                body: JSON.stringify({ conteudo: content }),
+            });
+            state.checklistsAvaliacao = state.checklistsAvaliacao.map((item) => item.checklistId === checklistId ? { ...item, feedback } : item);
+            renderChecklistCards();
+            renderFeedbackStage();
+            showFeedback(conclude ? "Feedback concluído com sucesso." : "Feedback salvo com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+        }
+    }
+
     function renderAvaliacaoSelecionada() {
         const item = state.avaliacaoSelecionada;
         if (!item) return;
@@ -629,20 +1047,24 @@
         el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${item.status === "em_andamento" ? "Processo em andamento" : "Processo concluído"}`;
         el.evaluationSelectedStage.textContent = EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
         renderTermoAdesao();
+        renderChecklistCards();
+        renderFeedbackStage();
     }
 
     async function abrirAvaliacao(id) {
         try {
-            const [evaluation, termData] = await Promise.all([
+            const [evaluation, termData, checklistData] = await Promise.all([
                 requestJson(`${EVALUATIONS_API_URL}/${id}`),
                 requestJson(`${EVALUATIONS_API_URL}/${id}/termo`),
+                requestJson(`${EVALUATIONS_API_URL}/${id}/checklists`),
             ]);
             state.avaliacaoSelecionada = evaluation;
             state.termoAdesao = termData.termo || null;
+            state.checklistsAvaliacao = checklistData.checklists || [];
+            state.checklistExpandedId = state.checklistsAvaliacao[0]?.checklistId || null;
             renderAvaliacaoSelecionada();
             el.evaluationProcessDetail.checked = true;
-            if (evaluation.etapaAtual === "feedback") el.evaluationStepFeedback.checked = true;
-            else if (evaluation.etapaAtual === "checklist") el.evaluationStepChecklist.checked = true;
+            if (evaluation.etapaAtual !== "termo_adesao") el.evaluationStepChecklist.checked = true;
             else el.evaluationStepTerm.checked = true;
         } catch (error) {
             showFeedback(error.message, "error");
@@ -2021,6 +2443,44 @@
             });
             el.evaluationTermPositions.forEach((input) => input.addEventListener("change", () => setEvaluationMessage(el.evaluationTermMessage)));
             el.evaluationTermSaveButton.addEventListener("click", salvarTermoAdesao);
+            el.evaluationChecklistAddButton.addEventListener("click", criarNovoChecklist);
+            el.evaluationChecklistsList.addEventListener("click", async (event) => {
+                const button = event.target.closest("[data-action]");
+                if (!button) return;
+                const card = button.closest("[data-checklist-card]");
+                if (!card) return;
+                const checklistId = Number(card.dataset.checklistCard);
+                if (button.dataset.action === "toggle-checklist") {
+                    state.checklistExpandedId = state.checklistExpandedId === checklistId ? null : checklistId;
+                    renderChecklistCards();
+                } else if (button.dataset.action === "save-checklist") {
+                    await salvarChecklistCard(card);
+                } else if (button.dataset.action === "complete-checklist") {
+                    if (window.confirm("Deseja concluir este checklist? As respostas não poderão mais ser alteradas.")) {
+                        await salvarChecklistCard(card, true);
+                    }
+                } else if (button.dataset.action === "open-feedback") {
+                    abrirFeedback(checklistId);
+                }
+            });
+            el.evaluationChecklistsList.addEventListener("change", (event) => {
+                if (!event.target.matches('input[type="radio"]')) return;
+                const card = event.target.closest("[data-checklist-card]");
+                const total = card.querySelectorAll("[data-checklist-question]").length;
+                const answered = card.querySelectorAll('[data-checklist-question] input[type="radio"]:checked').length;
+                const completeButton = card.querySelector('[data-action="complete-checklist"]');
+                if (completeButton) completeButton.disabled = !total || answered !== total;
+            });
+            el.evaluationFeedbackChecklistSelect.addEventListener("change", () => {
+                state.feedbackChecklistId = Number(el.evaluationFeedbackChecklistSelect.value) || null;
+                renderFeedbackStage();
+            });
+            el.evaluationFeedbackSaveButton.addEventListener("click", () => salvarFeedback(false));
+            el.evaluationFeedbackCompleteButton.addEventListener("click", () => {
+                if (window.confirm("Deseja concluir o feedback deste checklist?")) {
+                    salvarFeedback(true);
+                }
+            });
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);

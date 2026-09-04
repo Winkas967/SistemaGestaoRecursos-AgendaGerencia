@@ -4,6 +4,7 @@ from services.evaluations_service import EvaluationService
 from utils.auth import permission_required
 from services.adhesion_terms_service import AdhesionTermService
 from services.checklists_service import ChecklistService
+from services.checklist_feedbacks_service import ChecklistFeedbackService
 
 #cria o grupo de rotas das avaliacoes
 evaluations_bp = Blueprint(
@@ -155,16 +156,130 @@ def download_adhesion_term_file(evaluation_id):
         }), 404
         
         
-#carrega o checklist correspondente a avaliacao
-@evaluations_bp.route("/<int:evaluation_id>/checklist", methods=["GET"])
+#lista todos os checklists da avaliacao
+@evaluations_bp.route("/<int:evaluation_id>/checklists", methods=["GET"])
 @permission_required("avaliacao", "visualizar")
-def get_evaluation_checklist(evaluation_id):
+def list_evaluation_checklists(evaluation_id):
     try:
-        checklist = ChecklistService.get_by_evaluation(evaluation_id)
-        
-        return jsonify(checklist), 200
-    
+        return jsonify(ChecklistService.get_all_by_evaluation(evaluation_id)), 200
     except ValueError as error:
-        return jsonify({
-            "erro": str(error)
-        }), 404
+        return jsonify({"erro": str(error)}), 404
+
+
+#cria um novo checklist na avaliacao
+@evaluations_bp.route("/<int:evaluation_id>/checklists", methods=["POST"])
+@permission_required("avaliacao", "editar")
+def create_evaluation_checklist(evaluation_id):
+    try:
+        checklist = ChecklistService.create(
+            evaluation_id=evaluation_id,
+            user_id=session.get("user_id"),
+        )
+        return jsonify(checklist), 201
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#busca um checklist especifico
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>",
+    methods=["GET"],
+)
+@permission_required("avaliacao", "visualizar")
+def get_evaluation_checklist(evaluation_id, checklist_id):
+    try:
+        return jsonify(ChecklistService.get_by_id(evaluation_id, checklist_id)), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 404
+
+
+#salva o rascunho de um checklist especifico
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>",
+    methods=["PUT"],
+)
+@permission_required("avaliacao", "editar")
+def save_evaluation_checklist(evaluation_id, checklist_id):
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"erro": "Envie os dados do checklist em JSON."}), 400
+    try:
+        checklist = ChecklistService.save(
+            evaluation_id=evaluation_id,
+            checklist_id=checklist_id,
+            data=data,
+            user_id=session.get("user_id"),
+        )
+        return jsonify(checklist), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#conclui um checklist especifico
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>/concluir",
+    methods=["POST"],
+)
+@permission_required("avaliacao", "editar")
+def complete_evaluation_checklist(evaluation_id, checklist_id):
+    try:
+        checklist = ChecklistService.complete(
+            evaluation_id=evaluation_id,
+            checklist_id=checklist_id,
+            user_id=session.get("user_id"),
+        )
+        return jsonify(checklist), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#busca o feedback individual de um checklist
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>/feedback",
+    methods=["GET"],
+)
+@permission_required("avaliacao", "visualizar")
+def get_checklist_feedback(evaluation_id, checklist_id):
+    try:
+        feedback = ChecklistFeedbackService.get(evaluation_id, checklist_id)
+        return jsonify({"feedback": feedback}), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 404
+
+
+#salva o rascunho do feedback individual
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>/feedback",
+    methods=["PUT"],
+)
+@permission_required("avaliacao", "editar")
+def save_checklist_feedback(evaluation_id, checklist_id):
+    try:
+        feedback = ChecklistFeedbackService.save(
+            evaluation_id,
+            checklist_id,
+            request.get_json(silent=True) or {},
+            session.get("user_id"),
+        )
+        return jsonify(feedback), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#conclui o feedback individual
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>/feedback/concluir",
+    methods=["POST"],
+)
+@permission_required("avaliacao", "editar")
+def complete_checklist_feedback(evaluation_id, checklist_id):
+    try:
+        feedback = ChecklistFeedbackService.complete(
+            evaluation_id,
+            checklist_id,
+            request.get_json(silent=True) or {},
+            session.get("user_id"),
+        )
+        return jsonify(feedback), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400

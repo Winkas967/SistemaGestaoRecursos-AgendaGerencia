@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260903-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260904-6') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -340,12 +340,12 @@
                     <span class="evaluation-step-line"></span>
                     <label class="evaluation-step" for="evaluationStepChecklist">
                         <span class="evaluation-step-number">2</span>
-                        <span><strong>Checklist</strong><small>Perguntas da avaliação</small></span>
+                        <span><strong>Checklists</strong><small>Perguntas e resultados</small></span>
                     </label>
                     <span class="evaluation-step-line"></span>
                     <label class="evaluation-step" for="evaluationStepFeedback">
                         <span class="evaluation-step-number">3</span>
-                        <span><strong>Feedback</strong><small>Parecer final do cadastro</small></span>
+                        <span><strong>Feedback</strong><small>Parecer de cada checklist</small></span>
                     </label>
                 </div>
 
@@ -399,27 +399,35 @@
 
                 <div class="evaluation-stage evaluation-stage-checklist">
                     <div class="evaluation-stage-head">
-                        <div><span>Etapa 2</span><h3>Checklist de avaliação</h3><p>As perguntas e os critérios serão definidos posteriormente.</p></div>
-                        <span class="evaluation-stage-status">Checklist em construção</span>
+                        <div><span>Etapa 2</span><h3>Checklists de avaliação</h3><p>Crie e consulte todos os checklists deste cadastro.</p></div>
+                        <button class="btn btn-primary" id="evaluationChecklistAddButton" type="button">+ Novo checklist</button>
                     </div>
-                    <div class="evaluation-checklist-placeholder">
-                        <span>?</span><h4>Espaço reservado para as perguntas</h4>
-                        <p>Aqui poderemos adicionar respostas objetivas, notas, observações e pesos para cada critério.</p>
+
+                    <p class="evaluation-form-message hidden" id="evaluationChecklistsMessage"></p>
+                    <div class="evaluation-checklists-list" id="evaluationChecklistsList">
+                        <div class="evaluation-checklist-loading">Selecione uma avaliação para carregar os checklists.</div>
                     </div>
-                    <div class="evaluation-stage-actions"><button class="btn btn-primary" type="button" disabled>Salvar checklist</button></div>
                 </div>
 
                 <div class="evaluation-stage evaluation-stage-feedback">
                     <div class="evaluation-stage-head">
-                        <div><span>Etapa 3</span><h3>Feedback da avaliação</h3><p>Registre o parecer final que ficará vinculado ao cadastro.</p></div>
-                        <span class="evaluation-stage-status">Aguardando feedback</span>
+                        <div><span>Etapa 3</span><h3>Feedback da avaliação</h3><p>Registre o parecer individual referente ao checklist selecionado.</p></div>
+                        <span class="evaluation-stage-status" id="evaluationFeedbackStatus">Selecione um checklist</span>
                     </div>
+                    <label class="evaluation-feedback-selector">
+                        <span>Checklist avaliado</span>
+                        <select id="evaluationFeedbackChecklistSelect"></select>
+                    </label>
                     <label class="evaluation-feedback-field">
                         <span>Avaliação e considerações finais</span>
-                        <textarea rows="9" placeholder="Descreva os pontos avaliados, orientações, conclusões e demais observações..."></textarea>
-                        <small>Este texto fará parte do histórico de avaliação do cadastro.</small>
+                        <textarea id="evaluationFeedbackContent" rows="9" placeholder="Descreva os pontos avaliados, orientações, conclusões e demais observações..."></textarea>
+                        <small>Este feedback ficará vinculado somente ao checklist selecionado.</small>
                     </label>
-                    <div class="evaluation-stage-actions"><button class="btn btn-primary" type="button" disabled>Concluir avaliação</button></div>
+                    <p class="evaluation-form-message hidden" id="evaluationFeedbackMessage"></p>
+                    <div class="evaluation-stage-actions">
+                        <button class="btn" id="evaluationFeedbackSaveButton" type="button">Salvar rascunho</button>
+                        <button class="btn btn-primary" id="evaluationFeedbackCompleteButton" type="button">Concluir feedback</button>
+                    </div>
                 </div>
             </div>
             </div>
@@ -744,6 +752,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260903-1') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260904-8') }}"></script>
 </body>
 </html>

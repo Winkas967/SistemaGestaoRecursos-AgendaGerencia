@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS checklist_perguntas (
 CREATE TABLE IF NOT EXISTS checklists_avaliacao (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     avaliacao_id INT UNSIGNED NOT NULL,
+    numero INT UNSIGNED NOT NULL,
     modelo_id INT UNSIGNED NOT NULL,
     modelo_versao INT UNSIGNED NOT NULL,
     nome_fantasia VARCHAR(160) NULL,
@@ -94,7 +95,8 @@ CREATE TABLE IF NOT EXISTS checklists_avaliacao (
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_checklists_avaliacao_avaliacao (avaliacao_id),
+    UNIQUE KEY uq_checklists_avaliacao_numero (avaliacao_id, numero),
+    KEY idx_checklists_avaliacao_avaliacao (avaliacao_id),
     KEY idx_checklists_avaliacao_modelo (modelo_id),
     KEY idx_checklists_avaliacao_status (status),
     KEY idx_checklists_avaliacao_usuario (preenchido_por_id),
@@ -111,6 +113,30 @@ CREATE TABLE IF NOT EXISTS checklists_avaliacao (
         CHECK (resultado_percentual IS NULL OR resultado_percentual BETWEEN 0 AND 100),
     CONSTRAINT chk_checklists_avaliacao_estrelas
         CHECK (classificacao_estrelas IS NULL OR classificacao_estrelas BETWEEN 0 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Armazena um feedback independente para cada checklist aplicado
+CREATE TABLE IF NOT EXISTS checklist_feedbacks (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    checklist_avaliacao_id INT UNSIGNED NOT NULL,
+    conteudo TEXT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'rascunho',
+    registrado_por_id INT UNSIGNED NULL,
+    concluido_em DATETIME NULL,
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_checklist_feedback_checklist (checklist_avaliacao_id),
+    KEY idx_checklist_feedback_status (status),
+    KEY idx_checklist_feedback_usuario (registrado_por_id),
+    CONSTRAINT fk_checklist_feedback_checklist
+        FOREIGN KEY (checklist_avaliacao_id) REFERENCES checklists_avaliacao (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_checklist_feedback_usuario
+        FOREIGN KEY (registrado_por_id) REFERENCES usuarios (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT chk_checklist_feedback_status
+        CHECK (status IN ('rascunho', 'concluido'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Armazena uma resposta por pergunta em cada checklist aplicado
