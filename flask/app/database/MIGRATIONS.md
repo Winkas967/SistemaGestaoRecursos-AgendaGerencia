@@ -11,3 +11,5 @@ Execute os arquivos abaixo no banco de produção, nesta ordem:
 7. `migrations/20260904_feedback_documents_email.sql` — adiciona a classificação, os PDFs e o histórico de envio dos feedbacks.
 
 Antes de aplicar em produção, faça backup do banco e execute os arquivos usando o banco correto. A migração 7 deve ser executada somente uma vez em cada banco.
+
+8. `migrations/20260908_checklist_nome.sql` — adiciona o nome do checklist (usado para identificar cada checklist nas telas de avaliação).

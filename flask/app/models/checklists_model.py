@@ -309,6 +309,7 @@ class ChecklistModel:
             cursor.execute("""
                 UPDATE checklists_avaliacao
                 SET
+                    nome = %s,
                     nome_fantasia = %s,
                     cnpj = %s,
                     endereco = %s,
@@ -331,6 +332,7 @@ class ChecklistModel:
                 WHERE id = %s
                   AND status = 'em_preenchimento'
             """, (
+                data.get("nome"),
                 data.get("nome_fantasia"),
                 data.get("cnpj"),
                 data.get("endereco"),

@@ -53,6 +53,7 @@ class ChecklistService:
             "avaliacaoId": evaluation["id"],
             "checklistId": checklist["id"],
             "numero": checklist["numero"],
+            "nome": checklist["nome"],
             "anoReferencia": evaluation["anoReferencia"],
             "cadastro": {
                 "id": evaluation["prestadorId"],
@@ -87,6 +88,9 @@ class ChecklistService:
                 "conteudo": feedback["conteudo"],
                 "classificacaoEstrelas": feedback["classificacao_estrelas"],
                 "retornoMeses": feedback["retorno_meses"],
+                "arquivoRelatorioId": feedback["arquivo_relatorio_id"],
+                "arquivoCertificadoId": feedback["arquivo_certificado_id"],
+                "documentosGeradosEm": feedback["documentos_gerados_em"],
                 "status": feedback["status"],
                 "concluidoEm": feedback["concluido_em"],
             } if feedback else None,
@@ -199,6 +203,7 @@ class ChecklistService:
         valid_question_ids = {item["pergunta_id"] for item in structure}
         answers = ChecklistService.validate_answers(data.get("respostas"), valid_question_ids)
         checklist_data = {
+            "nome": str(data.get("nome") or "").strip() or None,
             "nome_fantasia": str(data.get("nomeFantasia") or "").strip() or None,
             "cnpj": str(data.get("cnpj") or "").strip() or None,
             "endereco": str(data.get("endereco") or "").strip() or None,
@@ -263,6 +268,8 @@ class ChecklistService:
             raise ValueError("O checklist não foi encontrado nesta avaliação.")
         if checklist["status"] == "concluido":
             raise ValueError("Este checklist já foi concluído.")
+        if not str(checklist["nome"] or "").strip():
+            raise ValueError("Informe o nome do checklist antes de concluí-lo.")
         result = ChecklistService.calculate_result(ChecklistModel.get_result_summary(checklist["id"]))
         ChecklistModel.complete(checklist["id"], result["percentual"], result["estrelas"], user_id)
         return ChecklistService.get_by_id(evaluation["id"], checklist["id"])

@@ -5,8 +5,11 @@ from utils.auth import permission_required
 from services.adhesion_terms_service import AdhesionTermService
 from services.checklists_service import ChecklistService
 from services.checklist_feedbacks_service import ChecklistFeedbackService
+from services.checklist_feedback_email_service import ChecklistFeedbackEmailService
 
-#cria o grupo de rotas das avaliacoes
+
+
+
 evaluations_bp = Blueprint(
     "evaluations",
     __name__,
@@ -280,5 +283,51 @@ def complete_checklist_feedback(evaluation_id, checklist_id):
             session.get("user_id"),
         )
         return jsonify(feedback), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+    
+    
+@evaluations_bp.route("/<int:evaluation_id>/checklists/<int:checklist_id>/feedback/relatorio", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def download_checklist_feedback_report(evaluation_id, checklist_id):
+    try:
+        file_record, absolute_path = ChecklistFeedbackService.get_report_file(evaluation_id, checklist_id)
+        return send_file(
+            absolute_path,
+            as_attachment=True,
+            download_name=file_record.nome_original,
+            mimetype=file_record.mime_type
+        )
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 404
+    
+
+#baixa o certificado do checklist
+@evaluations_bp.route("/<int:evaluation_id>/checklists/<int:checklist_id>/feedback/certificado", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def download_checklist_feedback_certificate(evaluation_id, checklist_id):
+    try:
+        file_record, absolute_path = ChecklistFeedbackService.get_certificate_file(evaluation_id, checklist_id)
+        return send_file(
+            absolute_path,
+            as_attachment=True,
+            download_name=file_record.nome_original,
+            mimetype=file_record.mime_type
+        )
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 404
+    
+
+#dispara o email do feedback com os pdfs anexados
+@evaluations_bp.route("/<int:evaluation_id>/checklists/<int:checklist_id>/feedback/enviar-email", methods=["POST"])
+@permission_required("avaliacao", "editar")
+def send_checklist_feedback_email(evaluation_id, checklist_id):
+    try:
+        envio = ChecklistFeedbackEmailService.send(
+            evaluation_id=evaluation_id,
+            checklist_id=checklist_id,
+            user_id=session.get("user_id")
+        )
+        return jsonify(envio), 200
     except ValueError as error:
         return jsonify({"erro": str(error)}), 400

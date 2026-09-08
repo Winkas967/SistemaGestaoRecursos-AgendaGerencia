@@ -424,6 +424,11 @@
                         <small>Este feedback ficará vinculado somente ao checklist selecionado.</small>
                     </label>
                     <p class="evaluation-form-message hidden" id="evaluationFeedbackMessage"></p>
+                    <div class="evaluation-feedback-documents hidden" id="evaluationFeedbackDocuments">
+                        <a class="evaluation-term-download hidden" id="evaluationFeedbackReportDownload" href="#">Baixar relatório</a>
+                        <a class="evaluation-term-download hidden" id="evaluationFeedbackCertificateDownload" href="#">Baixar certificado</a>
+                        <button class="btn" id="evaluationFeedbackSendEmailButton" type="button">Disparar e-mail</button>
+                    </div>
                     <div class="evaluation-stage-actions">
                         <button class="btn" id="evaluationFeedbackSaveButton" type="button">Salvar rascunho</button>
                         <button class="btn btn-primary" id="evaluationFeedbackCompleteButton" type="button">Concluir feedback</button>
@@ -752,6 +757,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260904-8') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260908-1') }}"></script>
 </body>
 </html>

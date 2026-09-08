@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS checklists_avaliacao (
     numero INT UNSIGNED NOT NULL,
     modelo_id INT UNSIGNED NOT NULL,
     modelo_versao INT UNSIGNED NOT NULL,
+    nome VARCHAR(150) NULL,
     nome_fantasia VARCHAR(160) NULL,
     cnpj VARCHAR(18) NULL,
     endereco VARCHAR(255) NULL,

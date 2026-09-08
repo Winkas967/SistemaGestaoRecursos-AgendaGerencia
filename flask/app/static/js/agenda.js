@@ -175,6 +175,10 @@
         evaluationTermFile: document.getElementById("evaluationTermFile"),
         evaluationTermFileName: document.getElementById("evaluationTermFileName"),
         evaluationTermDownload: document.getElementById("evaluationTermDownload"),
+        evaluationFeedbackDocuments: document.getElementById("evaluationFeedbackDocuments"),
+        evaluationFeedbackReportDownload: document.getElementById("evaluationFeedbackReportDownload"),
+        evaluationFeedbackCertificateDownload: document.getElementById("evaluationFeedbackCertificateDownload"),
+        evaluationFeedbackSendEmailButton: document.getElementById("evaluationFeedbackSendEmailButton"),
         evaluationTermMessage: document.getElementById("evaluationTermMessage"),
         evaluationTermSaveButton: document.getElementById("evaluationTermSaveButton"),
         evaluationTermPositions: document.querySelectorAll('[name="evaluationTermPosition"]'),
@@ -204,6 +208,16 @@
     function parseISODate(value) {
         const [year, month, day] = value.split("-").map(Number);
         return new Date(year, month - 1, day);
+    }
+
+    // Evita o problema de "YYYY-MM-DD" ser lido como meia-noite UTC e cair um dia
+    // antes ao exibir em fusos negativos (como o do Brasil). Datas com horário
+    // (ex.: criado_em) continuam usando o parsing padrão do JavaScript.
+    function parseDisplayDate(value) {
+        if (!value) return null;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return parseISODate(value);
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
     }
 
     function escapeHtml(value) {
@@ -491,12 +505,21 @@
     }
 
     function formatEvaluationDate(value) {
-        if (!value) return "Sem atualização";
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "Sem atualização";
+        const date = parseDisplayDate(value);
+        if (!date) return "Sem atualização";
         return new Intl.DateTimeFormat("pt-BR", {
             day: "2-digit",
             month: "short",
+            year: "numeric",
+        }).format(date);
+    }
+
+    function formatChecklistShortDate(value) {
+        const date = parseDisplayDate(value);
+        if (!date) return "sem data";
+        return new Intl.DateTimeFormat("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
             year: "numeric",
         }).format(date);
     }
@@ -863,6 +886,7 @@
             })
             .filter(Boolean);
         return {
+            nome: card.querySelector('[data-checklist-field="nome"]')?.value.trim() || null,
             dataVisita: card.querySelector('[data-checklist-field="dataVisita"]')?.value || null,
             dataEntregaRelatorio: card.querySelector('[data-checklist-field="dataEntregaRelatorio"]')?.value || null,
             observacoesGerais: card.querySelector('[data-checklist-field="observacoesGerais"]')?.value.trim() || null,
@@ -908,7 +932,7 @@
             return `<article class="evaluation-checklist-card${expanded ? " is-open" : ""}" data-checklist-card="${Number(checklist.checklistId)}">
                 <header class="evaluation-checklist-card-head">
                     <button type="button" class="evaluation-checklist-card-main" data-action="toggle-checklist" data-id="${Number(checklist.checklistId)}">
-                        <span><small>Checklist ${Number(checklist.numero)}</small><strong>${escapeHtml(checklist.modelo?.nome || "Checklist")}</strong></span>
+                        <span><small>Checklist ${Number(checklist.numero)}</small><strong>${escapeHtml(checklist.nome || checklist.modelo?.nome || "Sem nome")}</strong></span>
                         <span class="evaluation-checklist-card-meta"><b class="${completed ? "is-complete" : ""}">${completed ? "Concluído" : `${progress.answered} de ${progress.total}`}</b><time>${escapeHtml(formatEvaluationDate(checklist.dataVisita || checklist.criadoEm))}</time></span>
                     </button>
                     <button type="button" class="evaluation-checklist-card-toggle" data-action="toggle-checklist" data-id="${Number(checklist.checklistId)}" aria-expanded="${expanded}" aria-label="Abrir ou fechar checklist">▼</button>
@@ -922,6 +946,7 @@
                         <div><span>Classificação</span><strong class="evaluation-checklist-stars">${starsText}</strong></div>
                     </div>
                     <div class="evaluation-checklist-general">
+                        <label class="evaluation-checklist-general-wide"><span>Nome do checklist *</span><input data-checklist-field="nome" type="text" maxlength="150" placeholder="Ex.: Visita de renovação" value="${escapeHtml(checklist.nome || "")}"${disabled}></label>
                         <label><span>Data da visita</span><input data-checklist-field="dataVisita" type="date" value="${checklistDateValue(checklist.dataVisita)}"${disabled}></label>
                         <label><span>Data da entrega do relatório</span><input data-checklist-field="dataEntregaRelatorio" type="date" value="${checklistDateValue(checklist.dataEntregaRelatorio)}"${disabled}></label>
                         <label class="evaluation-checklist-general-wide"><span>Observações gerais</span><textarea data-checklist-field="observacoesGerais" rows="4"${disabled}>${escapeHtml(checklist.observacoesGerais || "")}</textarea></label>
@@ -938,7 +963,7 @@
                         </section>`).join("")}
                     </div>
                     <p class="evaluation-form-message hidden" data-checklist-message></p>
-                    ${completed ? `<div class="evaluation-stage-actions"><span class="evaluation-feedback-state">${checklist.feedback?.status === "concluido" ? "Feedback concluído" : "Feedback pendente"}</span><button class="btn btn-primary" type="button" data-action="open-feedback">${checklist.feedback?.status === "concluido" ? "Visualizar feedback" : "Abrir feedback"}</button></div>` : `<div class="evaluation-stage-actions"><button class="btn" type="button" data-action="save-checklist">Salvar rascunho</button><button class="btn btn-primary" type="button" data-action="complete-checklist"${progress.total && progress.answered === progress.total ? "" : " disabled"}>Concluir checklist</button></div>`}
+                    ${completed ? `<div class="evaluation-stage-actions"><span class="evaluation-feedback-state">${checklist.feedback?.status === "concluido" ? "Feedback concluído" : "Feedback pendente"}</span><button class="btn btn-primary" type="button" data-action="open-feedback">${checklist.feedback?.status === "concluido" ? "Visualizar feedback" : "Abrir feedback"}</button></div>` : `<div class="evaluation-stage-actions"><button class="btn" type="button" data-action="save-checklist">Salvar rascunho</button><button class="btn btn-primary" type="button" data-action="complete-checklist"${progress.total && progress.answered === progress.total && checklist.nome ? "" : " disabled"}>Concluir checklist</button></div>`}
                 </div>
             </article>`;
         }).join("");
@@ -988,13 +1013,30 @@
         }
     }
 
+    async function dispararEmailFeedback() {
+        const evaluation = state.avaliacaoSelecionada;
+        const checklistId = Number(state.feedbackChecklistId);
+        if (!evaluation || !checklistId) return;
+        if (!window.confirm("Deseja enviar o relatório e o certificado por e-mail para este prestador?")) return;
+        setEvaluationMessage(el.evaluationFeedbackMessage);
+        try {
+            await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}/feedback/enviar-email`, {
+                method: "POST",
+            });
+            showFeedback("E-mail enviado com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+        }
+    }
+
     function renderFeedbackStage() {
+        const evaluation = state.avaliacaoSelecionada;
         const completed = state.checklistsAvaliacao.filter((item) => item.status === "concluido");
         if (!completed.some((item) => item.checklistId === state.feedbackChecklistId)) {
             state.feedbackChecklistId = completed[0]?.checklistId || null;
         }
         el.evaluationFeedbackChecklistSelect.innerHTML = completed.length
-            ? completed.map((item) => `<option value="${Number(item.checklistId)}"${item.checklistId === state.feedbackChecklistId ? " selected" : ""}>Checklist ${Number(item.numero)} — ${escapeHtml(formatEvaluationDate(item.dataVisita || item.criadoEm))} — ${Number(item.resultadoPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%</option>`).join("")
+            ? completed.map((item) => `<option value="${Number(item.checklistId)}"${item.checklistId === state.feedbackChecklistId ? " selected" : ""}>${escapeHtml(item.nome || `Checklist ${Number(item.numero)}`)}</option>`).join("")
             : '<option value="">Nenhum checklist concluído</option>';
 
         const checklist = completed.find((item) => item.checklistId === state.feedbackChecklistId);
@@ -1009,6 +1051,26 @@
             : feedbackCompleted
                 ? "Feedback concluído"
                 : `Checklist ${checklist.numero} selecionado`;
+
+        if (feedbackCompleted && checklist.feedback?.arquivoRelatorioId) {
+            el.evaluationFeedbackReportDownload.href = `${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklist.checklistId}/feedback/relatorio`;
+            el.evaluationFeedbackReportDownload.classList.remove("hidden");
+        } else {
+            el.evaluationFeedbackReportDownload.href = "#";
+            el.evaluationFeedbackReportDownload.classList.add("hidden");
+        }
+
+        if (feedbackCompleted && checklist.feedback?.arquivoCertificadoId) {
+            el.evaluationFeedbackCertificateDownload.href = `${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklist.checklistId}/feedback/certificado`;
+            el.evaluationFeedbackCertificateDownload.classList.remove("hidden");
+        } else {
+            el.evaluationFeedbackCertificateDownload.href = "#";
+            el.evaluationFeedbackCertificateDownload.classList.add("hidden");
+        }
+
+        el.evaluationFeedbackDocuments.classList.toggle("hidden", !feedbackCompleted);
+        el.evaluationFeedbackSendEmailButton.disabled = !feedbackCompleted;
+
         setEvaluationMessage(el.evaluationFeedbackMessage);
     }
 
@@ -2463,13 +2525,22 @@
                     abrirFeedback(checklistId);
                 }
             });
+            function updateCompleteChecklistButtonState(card) {
+                const total = card.querySelectorAll("[data-checklist-question]").length;
+                const answered = card.querySelectorAll('[data-checklist-question] input[type="radio"]:checked').length;
+                const nome = card.querySelector('[data-checklist-field="nome"]')?.value.trim();
+                const completeButton = card.querySelector('[data-action="complete-checklist"]');
+                if (completeButton) completeButton.disabled = !total || answered !== total || !nome;
+            }
             el.evaluationChecklistsList.addEventListener("change", (event) => {
                 if (!event.target.matches('input[type="radio"]')) return;
                 const card = event.target.closest("[data-checklist-card]");
-                const total = card.querySelectorAll("[data-checklist-question]").length;
-                const answered = card.querySelectorAll('[data-checklist-question] input[type="radio"]:checked').length;
-                const completeButton = card.querySelector('[data-action="complete-checklist"]');
-                if (completeButton) completeButton.disabled = !total || answered !== total;
+                if (card) updateCompleteChecklistButtonState(card);
+            });
+            el.evaluationChecklistsList.addEventListener("input", (event) => {
+                if (!event.target.matches('[data-checklist-field="nome"]')) return;
+                const card = event.target.closest("[data-checklist-card]");
+                if (card) updateCompleteChecklistButtonState(card);
             });
             el.evaluationFeedbackChecklistSelect.addEventListener("change", () => {
                 state.feedbackChecklistId = Number(el.evaluationFeedbackChecklistSelect.value) || null;
@@ -2481,6 +2552,7 @@
                     salvarFeedback(true);
                 }
             });
+            el.evaluationFeedbackSendEmailButton.addEventListener("click", dispararEmailFeedback);
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);

@@ -1,6 +1,9 @@
 from models.checklist_feedbacks_model import ChecklistFeedbackModel
 from models.checklists_model import ChecklistModel
 from services.evaluations_service import EvaluationService
+from models.files_model import FileModel
+from services.checklist_feedback_documents_service import ChecklistFeedbackDocumentsService
+from services.file_storage_service import FileStorageService
 
 
 # Contém as regras dos feedbacks individuais dos checklists
@@ -115,12 +118,50 @@ class ChecklistFeedbackService:
         if not content:
             raise ValueError("Escreva o feedback antes de concluí-lo.")
 
-        return ChecklistFeedbackService.to_dict(
-            ChecklistFeedbackModel.complete(
-                checklist_id,
-                content,
-                rule["estrelas"],
-                rule["retorno_meses"],
-                user_id,
-            )
+        feedback = ChecklistFeedbackModel.complete(
+            checklist_id,
+            content,
+            rule["estrelas"],
+            rule["retorno_meses"],
+            user_id
         )
+        
+        evaluation = EvaluationService.get_by_id(evaluation_id)
+        ChecklistFeedbackDocumentsService.generate_and_store(
+            evaluation, checklist, feedback, user_id
+        )
+        
+        return ChecklistFeedbackService.to_dict(
+            ChecklistFeedbackModel.get_by_checklist(checklist_id)
+        )
+        
+    
+    #retorna o arquivo do relatorio de feedback
+    @staticmethod
+    def get_report_file(evaluation_id, checklist_id):
+        ChecklistFeedbackService.get_checklist(evaluation_id, checklist_id)
+        feedback = ChecklistFeedbackModel.get_by_checklist(checklist_id)
+        
+        if not feedback or not feedback["arquivo_relatorio_id"]:
+            raise ValueError("O relatório deste checklist ainda não foi gerado.")
+        
+        file_record = FileModel.get_by_id(feedback["arquivo_relatorio_id"])
+        if not file_record:
+            raise ValueError("O arquivo do relatório não foi encontrado.")
+        
+        return file_record, FileStorageService.resolve_path(file_record)
+    
+    #retorna o arquivo do certificado
+    @staticmethod
+    def get_certificate_file(evaluation_id, checklist_id):
+        ChecklistFeedbackService.get_checklist(evaluation_id, checklist_id)
+        feedback = ChecklistFeedbackModel.get_by_checklist(checklist_id)
+        
+        if not feedback or not feedback["arquivo_certificado_id"]:
+            raise ValueError("O certificado deste checklist ainda não foi gerado.")
+        
+        file_record = FileModel.get_by_id(feedback["arquivo_certificado_id"])
+        if not file_record:
+            raise ValueError("O arquivo de certificado não foi encontrado.")
+        
+        return file_record, FileStorageService.resolve_path(file_record)

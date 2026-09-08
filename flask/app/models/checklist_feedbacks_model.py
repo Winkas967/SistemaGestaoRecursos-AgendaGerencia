@@ -142,3 +142,39 @@ class ChecklistFeedbackModel:
                 cursor.close()
             if connection:
                 connection.close()
+                
+    #salva os arquivos gerados do feedback
+    @staticmethod
+    def save_documents(checklist_id, report_file_id, certificate_file_id):
+        connection = None
+        cursor = None
+        
+        try:
+            connection, cursor = get_db_connection()
+            
+            cursor.execute("""
+                UPDATE checklist_feedbacks
+                SET
+                    arquivo_relatorio_id = %s,
+                    arquivo_certificado_id = %s,
+                    documentos_gerados_em = CURRENT_TIMESTAMP
+                WHERE checklist_avaliacao_id = %s
+            """, (
+                report_file_id,
+                certificate_file_id,
+                checklist_id,
+            ))
+            connection.commit()
+            return ChecklistFeedbackModel.get_by_checklist(checklist_id)
+        
+        except Exception:
+            if connection:
+                connection.rollback()
+                
+            raise
+        
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
