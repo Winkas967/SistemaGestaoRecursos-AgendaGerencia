@@ -158,6 +158,9 @@
         evaluationNewOverlay: document.querySelector(".evaluation-new-overlay"),
         evaluationModalCloseButtons: document.querySelectorAll("[data-evaluation-modal-close]"),
         evaluationProcessItems: document.getElementById("evaluationProcessItems"),
+        evaluationFilterSearch: document.getElementById("evaluationFilterSearch"),
+        evaluationFilterStage: document.getElementById("evaluationFilterStage"),
+        evaluationFilterCategory: document.getElementById("evaluationFilterCategory"),
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
@@ -486,6 +489,12 @@
         concluido: "Concluída",
     };
 
+    // Etapa não reflete a recusa (fica travada em "termo_adesao"), então o status manda aqui
+    function evaluationStageLabel(item) {
+        if (item.status === "recusada") return "Recusado";
+        return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
+    }
+
     function evaluationInitials(name) {
         return String(name || "")
             .trim()
@@ -497,6 +506,7 @@
     }
 
     function evaluationProgress(item) {
+        if (item.status === "recusada") return { percent: 100, text: "Processo encerrado" };
         if (item.status === "concluida" || item.status === "concluido") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "feedback") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "checklist") return { percent: 66, text: "2 de 3 etapas" };
@@ -530,23 +540,60 @@
         element.classList.toggle("hidden", !message);
     }
 
+    // Preenche o filtro de categoria com as categorias que realmente existem nas avaliações carregadas
+    function popularFiltroCategoriaAvaliacao() {
+        if (!el.evaluationFilterCategory) return;
+        const atual = el.evaluationFilterCategory.value;
+        const categorias = Array.from(new Set(
+            state.avaliacoes.map((item) => item.categoriaNome).filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b, "pt-BR"));
+        el.evaluationFilterCategory.innerHTML = '<option value="">Todas as categorias</option>'
+            + categorias.map((nome) => `<option value="${escapeHtml(nome)}"${nome === atual ? " selected" : ""}>${escapeHtml(nome)}</option>`).join("");
+    }
+
+    // "Concluída" agrupa concluida/concluido; as demais etapas usam o valor cru de etapaAtual
+    function evaluationFilterStageValue(item) {
+        if (item.status === "recusada") return "recusada";
+        if (item.status === "concluida" || item.status === "concluido") return "concluida";
+        return item.etapaAtual;
+    }
+
     function renderAvaliacoes() {
         if (!el.evaluationProcessItems) return;
-        if (!state.avaliacoes.length) {
+        // Avaliações recusadas ficam escondidas da lista por padrão (o termo foi
+        // recusado e o cadastro já está livre pra uma nova avaliação), mas continuam
+        // aparecendo quando o filtro de etapa "Recusado" é selecionado explicitamente.
+        const searchTerm = (el.evaluationFilterSearch?.value || "").trim().toLowerCase();
+        const stageFilter = el.evaluationFilterStage?.value || "";
+        const categoryFilter = el.evaluationFilterCategory?.value || "";
+        const visiveis = state.avaliacoes.filter((item) => {
+            if (stageFilter === "recusada") {
+                if (item.status !== "recusada") return false;
+            } else if (item.status === "recusada") {
+                return false;
+            } else if (stageFilter && evaluationFilterStageValue(item) !== stageFilter) {
+                return false;
+            }
+            if (searchTerm && !String(item.prestadorNome || "").toLowerCase().includes(searchTerm)) return false;
+            if (categoryFilter && item.categoriaNome !== categoryFilter) return false;
+            return true;
+        });
+        if (!visiveis.length) {
             el.evaluationProcessItems.innerHTML = '<div class="evaluation-list-message">Nenhuma avaliação iniciada. Clique em “Iniciar nova avaliação” para começar.</div>';
             return;
         }
 
-        el.evaluationProcessItems.innerHTML = state.avaliacoes.map((item) => {
-            const complete = item.status === "concluida" || item.status === "concluido";
+        el.evaluationProcessItems.innerHTML = visiveis.map((item) => {
+            const closed = item.status !== "em_andamento";
+            const rejected = item.status === "recusada";
             const progress = evaluationProgress(item);
             return `
-                <article class="evaluation-process-item${complete ? " is-complete" : ""}">
+                <article class="evaluation-process-item${closed ? " is-complete" : ""}${rejected ? " is-rejected" : ""}">
                     <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")} • ${escapeHtml(item.anoReferencia || "Sem ano")}</small></span></div>
-                    <span class="evaluation-process-stage${complete ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual)}</span>
+                    <span class="evaluation-process-stage${closed ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(evaluationStageLabel(item))}</span>
                     <div class="evaluation-process-progress"><span><i style="width: ${progress.percent}%"></i></span><small>${progress.text}</small></div>
                     <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
-                    <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${complete ? "Visualizar" : "Continuar"}</button>
+                    <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${closed ? "Visualizar" : "Continuar"}</button>
                 </article>`;
         }).join("");
     }
@@ -561,6 +608,7 @@
             const data = await requestJson(EVALUATIONS_API_URL);
             state.avaliacoes = Array.isArray(data.registros) ? data.registros : [];
             state.avaliacoesCarregadas = true;
+            popularFiltroCategoriaAvaliacao();
             renderAvaliacoes();
         } catch (error) {
             if (el.evaluationProcessItems) el.evaluationProcessItems.innerHTML = `<div class="evaluation-list-message is-error">${escapeHtml(error.message)}</div>`;
@@ -1092,8 +1140,14 @@
         if (!item) return;
         el.evaluationSelectedAvatar.textContent = evaluationInitials(item.prestadorNome);
         el.evaluationSelectedName.textContent = item.prestadorNome;
-        el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${item.status === "em_andamento" ? "Processo em andamento" : "Processo concluído"}`;
-        el.evaluationSelectedStage.textContent = EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
+        const statusText = item.status === "recusada"
+            ? "Processo encerrado (termo recusado)"
+            : item.status === "em_andamento"
+                ? "Processo em andamento"
+                : "Processo concluído";
+        el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${statusText}`;
+        el.evaluationSelectedStage.textContent = evaluationStageLabel(item);
+        el.evaluationSelectedStage.classList.toggle("is-rejected", item.status === "recusada");
         renderTermoAdesao();
         renderChecklistCards();
         renderFeedbackStage();
@@ -1148,11 +1202,16 @@
             if (!response.ok) throw new Error(data.erro || "Não foi possível salvar o termo.");
             state.termoAdesao = data;
             state.avaliacaoSelecionada.etapaAtual = data.avaliacaoEtapaAtual || "checklist";
+            state.avaliacaoSelecionada.status = data.avaliacaoStatus || state.avaliacaoSelecionada.status;
             renderAvaliacaoSelecionada();
-            el.evaluationStepChecklist.checked = true;
             state.avaliacoesCarregadas = false;
             await carregarAvaliacoes(true);
-            showFeedback("Termo de adesão salvo com sucesso.");
+            if (data.avaliacaoStatus === "recusada") {
+                showFeedback("Termo de adesão recusado. O processo foi encerrado.", "error");
+            } else {
+                el.evaluationStepChecklist.checked = true;
+                showFeedback("Termo de adesão salvo com sucesso.");
+            }
         } catch (error) {
             setEvaluationMessage(el.evaluationTermMessage, error.message);
         } finally {
@@ -2467,6 +2526,9 @@
         el.agendaTabs.forEach((tab) => {
             tab.addEventListener("click", () => switchView(tab.dataset.view));
         });
+        el.evaluationFilterSearch?.addEventListener("input", renderAvaliacoes);
+        el.evaluationFilterStage?.addEventListener("change", renderAvaliacoes);
+        el.evaluationFilterCategory?.addEventListener("change", renderAvaliacoes);
         if (el.evaluationNewTrigger && el.evaluationNewOverlay) {
             el.evaluationNewTrigger.addEventListener("click", openEvaluationModal);
             el.evaluationModalCloseButtons.forEach((button) => {

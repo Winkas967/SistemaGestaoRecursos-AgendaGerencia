@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260904-6') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260910-1') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -307,9 +307,18 @@
                     </button>
                 </div>
                 <div class="evaluation-list-toolbar">
-                    <label><span>Buscar</span><input type="search" placeholder="Nome do cadastro" disabled></label>
-                    <label><span>Etapa</span><select disabled><option>Todas as etapas</option></select></label>
-                    <label><span>Categoria</span><select disabled><option>Todas as categorias</option></select></label>
+                    <label><span>Buscar</span><input type="search" id="evaluationFilterSearch" placeholder="Nome do cadastro"></label>
+                    <label><span>Etapa</span>
+                        <select id="evaluationFilterStage">
+                            <option value="">Todas as etapas</option>
+                            <option value="termo_adesao">Termo de adesão</option>
+                            <option value="checklist">Checklist</option>
+                            <option value="feedback">Feedback</option>
+                            <option value="concluida">Concluída</option>
+                            <option value="recusada">Recusado</option>
+                        </select>
+                    </label>
+                    <label><span>Categoria</span><select id="evaluationFilterCategory"><option value="">Todas as categorias</option></select></label>
                 </div>
                 <div class="evaluation-process-table-head"><span>Cadastro</span><span>Etapa atual</span><span>Progresso</span><span>Atualização</span><span></span></div>
                 <div class="evaluation-process-items" id="evaluationProcessItems">
@@ -752,6 +761,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-1') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-9') }}"></script>
 </body>
 </html>

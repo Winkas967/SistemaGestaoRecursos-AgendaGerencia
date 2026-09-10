@@ -775,6 +775,11 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     background: color-mix(in srgb, var(--verde-principal) 10%, transparent);
 }
 
+.evaluation-process-stage.is-rejected {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
 .evaluation-process-progress > span {
     height: 7px;
     display: block;
@@ -884,6 +889,10 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     margin-top: 5px;
     color: var(--verde-principal);
     font-size: 13px;
+}
+
+.evaluation-selected-meta strong.is-rejected {
+    color: var(--danger);
 }
 
 .evaluation-dashboard-content {

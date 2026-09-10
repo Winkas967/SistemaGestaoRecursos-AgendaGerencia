@@ -175,10 +175,13 @@ class AdhesionTermService:
                 
                 term_id = AdhesionTermModel.create(term)
                 
-            EvaluationModel.update_stage(
-                evaluation["id"],
-                "checklist"
-            )
+            if position == "recusou":
+                EvaluationModel.reject(evaluation["id"])
+            else:
+                EvaluationModel.update_stage(
+                    evaluation["id"],
+                    "checklist"
+                )
             
         except Exception:
             if new_file:
@@ -195,8 +198,13 @@ class AdhesionTermService:
         
         result = AdhesionTermService.to_dict(saved_term)
         
-        result["avaliacaoEtapaAtual"] = "checklist"
-        
+        if position == "recusou":
+            result["avaliacaoEtapaAtual"] = "termo_adesao"
+            result["avaliacaoStatus"] = "recusada"
+        else:
+            result["avaliacaoEtapaAtual"] = "checklist"
+            result["avaliacaoStatus"] = "em_andamento"        
+            
         return result
     
     
