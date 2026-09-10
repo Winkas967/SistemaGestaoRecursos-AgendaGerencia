@@ -68,11 +68,6 @@ def create_evaluation():
             "erro": "Informe o cadastro que será avaliado."
         }),400
 
-    if "anoReferencia" not in data:
-        return jsonify({
-            "erro": "Informe o ano de referência da avaliação."
-        }), 400
-        
     try:
         evaluation = EvaluationService.create(
             provider_id=data.get("prestadorId"),

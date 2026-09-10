@@ -97,13 +97,15 @@ class EvaluationService:
         except (TypeError, ValueError):
             raise ValueError("O cadastro informado é inválido.")
 
-        try:
-            reference_year = int(reference_year)
-
-        except (TypeError, ValueError):
-            raise ValueError("O ano de referência informado é inválido.")
-
         current_year = date.today().year
+
+        if reference_year in (None, ""):
+            reference_year = current_year
+        else:
+            try:
+                reference_year = int(reference_year)
+            except (TypeError, ValueError):
+                raise ValueError("O ano de referência informado é inválido.")
 
         if reference_year < 2000 or reference_year > current_year + 1:
             raise ValueError(

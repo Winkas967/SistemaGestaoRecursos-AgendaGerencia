@@ -161,7 +161,6 @@
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
-        evaluationReferenceYear: document.getElementById("evaluationReferenceYear"),
         evaluationStartButton: document.getElementById("evaluationStartButton"),
         evaluationNewError: document.getElementById("evaluationNewError"),
         evaluationSelectedAvatar: document.getElementById("evaluationSelectedAvatar"),
@@ -583,9 +582,6 @@
         setEvaluationMessage(el.evaluationNewError);
         el.evaluationProviderSelect.disabled = true;
         el.evaluationStartButton.disabled = true;
-        const currentYear = new Date().getFullYear();
-        el.evaluationReferenceYear.value = currentYear;
-        el.evaluationReferenceYear.max = currentYear + 1;
         el.evaluationProviderSelect.innerHTML = '<option value="">Carregando cadastros...</option>';
         try {
             const data = await requestJson(`${EVALUATIONS_API_URL}/cadastros-disponiveis`);
@@ -602,14 +598,8 @@
 
     async function iniciarAvaliacao() {
         const providerId = Number(el.evaluationProviderSelect?.value);
-        const referenceYear = Number(el.evaluationReferenceYear?.value);
         if (!providerId) {
             setEvaluationMessage(el.evaluationNewError, "Selecione um cadastro para iniciar a avaliação.");
-            return;
-        }
-        const currentYear = new Date().getFullYear();
-        if (!Number.isInteger(referenceYear) || referenceYear < 2000 || referenceYear > currentYear + 1) {
-            setEvaluationMessage(el.evaluationNewError, `Informe um ano entre 2000 e ${currentYear + 1}.`);
             return;
         }
         el.evaluationStartButton.disabled = true;
@@ -619,7 +609,6 @@
                 method: "POST",
                 body: JSON.stringify({
                     prestadorId: providerId,
-                    anoReferencia: referenceYear,
                 }),
             });
             closeEvaluationModal();
@@ -631,10 +620,7 @@
             setEvaluationMessage(el.evaluationNewError, error.message);
         } finally {
             el.evaluationStartButton.textContent = "Iniciar avaliação";
-            el.evaluationStartButton.disabled = (
-                !el.evaluationProviderSelect?.value ||
-                !el.evaluationReferenceYear?.value
-            );
+            el.evaluationStartButton.disabled = !el.evaluationProviderSelect?.value;
         }
     }
 
@@ -2487,11 +2473,7 @@
                 button.addEventListener("click", closeEvaluationModal);
             });
             el.evaluationProviderSelect.addEventListener("change", () => {
-                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value || !el.evaluationReferenceYear.value;
-                setEvaluationMessage(el.evaluationNewError);
-            });
-            el.evaluationReferenceYear.addEventListener("input", () => {
-                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value || !el.evaluationReferenceYear.value;
+                el.evaluationStartButton.disabled = !el.evaluationProviderSelect.value;
                 setEvaluationMessage(el.evaluationNewError);
             });
             el.evaluationStartButton.addEventListener("click", iniciarAvaliacao);
