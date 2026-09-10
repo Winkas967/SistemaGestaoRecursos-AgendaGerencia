@@ -55,6 +55,8 @@
         checklistsAvaliacao: [],
         checklistExpandedId: null,
         feedbackChecklistId: null,
+        dashboardCarregado: false,
+        dashboardLoading: false,
     };
 
     const el = {
@@ -161,6 +163,11 @@
         evaluationFilterSearch: document.getElementById("evaluationFilterSearch"),
         evaluationFilterStage: document.getElementById("evaluationFilterStage"),
         evaluationFilterCategory: document.getElementById("evaluationFilterCategory"),
+        evaluationAreaDashboard: document.getElementById("evaluationAreaDashboard"),
+        evaluationDashboardYear: document.getElementById("evaluationDashboardYear"),
+        evaluationDashboardTableBody: document.getElementById("evaluationDashboardTableBody"),
+        evaluationDashboardTableFoot: document.getElementById("evaluationDashboardTableFoot"),
+        evaluationDashboardAdhesionAvg: document.getElementById("evaluationDashboardAdhesionAvg"),
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
@@ -193,8 +200,6 @@
         evaluationFeedbackMessage: document.getElementById("evaluationFeedbackMessage"),
         evaluationFeedbackSaveButton: document.getElementById("evaluationFeedbackSaveButton"),
         evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
-        evaluationFeedbackFinalize: document.getElementById("evaluationFeedbackFinalize"),
-        evaluationFinalizeButton: document.getElementById("evaluationFinalizeButton"),
     };
 
     function toISODate(date) {
@@ -269,6 +274,10 @@
         }
         if (view === "avaliacao" && !state.avaliacoesCarregadas && !state.avaliacoesLoading) {
             carregarAvaliacoes();
+        }
+        if (view === "avaliacao") {
+            popularAnoDashboard();
+            if (el.evaluationAreaDashboard?.checked) carregarDashboardAvaliacoes();
         }
     }
 
@@ -494,7 +503,6 @@
     // Etapa não reflete a recusa (fica travada em "termo_adesao"), então o status manda aqui
     function evaluationStageLabel(item) {
         if (item.status === "recusada") return "Recusado";
-        if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
 
@@ -617,6 +625,77 @@
             if (el.evaluationProcessItems) el.evaluationProcessItems.innerHTML = `<div class="evaluation-list-message is-error">${escapeHtml(error.message)}</div>`;
         } finally {
             state.avaliacoesLoading = false;
+        }
+    }
+
+    // Preenche o seletor de ano do dashboard (ano atual + 1 até 4 anos atrás)
+    function popularAnoDashboard() {
+        if (!el.evaluationDashboardYear || el.evaluationDashboardYear.options.length) return;
+        const anoAtual = new Date().getFullYear();
+        const anos = [];
+        for (let ano = anoAtual + 1; ano >= anoAtual - 4; ano -= 1) anos.push(ano);
+        el.evaluationDashboardYear.innerHTML = anos
+            .map((ano) => `<option value="${ano}"${ano === anoAtual ? " selected" : ""}>${ano}</option>`)
+            .join("");
+    }
+
+    function formatDashboardPercent(value) {
+        return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+    }
+
+    function renderDashboardAvaliacoes(dashboard) {
+        const categorias = Array.isArray(dashboard.categorias) ? dashboard.categorias : [];
+        const totais = dashboard.totais || {};
+
+        if (el.evaluationDashboardTableBody) {
+            el.evaluationDashboardTableBody.innerHTML = categorias.length
+                ? categorias.map((item) => `
+                    <tr>
+                        <td>${escapeHtml(item.categoriaNome)}: ${Number(item.totalPrestadores)}</td>
+                        <td>${Number(item.adesao)}</td>
+                        <td>${Number(item.naoAdesao)}</td>
+                        <td>${Number(item.naoPosicionaram)}</td>
+                        <td>${Number(item.visitaSemDocumento)}</td>
+                        <td>${Number(item.estrelas3)}</td>
+                        <td>${Number(item.estrelas4)}</td>
+                        <td>${Number(item.estrelas5)}</td>
+                    </tr>`).join("")
+                : '<tr><td colspan="8" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
+        }
+
+        if (el.evaluationDashboardTableFoot) {
+            el.evaluationDashboardTableFoot.innerHTML = `
+                <tr>
+                    <td>TOTAL: ${Number(totais.totalPrestadores || 0)}</td>
+                    <td>${Number(totais.adesao || 0)}</td>
+                    <td>${Number(totais.naoAdesao || 0)}</td>
+                    <td>${Number(totais.naoPosicionaram || 0)}</td>
+                    <td>${Number(totais.visitaSemDocumento || 0)}</td>
+                    <td>${Number(totais.estrelas3 || 0)}</td>
+                    <td>${Number(totais.estrelas4 || 0)}</td>
+                    <td>${Number(totais.estrelas5 || 0)}</td>
+                </tr>`;
+        }
+
+        if (el.evaluationDashboardAdhesionAvg) {
+            el.evaluationDashboardAdhesionAvg.textContent = formatDashboardPercent(dashboard.mediaAdesaoPercentual);
+        }
+    }
+
+    async function carregarDashboardAvaliacoes(force = false) {
+        if (!el.evaluationDashboardTableBody) return;
+        if (state.dashboardLoading || (state.dashboardCarregado && !force)) return;
+        state.dashboardLoading = true;
+        el.evaluationDashboardTableBody.innerHTML = '<tr><td colspan="8" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>';
+        try {
+            const ano = el.evaluationDashboardYear?.value || "";
+            const dashboard = await requestJson(`${EVALUATIONS_API_URL}/dashboard${ano ? `?ano=${encodeURIComponent(ano)}` : ""}`);
+            state.dashboardCarregado = true;
+            renderDashboardAvaliacoes(dashboard);
+        } catch (error) {
+            el.evaluationDashboardTableBody.innerHTML = `<tr><td colspan="8" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
+        } finally {
+            state.dashboardLoading = false;
         }
     }
 
@@ -1116,13 +1195,6 @@
         el.evaluationFeedbackDocuments.classList.toggle("hidden", !feedbackCompleted);
         el.evaluationFeedbackSendEmailButton.disabled = !feedbackCompleted;
 
-        const allFeedbacksResolved = completed.length > 0 && completed.every(
-            (item) => item.feedback?.status === "concluido" || item.permiteConcluirFeedback === false
-        );
-        const canFinalize = evaluation.status === "em_andamento" && allFeedbacksResolved;
-        el.evaluationFeedbackFinalize.classList.toggle("hidden", !canFinalize);
-        el.evaluationFinalizeButton.disabled = !canFinalize;
-
         setEvaluationMessage(el.evaluationFeedbackMessage);
     }
 
@@ -1150,25 +1222,6 @@
             showFeedback(conclude ? "Feedback concluído com sucesso." : "Feedback salvo com sucesso.");
         } catch (error) {
             setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
-        }
-    }
-
-    async function finalizarAvaliacao() {
-        const evaluation = state.avaliacaoSelecionada;
-        if (!evaluation) return;
-        if (!window.confirm("Deseja finalizar esta avaliação? Depois de finalizada, o processo não poderá mais ser editado.")) return;
-        setEvaluationMessage(el.evaluationFeedbackMessage);
-        el.evaluationFinalizeButton.disabled = true;
-        try {
-            const updated = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/concluir`, { method: "POST" });
-            state.avaliacaoSelecionada = { ...state.avaliacaoSelecionada, ...updated };
-            renderAvaliacaoSelecionada();
-            state.avaliacoesCarregadas = false;
-            await carregarAvaliacoes(true);
-            showFeedback("Avaliação finalizada com sucesso.");
-        } catch (error) {
-            setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
-            el.evaluationFinalizeButton.disabled = false;
         }
     }
 
@@ -2586,6 +2639,10 @@
             });
             el.evaluationTermPositions.forEach((input) => input.addEventListener("change", () => setEvaluationMessage(el.evaluationTermMessage)));
             el.evaluationTermSaveButton.addEventListener("click", salvarTermoAdesao);
+            el.evaluationAreaDashboard?.addEventListener("change", () => {
+                if (el.evaluationAreaDashboard.checked) carregarDashboardAvaliacoes();
+            });
+            el.evaluationDashboardYear?.addEventListener("change", () => carregarDashboardAvaliacoes(true));
             el.evaluationChecklistAddButton.addEventListener("click", criarNovoChecklist);
             el.evaluationChecklistsList.addEventListener("click", async (event) => {
                 const button = event.target.closest("[data-action]");
@@ -2646,7 +2703,6 @@
                 }
             });
             el.evaluationFeedbackSendEmailButton.addEventListener("click", dispararEmailFeedback);
-            el.evaluationFinalizeButton.addEventListener("click", finalizarAvaliacao);
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);

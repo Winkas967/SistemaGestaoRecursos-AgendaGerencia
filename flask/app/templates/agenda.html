@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260910-3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260910-4') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -457,54 +457,37 @@
                     <div>
                         <span class="eyebrow">Visão geral</span>
                         <h3>Indicadores das avaliações</h3>
-                        <p>Os valores abaixo são demonstrativos e serão substituídos pelos dados reais.</p>
+                        <p>Resumo por categoria de prestador, com base nas avaliações do ano de referência selecionado.</p>
                     </div>
                     <div class="evaluation-dashboard-filters">
-                        <select disabled aria-label="Filtrar dashboard por categoria"><option>Todas as categorias</option></select>
-                        <select disabled aria-label="Filtrar dashboard por período"><option>Período completo</option></select>
+                        <label><span>Ano de referência</span><select id="evaluationDashboardYear" aria-label="Filtrar dashboard por ano de referência"></select></label>
                     </div>
                 </div>
 
-                <div class="evaluation-dashboard-metrics">
-                    <article><span>Total de cadastros</span><strong>--</strong><small>Cadastros avaliáveis</small></article>
-                    <article><span>Em avaliação</span><strong>--</strong><small>Processos em andamento</small></article>
-                    <article><span>Concluídas</span><strong>--</strong><small>Com feedback final</small></article>
-                    <article><span>Taxa de conclusão</span><strong>--%</strong><small>Resultado do período</small></article>
+                <div class="evaluation-dashboard-table-wrap">
+                    <table class="evaluation-dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Prestadores</th>
+                                <th>Adesão</th>
+                                <th>Não Adesão</th>
+                                <th>Não se posicionaram</th>
+                                <th>Visita realizada/falta envio dos documentos</th>
+                                <th>03 estrelas</th>
+                                <th>04 estrelas</th>
+                                <th>05 estrelas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evaluationDashboardTableBody">
+                            <tr><td colspan="8" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
+                        </tbody>
+                        <tfoot id="evaluationDashboardTableFoot"></tfoot>
+                    </table>
                 </div>
 
-                <div class="evaluation-dashboard-grid">
-                    <article class="evaluation-chart-card">
-                        <header><div><span>Termos de adesão</span><h4>Posicionamento dos cadastros</h4></div><small>Demonstrativo</small></header>
-                        <div class="evaluation-donut-wrap">
-                            <div class="evaluation-donut"><span>--<small>Total</small></span></div>
-                            <div class="evaluation-chart-legend">
-                                <span><i class="is-accepted"></i>Aceitou <strong>--</strong></span>
-                                <span><i class="is-refused"></i>Recusou <strong>--</strong></span>
-                                <span><i class="is-waiting"></i>Sem posicionamento <strong>--</strong></span>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="evaluation-chart-card">
-                        <header><div><span>Andamento</span><h4>Etapa atual dos processos</h4></div><small>Demonstrativo</small></header>
-                        <div class="evaluation-bars">
-                            <div><span>Termo de adesão</span><i><b style="width: 72%"></b></i><strong>--</strong></div>
-                            <div><span>Checklist</span><i><b style="width: 48%"></b></i><strong>--</strong></div>
-                            <div><span>Feedback</span><i><b style="width: 28%"></b></i><strong>--</strong></div>
-                            <div><span>Concluído</span><i><b style="width: 16%"></b></i><strong>--</strong></div>
-                        </div>
-                    </article>
-
-                    <article class="evaluation-chart-card evaluation-chart-wide">
-                        <header><div><span>Distribuição</span><h4>Avaliações por categoria</h4></div><small>Demonstrativo</small></header>
-                        <div class="evaluation-category-chart" aria-label="Gráfico demonstrativo por categoria">
-                            <div><i style="height: 76%"></i><span>Credenciados</span></div>
-                            <div><i style="height: 58%"></i><span>Cooperados</span></div>
-                            <div><i style="height: 43%"></i><span>Laboratórios</span></div>
-                            <div><i style="height: 31%"></i><span>Hospitais</span></div>
-                            <div><i style="height: 20%"></i><span>Diagnósticos</span></div>
-                        </div>
-                    </article>
+                <div class="evaluation-dashboard-analysis">
+                    <h4>Análise dos resultados</h4>
+                    <p><strong>Média de porcentagem</strong>: <span id="evaluationDashboardAdhesionAvg">--</span> adesão</p>
                 </div>
             </div>
         </div>
@@ -765,6 +748,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-12') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-13') }}"></script>
 </body>
 </html>

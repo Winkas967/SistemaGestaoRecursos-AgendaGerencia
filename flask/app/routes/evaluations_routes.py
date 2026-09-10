@@ -40,8 +40,21 @@ def list_available_providers():
         "registros": providers,
         "total": len(providers)
     }),200
-    
-    
+
+
+#resumo do dashboard de avaliacoes, agregado por categoria de prestador
+@evaluations_bp.route("/dashboard", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def get_evaluations_dashboard():
+    try:
+        dashboard = EvaluationService.get_dashboard(request.args.get("ano"))
+
+        return jsonify(dashboard), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
 #busca uma avaliacao pelo identificador
 @evaluations_bp.route("/<int:evaluation_id>", methods=["GET"])
 @permission_required("avaliacao", "visualizar")

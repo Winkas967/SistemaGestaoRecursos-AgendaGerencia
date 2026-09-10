@@ -176,3 +176,61 @@ class EvaluationService:
             raise ValueError("Não foi possível finalizar a avaliação.")
 
         return EvaluationService.get_by_id(evaluation["id"])
+
+
+    #monta o resumo do dashboard de avaliacoes, agregado por categoria, para um ano de referencia
+    @staticmethod
+    def get_dashboard(year=None):
+        current_year = date.today().year
+
+        if year in (None, ""):
+            year = current_year
+        else:
+            try:
+                year = int(year)
+            except (TypeError, ValueError):
+                raise ValueError("O ano informado é inválido.")
+
+        rows = EvaluationModel.get_dashboard_summary(year)
+
+        categorias = []
+        totais = {
+            "totalPrestadores": 0,
+            "adesao": 0,
+            "naoAdesao": 0,
+            "naoPosicionaram": 0,
+            "visitaSemDocumento": 0,
+            "estrelas3": 0,
+            "estrelas4": 0,
+            "estrelas5": 0,
+        }
+
+        for row in rows:
+            item = {
+                "categoriaId": row["categoria_id"],
+                "categoriaNome": row["categoria_nome"],
+                "categoriaSlug": row["categoria_slug"],
+                "totalPrestadores": int(row["total_prestadores"] or 0),
+                "adesao": int(row["adesao"] or 0),
+                "naoAdesao": int(row["nao_adesao"] or 0),
+                "naoPosicionaram": int(row["nao_posicionaram"] or 0),
+                "visitaSemDocumento": int(row["visita_sem_documento"] or 0),
+                "estrelas3": int(row["estrelas_3"] or 0),
+                "estrelas4": int(row["estrelas_4"] or 0),
+                "estrelas5": int(row["estrelas_5"] or 0),
+            }
+            categorias.append(item)
+            for key in totais:
+                totais[key] += item[key]
+
+        media_adesao = (
+            round(totais["adesao"] / totais["totalPrestadores"] * 100, 2)
+            if totais["totalPrestadores"] else 0
+        )
+
+        return {
+            "anoReferencia": year,
+            "categorias": categorias,
+            "totais": totais,
+            "mediaAdesaoPercentual": media_adesao,
+        }

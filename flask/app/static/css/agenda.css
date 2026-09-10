@@ -927,6 +927,103 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     min-height: 40px;
 }
 
+.evaluation-dashboard-filters label > span {
+    display: block;
+    margin: 0 0 5px 2px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.evaluation-dashboard-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 17px;
+    background: var(--input-bg);
+}
+
+.evaluation-dashboard-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.evaluation-dashboard-table th,
+.evaluation-dashboard-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.evaluation-dashboard-table th:first-child,
+.evaluation-dashboard-table td:first-child {
+    white-space: normal;
+}
+
+.evaluation-dashboard-table thead th {
+    background: var(--verde-principal);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: normal;
+}
+
+.evaluation-dashboard-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.evaluation-dashboard-table tbody td:not(:first-child) {
+    font-weight: 800;
+    color: var(--text);
+}
+
+.evaluation-dashboard-table tfoot td {
+    border-top: 2px solid var(--verde-principal);
+    border-bottom: none;
+    background: var(--accent-soft);
+    font-weight: 900;
+    color: var(--verde-principal);
+}
+
+.evaluation-dashboard-loading {
+    text-align: center !important;
+    color: var(--text-muted);
+    white-space: normal !important;
+}
+
+.evaluation-dashboard-loading.is-error {
+    color: var(--danger);
+}
+
+.evaluation-dashboard-analysis {
+    margin-top: 18px;
+    padding: 16px 20px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 17px;
+}
+
+.evaluation-dashboard-analysis h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+}
+
+.evaluation-dashboard-analysis p {
+    margin: 0;
+    color: var(--text);
+}
+
+.evaluation-dashboard-analysis #evaluationDashboardAdhesionAvg {
+    color: var(--verde-principal);
+    font-weight: 900;
+}
+
 .evaluation-dashboard-metrics {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
