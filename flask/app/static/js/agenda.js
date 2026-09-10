@@ -193,6 +193,8 @@
         evaluationFeedbackMessage: document.getElementById("evaluationFeedbackMessage"),
         evaluationFeedbackSaveButton: document.getElementById("evaluationFeedbackSaveButton"),
         evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
+        evaluationFeedbackFinalize: document.getElementById("evaluationFeedbackFinalize"),
+        evaluationFinalizeButton: document.getElementById("evaluationFinalizeButton"),
     };
 
     function toISODate(date) {
@@ -492,6 +494,7 @@
     // Etapa não reflete a recusa (fica travada em "termo_adesao"), então o status manda aqui
     function evaluationStageLabel(item) {
         if (item.status === "recusada") return "Recusado";
+        if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
 
@@ -922,6 +925,7 @@
         return {
             nome: card.querySelector('[data-checklist-field="nome"]')?.value.trim() || null,
             dataVisita: card.querySelector('[data-checklist-field="dataVisita"]')?.value || null,
+            teveVisita: card.querySelector('[data-checklist-field="teveVisita"]')?.checked ?? true,
             dataEntregaRelatorio: card.querySelector('[data-checklist-field="dataEntregaRelatorio"]')?.value || null,
             observacoesGerais: card.querySelector('[data-checklist-field="observacoesGerais"]')?.value.trim() || null,
             respostas: answers,
@@ -981,8 +985,15 @@
                     </div>
                     <div class="evaluation-checklist-general">
                         <label class="evaluation-checklist-general-wide"><span>Nome do checklist *</span><input data-checklist-field="nome" type="text" maxlength="150" placeholder="Ex.: Visita de renovação" value="${escapeHtml(checklist.nome || "")}"${disabled}></label>
-                        <label><span>Data da visita</span><input data-checklist-field="dataVisita" type="date" value="${checklistDateValue(checklist.dataVisita)}"${disabled}></label>
-                        <label><span>Data da entrega do relatório</span><input data-checklist-field="dataEntregaRelatorio" type="date" value="${checklistDateValue(checklist.dataEntregaRelatorio)}"${disabled}></label>
+                        <label><span>Data da visita</span><input data-checklist-field="dataVisita" type="date" value="${checklistDateValue(checklist.dataVisita)}"${checklist.teveVisita === false ? " disabled" : disabled}></label>
+                        <label><span>Data de criação do checklist</span><input data-checklist-field="dataEntregaRelatorio" type="date" value="${checklistDateValue(checklist.dataEntregaRelatorio)}"${disabled}></label>
+                        <label class="evaluation-checklist-toggle-field"><span>Teve visita</span>
+                            <span class="evaluation-checklist-toggle">
+                                <input data-checklist-field="teveVisita" type="checkbox"${checklist.teveVisita !== false ? " checked" : ""}${disabled}>
+                                <span class="evaluation-checklist-toggle-track"><span class="evaluation-checklist-toggle-thumb"></span></span>
+                                <b class="evaluation-checklist-toggle-state">${checklist.teveVisita !== false ? "Ativado" : "Desativado"}</b>
+                            </span>
+                        </label>
                         <label class="evaluation-checklist-general-wide"><span>Observações gerais</span><textarea data-checklist-field="observacoesGerais" rows="4"${disabled}>${escapeHtml(checklist.observacoesGerais || "")}</textarea></label>
                     </div>
                     <div class="evaluation-checklist-questions">
@@ -1105,6 +1116,13 @@
         el.evaluationFeedbackDocuments.classList.toggle("hidden", !feedbackCompleted);
         el.evaluationFeedbackSendEmailButton.disabled = !feedbackCompleted;
 
+        const allFeedbacksResolved = completed.length > 0 && completed.every(
+            (item) => item.feedback?.status === "concluido" || item.permiteConcluirFeedback === false
+        );
+        const canFinalize = evaluation.status === "em_andamento" && allFeedbacksResolved;
+        el.evaluationFeedbackFinalize.classList.toggle("hidden", !canFinalize);
+        el.evaluationFinalizeButton.disabled = !canFinalize;
+
         setEvaluationMessage(el.evaluationFeedbackMessage);
     }
 
@@ -1132,6 +1150,25 @@
             showFeedback(conclude ? "Feedback concluído com sucesso." : "Feedback salvo com sucesso.");
         } catch (error) {
             setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+        }
+    }
+
+    async function finalizarAvaliacao() {
+        const evaluation = state.avaliacaoSelecionada;
+        if (!evaluation) return;
+        if (!window.confirm("Deseja finalizar esta avaliação? Depois de finalizada, o processo não poderá mais ser editado.")) return;
+        setEvaluationMessage(el.evaluationFeedbackMessage);
+        el.evaluationFinalizeButton.disabled = true;
+        try {
+            const updated = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/concluir`, { method: "POST" });
+            state.avaliacaoSelecionada = { ...state.avaliacaoSelecionada, ...updated };
+            renderAvaliacaoSelecionada();
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            showFeedback("Avaliação finalizada com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+            el.evaluationFinalizeButton.disabled = false;
         }
     }
 
@@ -2577,6 +2614,18 @@
                 if (completeButton) completeButton.disabled = !total || answered !== total || !nome;
             }
             el.evaluationChecklistsList.addEventListener("change", (event) => {
+                if (event.target.matches('[data-checklist-field="teveVisita"]')) {
+                    const card = event.target.closest("[data-checklist-card]");
+                    const visitDateInput = card?.querySelector('[data-checklist-field="dataVisita"]');
+                    const toggleState = event.target.closest(".evaluation-checklist-toggle")?.querySelector(".evaluation-checklist-toggle-state");
+                    const teveVisita = event.target.checked;
+                    if (visitDateInput) {
+                        visitDateInput.disabled = !teveVisita;
+                        if (!teveVisita) visitDateInput.value = "";
+                    }
+                    if (toggleState) toggleState.textContent = teveVisita ? "Ativado" : "Desativado";
+                    return;
+                }
                 if (!event.target.matches('input[type="radio"]')) return;
                 const card = event.target.closest("[data-checklist-card]");
                 if (card) updateCompleteChecklistButtonState(card);
@@ -2597,6 +2646,7 @@
                 }
             });
             el.evaluationFeedbackSendEmailButton.addEventListener("click", dispararEmailFeedback);
+            el.evaluationFinalizeButton.addEventListener("click", finalizarAvaliacao);
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);

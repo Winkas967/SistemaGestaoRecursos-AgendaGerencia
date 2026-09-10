@@ -10,7 +10,7 @@
         document.documentElement.setAttribute("data-theme", savedTheme);
     })();
 </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260910-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260910-3') }}">
 </head>
 <body>
 <div class="agenda-page">
@@ -442,6 +442,10 @@
                         <button class="btn" id="evaluationFeedbackSaveButton" type="button">Salvar rascunho</button>
                         <button class="btn btn-primary" id="evaluationFeedbackCompleteButton" type="button">Concluir feedback</button>
                     </div>
+                    <div class="evaluation-finalize-banner hidden" id="evaluationFeedbackFinalize">
+                        <p>Todos os checklists desta avaliação já possuem feedback concluído. Finalize para encerrar o processo.</p>
+                        <button class="btn btn-primary" id="evaluationFinalizeButton" type="button">Finalizar avaliação</button>
+                    </div>
                 </div>
             </div>
             </div>
@@ -761,6 +765,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-9') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260910-12') }}"></script>
 </body>
 </html>

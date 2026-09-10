@@ -13,3 +13,4 @@ Execute os arquivos abaixo no banco de produção, nesta ordem:
 Antes de aplicar em produção, faça backup do banco e execute os arquivos usando o banco correto. A migração 7 deve ser executada somente uma vez em cada banco.
 
 8. `migrations/20260908_checklist_nome.sql` — adiciona o nome do checklist (usado para identificar cada checklist nas telas de avaliação).
+9. `migrations/20260910_checklist_teve_visita.sql` — adiciona o indicador de "teve visita ou não" ao checklist.

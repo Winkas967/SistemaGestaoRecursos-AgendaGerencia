@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS checklists_avaliacao (
     responsavel VARCHAR(160) NULL,
     telefone VARCHAR(30) NULL,
     data_visita DATE NULL,
+    teve_visita BOOLEAN NOT NULL DEFAULT TRUE,
     data_entrega_relatorio DATE NULL,
     observacoes_gerais TEXT NULL,
     acordo TEXT NULL,

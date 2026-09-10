@@ -2001,6 +2001,83 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     grid-column: 1 / -1;
 }
 
+.evaluation-checklist-toggle-field {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.evaluation-checklist-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    width: auto !important;
+}
+
+.evaluation-checklist-toggle input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.evaluation-checklist-toggle-track {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+    background: var(--border);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+}
+
+.evaluation-checklist-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease;
+}
+
+.evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-track {
+    background: var(--verde-principal);
+}
+
+.evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-track .evaluation-checklist-toggle-thumb {
+    transform: translateX(18px);
+}
+
+.evaluation-checklist-toggle input:focus-visible ~ .evaluation-checklist-toggle-track {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.evaluation-checklist-toggle input:disabled ~ .evaluation-checklist-toggle-track {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.evaluation-checklist-toggle input:disabled ~ .evaluation-checklist-toggle-state {
+    opacity: 0.6;
+}
+
+.evaluation-checklist-toggle-state {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-state {
+    color: var(--verde-principal);
+}
+
 .evaluation-checklist-questions {
     display: grid;
     gap: 14px;
@@ -2241,6 +2318,28 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     display: flex;
     justify-content: flex-end;
     margin-top: 20px;
+}
+
+.evaluation-finalize-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 16px;
+    padding: 16px 18px;
+    background: color-mix(in srgb, var(--verde-principal) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--verde-principal) 30%, transparent);
+    border-radius: 14px;
+}
+
+.evaluation-finalize-banner p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.evaluation-finalize-banner.hidden {
+    display: none;
 }
 
 .evaluation-new-button {

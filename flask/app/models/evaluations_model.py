@@ -234,6 +234,39 @@ class EvaluationModel:
                 connection.close()
                 
                 
+    #finaliza a avaliacao apos a conclusao de todos os feedbacks
+    @staticmethod
+    def complete(evaluation_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                UPDATE avaliacoes_prestador
+                SET status = 'concluida',
+                    concluido_em = CURRENT_TIMESTAMP
+                WHERE id = %s
+                  AND status = 'em_andamento'
+            """, (evaluation_id,))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+
     #encerra a avaliacao quando o termo de adesao for recusado
     @staticmethod
     def reject(evaluation_id):

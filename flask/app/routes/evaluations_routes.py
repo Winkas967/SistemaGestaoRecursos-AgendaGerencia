@@ -83,6 +83,19 @@ def create_evaluation():
         }), 400
         
         
+#finaliza a avaliacao apos a conclusao de todos os feedbacks
+@evaluations_bp.route("/<int:evaluation_id>/concluir", methods=["POST"])
+@permission_required("avaliacao", "editar")
+def complete_evaluation(evaluation_id):
+    try:
+        evaluation = EvaluationService.complete(evaluation_id)
+        return jsonify(evaluation), 200
+    except ValueError as error:
+        return jsonify({
+            "erro": str(error),
+        }), 400
+
+
 #busca o termo de adesao de uma avaliacao
 @evaluations_bp.route("/<int:evaluation_id>/termo", methods=["GET"])
 @permission_required("avaliacao", "visualizar")

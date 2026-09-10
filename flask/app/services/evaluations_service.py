@@ -137,5 +137,42 @@ class EvaluationService:
         )
         
         evaluation_id = EvaluationModel.create(evaluation)
-        
+
         return EvaluationService.get_by_id(evaluation_id)
+
+
+    #finaliza a avaliacao quando todos os checklists concluidos ja tiverem feedback
+    @staticmethod
+    def complete(evaluation_id):
+        # importado aqui para evitar import circular com checklists_service
+        from services.checklists_service import ChecklistService
+
+        evaluation = EvaluationService.get_by_id(evaluation_id)
+
+        if evaluation["status"] != "em_andamento":
+            raise ValueError("Esta avaliação não está em andamento.")
+
+        checklists = ChecklistService.get_all_by_evaluation(evaluation["id"])["checklists"]
+        completed_checklists = [item for item in checklists if item["status"] == "concluido"]
+
+        if not completed_checklists:
+            raise ValueError("Conclua ao menos um checklist antes de finalizar a avaliação.")
+
+        pending = [
+            item for item in completed_checklists
+            if not (item["feedback"] and item["feedback"]["status"] == "concluido")
+            and item["permiteConcluirFeedback"] is not False
+        ]
+
+        if pending:
+            raise ValueError(
+                "Existem checklists concluídos com feedback pendente. "
+                "Conclua o feedback de todos antes de finalizar a avaliação."
+            )
+
+        updated = EvaluationModel.complete(evaluation["id"])
+
+        if not updated:
+            raise ValueError("Não foi possível finalizar a avaliação.")
+
+        return EvaluationService.get_by_id(evaluation["id"])
