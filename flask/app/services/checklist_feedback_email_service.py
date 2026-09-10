@@ -72,19 +72,47 @@ class ChecklistFeedbackEmailService:
             message["From"] = f"{settings['name']} <{settings['sender']}>"
             message["To"] = recipient
             message.set_content(
-                "Olá,\n\nSegue em anexo o relatório de feedback e o certificado "
-                "referentes à avaliação de qualificação.\n\nAtenciosamente,\n"
-                "Relacionamento com a Rede Prestadora\nUnimed São Sebastião do Paraíso"
+                "Olá,\n\n"
+                "O setor de Relacionamento com a Rede encaminha anexo o relatório "
+                "final da visita do Programa de Qualificação da Rede Prestadora.\n\n"
+                "Qualquer dúvida entrar em contato com a secretária, Luana através "
+                "dos contatos: (35)98846-1044 ou secretariaexecutiva@unimedssp.coop.br"
             )
             message.add_alternative(
                 """
-                <html><body style="font-family:Arial,sans-serif;color:#173329">
-                  <p>Olá,</p>
-                  <p>Segue em anexo o <strong>relatório de feedback</strong> e o
-                  <strong>certificado</strong> referentes à avaliação de qualificação.</p>
-                  <p>Atenciosamente,<br>Relacionamento com a Rede Prestadora<br>
-                  Unimed São Sebastião do Paraíso</p>
-                </body></html>
+                <html>
+                  <body style="margin:0;padding:0;background-color:#f2f5f4;font-family:Arial,Helvetica,sans-serif;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f5f4;padding:24px 0;">
+                      <tr>
+                        <td align="center">
+                          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border:1px solid #e1e8e5;border-radius:8px;overflow:hidden;">
+                            <tr>
+                              <td style="background-color:#00995d;padding:20px 32px;">
+                                <span style="display:block;color:#ffffff;font-size:16px;font-weight:bold;">Unimed São Sebastião do Paraíso</span>
+                                <span style="display:block;color:#dcf3e8;font-size:12px;margin-top:2px;">Relacionamento com a Rede Prestadora</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:32px;color:#1f2d27;font-size:14px;line-height:1.7;">
+                                <p style="margin:0 0 16px 0;">Olá,</p>
+                                <p style="margin:0 0 16px 0;">O setor de Relacionamento com a Rede encaminha anexo o
+                                relatório final da visita do Programa de Qualificação da Rede Prestadora.</p>
+                                <p style="margin:0;">Qualquer dúvida entrar em contato com a secretária, Luana
+                                através dos contatos: (35)98846-1044 ou
+                                <a href="mailto:secretariaexecutiva@unimedssp.coop.br" style="color:#00995d;text-decoration:none;">secretariaexecutiva@unimedssp.coop.br</a></p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="background-color:#f2f5f4;border-top:1px solid #e1e8e5;padding:14px 32px;">
+                                <span style="color:#7a8c85;font-size:11px;">Unimed São Sebastião do Paraíso · Programa de Qualificação da Rede Prestadora</span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </body>
+                </html>
                 """,
                 subtype="html",
             )
