@@ -1,9 +1,6 @@
 :root {
-    --verde-principal: #00995C;
-    --verde-escuro: #00854f;
-    --verde-claro: #33ad7d;
-    --danger: #d94b45;
-    --warning: #d99027;
+    --danger: #c0392b;
+    --warning: #a2660f;
     --bg: #eef6f1;
     --card-bg: rgba(255, 255, 255, 0.94);
     --panel-bg: rgba(255, 255, 255, 0.72);
@@ -11,8 +8,8 @@
     --text: #173126;
     --text-muted: #5f7568;
     --border: rgba(0, 83, 52, 0.14);
-    --shadow: 0 24px 70px rgba(0, 64, 39, 0.14);
-    --soft-shadow: 0 14px 34px rgba(20, 45, 32, 0.1);
+    --shadow: 0 12px 28px rgba(0, 64, 39, 0.1);
+    --soft-shadow: 0 3px 12px rgba(20, 45, 32, 0.06);
     --accent-soft: rgba(0, 153, 92, 0.12);
     --info: #2c7be5;
 }
@@ -25,13 +22,11 @@
     --text: #edf8f2;
     --text-muted: #9ab0a4;
     --border: rgba(207, 243, 226, 0.14);
-    --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
-    --soft-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+    --soft-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     --accent-soft: rgba(0, 153, 92, 0.16);
-}
-
-* {
-    box-sizing: border-box;
+    --danger: #e0574a;
+    --warning: #e0a53a;
 }
 
 body {
@@ -39,21 +34,8 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     color: var(--text);
-    background:
-        radial-gradient(circle at top left, rgba(0, 153, 92, 0.12), transparent 34rem),
-        linear-gradient(135deg, var(--bg), var(--bg));
-    font-family: Arial, Helvetica, sans-serif;
-    transition: background-color 0.45s ease, color 0.45s ease;
-}
-
-body::before {
-    content: "";
-    position: fixed;
-    inset: auto -12rem -18rem auto;
-    width: 34rem;
-    height: 34rem;
-    pointer-events: none;
-    background: radial-gradient(circle, rgba(0, 153, 92, 0.1), transparent 68%);
+    background: var(--bg);
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button,
@@ -68,27 +50,9 @@ button {
 }
 
 .agenda-page {
-    width: min(1280px, 100%);
+    width: min(1400px, 100%);
     margin: 0 auto;
-    padding: 24px 32px 38px;
-}
-
-.agenda-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 22px;
-    width: 100vw;
-    min-height: 82px;
-    margin: -24px calc(50% - 50vw) 24px;
-    padding: 14px max(32px, calc((100vw - 1280px) / 2 + 32px));
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-    box-shadow: var(--soft-shadow);
-    backdrop-filter: blur(14px);
+    padding: 32px 40px 48px;
 }
 
 .back-link,
@@ -102,7 +66,7 @@ button {
     color: var(--text);
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-md, 10px);
     font-size: 13px;
     font-weight: 800;
     text-decoration: none;
@@ -117,8 +81,12 @@ button {
 
 .btn-primary {
     color: #ffffff;
-    background: linear-gradient(135deg, var(--verde-principal), var(--verde-escuro));
+    background: var(--verde-principal);
     border: none;
+}
+
+.btn-primary:hover {
+    filter: brightness(0.94);
 }
 
 .danger-btn {
@@ -127,34 +95,10 @@ button {
     border: none;
 }
 
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.brand-mark {
-    width: 48px;
-    height: 48px;
-    display: grid;
-    place-items: center;
-    color: var(--verde-principal);
-    border: 3px solid var(--verde-principal);
-    border-radius: 50%;
-    font-size: 34px;
-    font-weight: 900;
-    line-height: 1;
-}
-
-.brand h1,
 .schedule-head h2,
 .modal h2 {
     margin: 0;
     color: var(--text);
-}
-
-.brand h1 {
-    font-size: 28px;
 }
 
 .eyebrow {
@@ -163,101 +107,6 @@ button {
     font-weight: 900;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-}
-
-.topbar-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.topbar-actions .theme-toggle {
-    position: relative;
-    isolation: isolate;
-    width: 142px;
-    height: 38px;
-    min-height: 38px;
-    padding: 8px 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--text);
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 800;
-    box-shadow: none;
-    white-space: nowrap;
-    transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.25s ease;
-}
-
-.topbar-actions .theme-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 20px rgba(0, 153, 92, 0.3);
-}
-
-.topbar-actions .theme-toggle svg {
-    width: 16px;
-    height: 16px;
-    stroke: var(--verde-principal);
-}
-
-.topbar-actions .theme-toggle span {
-    width: 82px;
-    min-width: 0;
-    text-align: center;
-    white-space: nowrap;
-}
-
-.topbar-actions .theme-toggle svg[hidden] {
-    display: none !important;
-}
-
-html[data-theme="dark"] .topbar-actions .theme-toggle #iconSun,
-html[data-theme="light"] .topbar-actions .theme-toggle #iconMoon {
-    display: block;
-}
-
-html[data-theme="dark"] .topbar-actions .theme-toggle #iconMoon,
-html[data-theme="light"] .topbar-actions .theme-toggle #iconSun {
-    display: none !important;
-}
-
-.agenda-tabs {
-    display: inline-flex;
-    gap: 6px;
-    margin-bottom: 18px;
-    padding: 6px;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    box-shadow: var(--soft-shadow);
-}
-
-.agenda-tab {
-    min-height: 38px;
-    padding: 8px 18px;
-    color: var(--text-muted);
-    background: transparent;
-    border: none;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 900;
-    transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
-}
-
-.agenda-tab:hover {
-    color: var(--text);
-    transform: translateY(-1px);
-}
-
-.agenda-tab.active {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--verde-principal), var(--verde-escuro));
 }
 
 .agenda-view {
@@ -269,13 +118,13 @@ html[data-theme="light"] .topbar-actions .theme-toggle #iconSun {
     animation: card-in 0.22s ease both;
 }
 
-.agenda-page:has(.agenda-tab[data-view="avaliacao"].active) #avaliacaoView {
+.app-shell:has(.agenda-tab[data-view="avaliacao"].active) #avaliacaoView {
     display: block;
     animation: card-in 0.22s ease both;
 }
 
 .evaluation-panel {
-    padding: 28px;
+    padding: 32px;
     overflow: hidden;
 }
 
@@ -3184,19 +3033,19 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
 .agenda-layout {
     display: grid;
-    grid-template-columns: 330px minmax(0, 1fr);
-    gap: 18px;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 22px;
     align-items: start;
 }
 
 .panel {
-    padding: 22px;
+    padding: 26px;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 18px;
@@ -4306,7 +4155,7 @@ textarea:focus {
     background: var(--verde-principal);
     border: 1px solid var(--verde-principal);
     border-radius: 10px;
-    box-shadow: 0 7px 18px rgba(0, 153, 92, 0.2);
+    box-shadow: none;
     font: inherit;
     font-size: 13px;
     font-weight: 800;
@@ -4330,7 +4179,6 @@ textarea:focus {
 .docs-add-document-btn:hover {
     filter: brightness(0.94);
     transform: translateY(-1px);
-    box-shadow: 0 10px 22px rgba(0, 153, 92, 0.27);
 }
 
 .docs-add-document-btn:active {
@@ -5098,11 +4946,11 @@ textarea:focus {
 }
 
 @media print {
-    .agenda-topbar,
+    .user-panel,
+    .app-sidebar,
     .calendar-panel,
     .search-box,
     .appointment-actions,
-    .agenda-tabs,
     .docs-actions,
     .feedback {
         display: none !important;
@@ -5129,7 +4977,6 @@ textarea:focus {
 }
 
 @media (max-width: 900px) {
-    .agenda-topbar,
     .agenda-layout,
     .schedule-head,
     .docs-head,
@@ -5148,10 +4995,6 @@ textarea:focus {
 
     .calendar-panel {
         position: static;
-    }
-
-    .topbar-actions {
-        justify-content: flex-start;
     }
 
     .docs-head {
@@ -5192,20 +5035,6 @@ textarea:focus {
 
     .agenda-page {
         padding: 16px;
-    }
-
-    .agenda-topbar {
-        width: auto;
-        min-height: 0;
-        margin: -16px -16px 18px;
-        padding: 10px 16px;
-    }
-
-    .agenda-tabs {
-        width: 100%;
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        border-radius: 18px;
     }
 
     .minutes-panel {

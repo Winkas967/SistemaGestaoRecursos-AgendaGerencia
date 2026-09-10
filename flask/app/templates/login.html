@@ -11,7 +11,9 @@
         document.documentElement.classList.add("is-loading");
     })();
 </script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v='20260910-2') }}">
 <title>Login | Unimed</title>
 </head>
 
@@ -38,20 +40,14 @@
 <main class="page-shell">
     <section class="login-panel" aria-label="Acesso ao sistema">
         <div class="brand-side">
-            <img class="brand-logo" src="{{ url_for('static', filename='img/unimed3.png') }}" alt="Unimed" width="597" height="335">
             <div class="brand-copy">
-                <p class="eyebrow">Controle interno</p>
-                <h1>Gestão de Recursos</h1>
+                <p class="eyebrow">Unimed &middot; Controle interno</p>
+                <h1>Portal Diretoria</h1>
                 <p>Acesse sua conta para consultar, cadastrar e acompanhar os registros do equipamento.</p>
             </div>
         </div>
 
         <div class="login">
-            <div class="logo-area">
-                <img class="logo-img" src="{{ url_for('static', filename='img/unimed3.png') }}" alt="Unimed" width="597" height="335">
-                <div class="logo-sub">Sistema de Login</div>
-            </div>
-
             <h2>Entrar</h2>
 
             {% with mensagens = get_flashed_messages(with_categories=true) %}
@@ -97,8 +93,6 @@
                 </div>
 
                 <button type="submit">Entrar</button>
-
-                <a href="{{ url_for('auth_pages.cadastro_page') }}" class="cadastro">Fazer cadastro</a>
             </form>
 
             <div class="rodape">Unimed &copy; 2026 — Todos os direitos reservados</div>

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file
+from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file, session
 
 from utils.auth import page_permission_required
 from services.report_services import ReportService
@@ -47,6 +47,13 @@ def relatorios():
     dados_hora = charts["hora"]
     dados_periodo = charts["periodo"]
 
+    #lista os modulos que o usuario pode visualizar
+    visible_modules = {
+        permission.get("modulo_codigo")
+        for permission in session.get("permissions", [])
+        if permission.get("pode_visualizar")
+    }
+
     return render_template(
         "relatorios.html",
         tema="light",
@@ -59,6 +66,7 @@ def relatorios():
         dados_status=dados_status,
         dados_hora=dados_hora,
         dados_responsavel=dados_responsavel,
+        modulos_visiveis=visible_modules,
     )
     
     

@@ -11,84 +11,20 @@
         document.documentElement.classList.add("is-loading");
     })();
 </script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css', v='20260910-2') }}">
 <title>Reserva | Unimed</title>
 </head>
 <body>
 
-<div class="user-panel" data-username="{{ session['nome'] or session['usuario'] }}">
-    <div class="user-panel-actions">
-        <button class="password-toggle" type="button" data-open-self-password>Alterar senha</button>
-        {% if session["role"]|lower in ["gerencia", "admin"] %}
-        <a class="password-toggle agenda-toggle" href="{{ url_for('agenda_pages.agenda') }}">Agenda</a>
-        {% endif %}
-    </div>
-    <div class="user-avatar" aria-hidden="true"></div>
-    <span class="user-panel-label">Usuário</span>
-    <strong>{{ session["nome"] or session["usuario"] }}</strong>
-    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema claro ou escuro">
-        <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"></circle>
-            <line x1="12" y1="2" x2="12" y2="4"></line>
-            <line x1="12" y1="20" x2="12" y2="22"></line>
-            <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
-            <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
-            <line x1="2" y1="12" x2="4" y2="12"></line>
-            <line x1="20" y1="12" x2="22" y2="12"></line>
-            <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
-            <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
-        </svg>
-        <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <span id="themeLabel">Modo escuro</span>
-    </button>
-    <form class="logout-form" action="{{ url_for('auth.logout') }}" method="POST" data-login-url="{{ url_for('auth_pages.login_page') }}">
-        <button type="submit">Sair</button>
-    </form>
-</div>
-
+{% set current_page = "reserva" %}
 {% include "_self_password_modal.html" %}
 
+<div class="app-shell">
+{% include "_sidebar.html" %}
 <main class="page-shell">
     <div class="wrap">
-        <header class="topbar">
-            <div class="brand">
-                <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="50" cy="50" r="48" fill="none" stroke="#00995C" stroke-width="4"></circle>
-                    <rect x="42" y="20" width="16" height="60" rx="4" fill="#00995C"></rect>
-                    <rect x="20" y="42" width="60" height="16" rx="4" fill="#00995C"></rect>
-                </svg>
-                <div class="brand-text">
-                    <span class="tag">Unimed</span>
-                    <h1>Gestão de Recursos</h1>
-                </div>
-            </div>
-
-            <div class="topbar-actions">
-                <nav class="nav-tabs" aria-label="Navegação principal">
-                    <a href="{{ url_for('home_pages.home') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
-                        Home
-                    </a>
-                    <a href="{{ url_for('resources_pages.equipamentos') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="4" y="4" width="16" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg>
-                        Equipamentos
-                    </a>
-                    <a class="active" href="{{ url_for('resources_pages.reserva') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M9 16l2 2 4-4"></path></svg>
-                        Reserva
-                    </a>
-                    {% if "relatorios" in modulos_visiveis %}
-                    <a href="{{ url_for('reports_pages.relatorios') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:7px;"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
-                        Relatórios
-                    </a>
-                    {% endif %}
-                </nav>
-            </div>
-        </header>
-
         <section class="dash-head">
             <p class="eyebrow">Reserva</p>
             <h2>Preencha os dados da reserva</h2>
@@ -232,6 +168,7 @@
         <div class="rodape">Unimed &copy; 2026 &mdash; Todos os direitos reservados</div>
     </div>
 </main>
+</div>
 
 <script src="{{ url_for('static', filename='js/home.js', v='20260821-2') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>

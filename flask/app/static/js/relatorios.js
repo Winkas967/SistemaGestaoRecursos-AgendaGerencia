@@ -70,53 +70,6 @@ if (filtroForm) {
     });
 }
 
-function hashTexto(texto) {
-    return [...texto].reduce((acc, char) => {
-        return (acc * 31 + char.charCodeAt(0)) >>> 0;
-    }, 7);
-}
-
-function criarAvatar(nome) {
-    const hash = hashTexto(nome || "usuario");
-    const peles = ["#f2c7a5", "#d89b73", "#b8734f", "#8f5d43", "#f0b98f"];
-    const cabelos = ["#2c221f", "#5a3825", "#1f2933", "#7a4a24", "#111827"];
-    const roupas = ["#00995c", "#2563eb", "#c2410c", "#7c3aed", "#0f766e"];
-    const fundos = ["#dff4ea", "#e0f2fe", "#fef3c7", "#ede9fe", "#dcfce7", "#ffe4e6", "#fce7f3", "#ccfbf1"];
-
-    const pele = peles[hash % peles.length];
-    const cabelo = cabelos[(hash >> 3) % cabelos.length];
-    const roupa = roupas[(hash >> 6) % roupas.length];
-    const fundo = fundos[(hash >> 9) % fundos.length];
-    const sorriso = hash % 2 === 0
-        ? '<path d="M23 35c3 3 9 3 12 0" fill="none" stroke="#553226" stroke-width="2" stroke-linecap="round"/>'
-        : '<path d="M24 35c2 2 8 2 10 0" fill="none" stroke="#553226" stroke-width="2" stroke-linecap="round"/>';
-    const cabeloForma = hash % 3 === 0
-        ? `<path d="M15 25c2-12 24-14 30 0-5-7-22-6-30 0z" fill="${cabelo}"/>`
-        : hash % 3 === 1
-            ? `<path d="M14 27c1-15 27-15 31 0-8-4-22-5-31 0z" fill="${cabelo}"/>`
-            : `<path d="M16 21c8-10 24-6 28 6-10-5-19-6-28-6z" fill="${cabelo}"/>`;
-
-    return `
-        <svg viewBox="0 0 60 60" role="img" aria-label="Avatar do usuario">
-            <rect width="60" height="60" rx="30" fill="${fundo}"/>
-            <circle cx="30" cy="30" r="28" fill="none" stroke="#ffffff" stroke-width="3"/>
-            <path d="M14 58c2-13 30-13 32 0z" fill="${roupa}"/>
-            <circle cx="30" cy="29" r="15" fill="${pele}"/>
-            ${cabeloForma}
-            <circle cx="24" cy="30" r="1.8" fill="#2b211f"/>
-            <circle cx="36" cy="30" r="1.8" fill="#2b211f"/>
-            ${sorriso}
-        </svg>
-    `;
-}
-
-const userPanel = document.querySelector(".user-panel");
-const userAvatar = document.querySelector(".user-avatar");
-
-if (userPanel && userAvatar) {
-    userAvatar.innerHTML = criarAvatar(userPanel.dataset.username);
-}
-
 const PALETA = ["#00995C", "#33ad7d", "#d9a544", "#2563eb", "#7c3aed", "#e0574a", "#0f766e", "#64748b"];
 
 function dadosValidos(dados) {

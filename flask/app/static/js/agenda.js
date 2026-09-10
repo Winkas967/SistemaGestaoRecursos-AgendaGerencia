@@ -7,7 +7,7 @@
     const MINUTES_API_URL = "/api/agenda/atas";
     const EMAIL_SETTINGS_API_URL = "/api/configuracoes/avisos-documentacao";
     const EVALUATIONS_API_URL = "/api/avaliacoes";
-    const THEME_KEY = "agendaTheme";
+    const THEME_KEY = "theme";
     const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
     const WEEKDAY_FULL = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
@@ -82,7 +82,6 @@
         themeIconSun: document.getElementById("iconSun"),
         themeIconMoon: document.getElementById("iconMoon"),
         themeLabel: document.getElementById("themeLabel"),
-        printBtn: document.getElementById("printBtn"),
         exportMonthPdfBtn: document.getElementById("exportMonthPdfBtn"),
         newApptBtn: document.getElementById("newApptBtn"),
         calMonthLabel: document.getElementById("calMonthLabel"),
@@ -461,7 +460,7 @@
     }
 
     function initTheme() {
-        const saved = localStorage.getItem(THEME_KEY) || localStorage.getItem("theme") || "dark";
+        const saved = localStorage.getItem(THEME_KEY) || "dark";
         document.documentElement.setAttribute("data-theme", saved);
         atualizarControleTema(saved);
     }
@@ -2721,7 +2720,6 @@
         el.minutesTypeFilter.addEventListener("change", renderAtas);
         el.minutesOrder.addEventListener("change", renderAtas);
         el.themeToggle.addEventListener("click", toggleTheme);
-        el.printBtn.addEventListener("click", () => window.print());
         el.exportMonthPdfBtn.addEventListener("click", () => {
             const ano = state.calendarCursor.getFullYear();
             const mes = state.calendarCursor.getMonth() + 1;
