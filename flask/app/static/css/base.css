@@ -354,10 +354,10 @@ button, input, select, textarea {
 .app-sidebar {
     position: sticky;
     top: 0;
+    z-index: 30;
     flex: 0 0 232px;
     width: 232px;
     height: 100vh;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -460,6 +460,9 @@ button, input, select, textarea {
 }
 
 .sidebar-nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -651,6 +654,8 @@ button, input, select, textarea {
 
     .sidebar-nav {
         width: 100%;
+        flex: 0 0 auto;
+        overflow: visible;
         flex-direction: row;
         flex-wrap: wrap;
         gap: 6px;

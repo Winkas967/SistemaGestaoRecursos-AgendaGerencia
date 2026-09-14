@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, session
 
-from utils.auth import page_permission_required
+from utils.auth import admin_page_required
 from services.resources_services import ResourceService
 from services.reservations_service import ReservationService
 from services.sectors_service import SectorService
@@ -14,7 +14,7 @@ resources_pages_bp = Blueprint(
 
 # Exibe a página de equipamentos
 @resources_pages_bp.route("/equipamentos", methods=["GET"])
-@page_permission_required("recursos")
+@admin_page_required
 def equipamentos():
     resources = ResourceService.get_all()
     options = ResourceService.get_form_options()
@@ -76,7 +76,7 @@ def equipamentos():
 
 # Exibe a página de reservas
 @resources_pages_bp.route("/reserva", methods=["GET"])
-@page_permission_required("recursos")
+@admin_page_required
 def reserva():
     #busca somente os recursos disponiveis 
     resources = [

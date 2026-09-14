@@ -1,8 +1,9 @@
-from flask import Blueprint, redirect, render_template, session, url_for
+from flask import Blueprint, render_template, session
 
 from services.sector_permissions_service import SectorPermissionService
 from services.users_service import UserService
 from services.reservations_service import ReservationService
+from utils.auth import admin_page_required
 
 
 # Cria o grupo de páginas da área inicial
@@ -12,12 +13,10 @@ home_pages_bp = Blueprint(
 )
 
 
-# Exibe a página inicial somente para usuários autenticados
+# Exibe a página inicial somente para administradores
 @home_pages_bp.route("/home", methods=["GET"])
+@admin_page_required
 def home():
-    if not session.get("user_id"):
-        return redirect(url_for("auth_pages.login_page"))
-
     users = []
     sectors = []
     roles = []

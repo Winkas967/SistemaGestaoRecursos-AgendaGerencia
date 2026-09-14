@@ -76,6 +76,22 @@ def permission_required(module_code, action="visualizar"):
     
     return decorator
 
+# Protege uma página, liberando o acesso somente para administradores.
+# Ao contrário de page_permission_required, ignora as permissões por setor:
+# nem um funcionário com "pode_visualizar" no módulo consegue entrar.
+def admin_page_required(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("auth_pages.login_page"))
+
+        if str(session.get("role") or "").lower() != "admin":
+            return redirect(url_for("agenda_pages.agenda"))
+
+        return function(*args, **kwargs)
+
+    return decorated_function
+
 # Protege uma página usando uma ou mais permissões de visualização
 def page_permission_required(*module_codes):
     def decorator(function):

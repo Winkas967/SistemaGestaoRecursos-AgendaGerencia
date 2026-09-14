@@ -199,6 +199,8 @@
         evaluationFeedbackMessage: document.getElementById("evaluationFeedbackMessage"),
         evaluationFeedbackSaveButton: document.getElementById("evaluationFeedbackSaveButton"),
         evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
+        evaluationFeedbackFinalize: document.getElementById("evaluationFeedbackFinalize"),
+        evaluationFinalizeButton: document.getElementById("evaluationFinalizeButton"),
     };
 
     function toISODate(date) {
@@ -499,9 +501,10 @@
         concluido: "Concluída",
     };
 
-    // Etapa não reflete a recusa (fica travada em "termo_adesao"), então o status manda aqui
+    // etapa_atual não é atualizada na recusa nem na conclusão, então o status manda nesses casos
     function evaluationStageLabel(item) {
         if (item.status === "recusada") return "Recusado";
+        if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
 
@@ -570,20 +573,13 @@
 
     function renderAvaliacoes() {
         if (!el.evaluationProcessItems) return;
-        // Avaliações recusadas ficam escondidas da lista por padrão (o termo foi
-        // recusado e o cadastro já está livre pra uma nova avaliação), mas continuam
-        // aparecendo quando o filtro de etapa "Recusado" é selecionado explicitamente.
+        // Avaliações recusadas aparecem junto com as demais em todas as etapas;
+        // o filtro de etapa "Recusado" ainda permite isolar só elas quando quiser.
         const searchTerm = (el.evaluationFilterSearch?.value || "").trim().toLowerCase();
         const stageFilter = el.evaluationFilterStage?.value || "";
         const categoryFilter = el.evaluationFilterCategory?.value || "";
         const visiveis = state.avaliacoes.filter((item) => {
-            if (stageFilter === "recusada") {
-                if (item.status !== "recusada") return false;
-            } else if (item.status === "recusada") {
-                return false;
-            } else if (stageFilter && evaluationFilterStageValue(item) !== stageFilter) {
-                return false;
-            }
+            if (stageFilter && evaluationFilterStageValue(item) !== stageFilter) return false;
             if (searchTerm && !String(item.prestadorNome || "").toLowerCase().includes(searchTerm)) return false;
             if (categoryFilter && item.categoriaNome !== categoryFilter) return false;
             return true;
@@ -600,7 +596,7 @@
             return `
                 <article class="evaluation-process-item${closed ? " is-complete" : ""}${rejected ? " is-rejected" : ""}">
                     <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")} • ${escapeHtml(item.anoReferencia || "Sem ano")}</small></span></div>
-                    <span class="evaluation-process-stage${closed ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(evaluationStageLabel(item))}</span>
+                    <span class="evaluation-process-stage${rejected ? " is-rejected" : closed ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(evaluationStageLabel(item))}</span>
                     <div class="evaluation-process-progress"><span><i style="width: ${progress.percent}%"></i></span><small>${progress.text}</small></div>
                     <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
                     <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${closed ? "Visualizar" : "Continuar"}</button>
@@ -1194,6 +1190,14 @@
         el.evaluationFeedbackDocuments.classList.toggle("hidden", !feedbackCompleted);
         el.evaluationFeedbackSendEmailButton.disabled = !feedbackCompleted;
 
+        // Mostra o aviso de finalizar quando todo checklist concluído já tem feedback concluído
+        const podeFinalizar = evaluation?.status === "em_andamento"
+            && completed.length > 0
+            && completed.every((item) => item.feedback?.status === "concluido");
+        if (el.evaluationFeedbackFinalize) {
+            el.evaluationFeedbackFinalize.classList.toggle("hidden", !podeFinalizar);
+        }
+
         setEvaluationMessage(el.evaluationFeedbackMessage);
     }
 
@@ -1221,6 +1225,29 @@
             showFeedback(conclude ? "Feedback concluído com sucesso." : "Feedback salvo com sucesso.");
         } catch (error) {
             setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+        }
+    }
+
+    async function finalizarAvaliacao() {
+        const evaluation = state.avaliacaoSelecionada;
+        if (!evaluation || !el.evaluationFinalizeButton) return;
+        el.evaluationFinalizeButton.disabled = true;
+        el.evaluationFinalizeButton.textContent = "Finalizando...";
+        setEvaluationMessage(el.evaluationFeedbackMessage);
+        try {
+            const updated = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/concluir`, {
+                method: "POST",
+            });
+            state.avaliacaoSelecionada = updated;
+            renderAvaliacaoSelecionada();
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            showFeedback("Avaliação finalizada com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(el.evaluationFeedbackMessage, error.message);
+        } finally {
+            el.evaluationFinalizeButton.disabled = false;
+            el.evaluationFinalizeButton.textContent = "Finalizar avaliação";
         }
     }
 
@@ -2702,6 +2729,13 @@
                 }
             });
             el.evaluationFeedbackSendEmailButton.addEventListener("click", dispararEmailFeedback);
+            if (el.evaluationFinalizeButton) {
+                el.evaluationFinalizeButton.addEventListener("click", () => {
+                    if (window.confirm("Finalizar esta avaliação? Não será possível editar checklists ou feedbacks depois.")) {
+                        finalizarAvaliacao();
+                    }
+                });
+            }
         }
         document.querySelectorAll('[data-action="open-minutes-form"]').forEach((button) => {
             button.addEventListener("click", abrirFormularioAta);
