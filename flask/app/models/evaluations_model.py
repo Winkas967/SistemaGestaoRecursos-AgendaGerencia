@@ -136,7 +136,7 @@ class EvaluationModel:
                     atualizado_em
                 FROM avaliacoes_prestador
                 WHERE prestador_id = %s
-                  AND status = 'em_andamento'
+                  AND status IN ('em_andamento', 'sem_posicionamento')
                 ORDER BY id DESC
                 LIMIT 1
             """, (provider_id,))
@@ -370,23 +370,89 @@ class EvaluationModel:
     def reject(evaluation_id):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
+
             cursor.execute("""
                 UPDATE avaliacoes_prestador
                 SET status = 'recusada',
                     concluido_em = CURRENT_TIMESTAMP
                 WHERE id = %s
-                  AND status = 'em_andamento'
+                  AND status IN ('em_andamento', 'sem_posicionamento')
             """, (evaluation_id,))
-            
+
             updated = cursor.rowcount > 0
             connection.commit()
-            
+
             return updated
-        
+
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+
+    #encerra a avaliacao quando o termo de adesao ficar sem posicionamento,
+    #mas mantem o processo passivel de edicao (nao marca concluido_em)
+    @staticmethod
+    def close_without_position(evaluation_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                UPDATE avaliacoes_prestador
+                SET status = 'sem_posicionamento'
+                WHERE id = %s
+                  AND status IN ('em_andamento', 'sem_posicionamento')
+            """, (evaluation_id,))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+
+    #reabre uma avaliacao sem posicionamento e avanca para a etapa informada
+    @staticmethod
+    def reopen_to_stage(evaluation_id, stage):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                UPDATE avaliacoes_prestador
+                SET status = 'em_andamento',
+                    etapa_atual = %s
+                WHERE id = %s
+                  AND status IN ('em_andamento', 'sem_posicionamento')
+            """, (stage, evaluation_id))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
         except Exception:
             if connection:
                 connection.rollback()

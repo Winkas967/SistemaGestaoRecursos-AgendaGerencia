@@ -107,28 +107,32 @@ class AdhesionTermService:
             )
         )
         
-        if evaluation["status"] != "em_andamento":
+        #uma avaliacao encerrada sem posicionamento continua editavel a qualquer momento
+        if evaluation["status"] not in ("em_andamento", "sem_posicionamento"):
             raise ValueError("Esta avaliação não está em andamento.")
-        
-        
+
+
         position = (
             AdhesionTermService.validate_position(
                 data.get("posicionamento")
             )
         )
-        
+
         existing_term = (
             AdhesionTermModel.get_by_evaluation(
                 evaluation["id"]
             )
         )
-        
+
         has_new_file = bool(
             uploaded_file and uploaded_file.filename
         )
-        
+
+        #sem posicionamento pode ser salvo sem anexar o documento do termo
         if (
-            not has_new_file and not existing_term
+            position != "sem_posicionamento"
+            and not has_new_file
+            and not existing_term
         ):
             raise ValueError("Anexe o documento do termo de adesão.")
         
@@ -177,12 +181,16 @@ class AdhesionTermService:
                 
             if position == "recusou":
                 EvaluationModel.reject(evaluation["id"])
+            elif position == "sem_posicionamento":
+                EvaluationModel.close_without_position(evaluation["id"])
             else:
-                EvaluationModel.update_stage(
+                #cobre tanto o avanco normal quanto a reabertura de uma
+                #avaliacao que havia sido encerrada sem posicionamento
+                EvaluationModel.reopen_to_stage(
                     evaluation["id"],
                     "checklist"
                 )
-            
+
         except Exception:
             if new_file:
                 FileStorageService.delete(new_file.id)
@@ -201,10 +209,13 @@ class AdhesionTermService:
         if position == "recusou":
             result["avaliacaoEtapaAtual"] = "termo_adesao"
             result["avaliacaoStatus"] = "recusada"
+        elif position == "sem_posicionamento":
+            result["avaliacaoEtapaAtual"] = "termo_adesao"
+            result["avaliacaoStatus"] = "sem_posicionamento"
         else:
             result["avaliacaoEtapaAtual"] = "checklist"
-            result["avaliacaoStatus"] = "em_andamento"        
-            
+            result["avaliacaoStatus"] = "em_andamento"
+
         return result
     
     

@@ -66,7 +66,9 @@ class EvaluationService:
         providers_in_progress = {
             evaluation["prestador_id"]
             for evaluation in evaluations
-            if evaluation["status"] == "em_andamento"
+            #sem_posicionamento fecha o fluxo mas continua editavel, então o cadastro
+            #segue "ocupado" até o posicionamento ser definido
+            if evaluation["status"] in ("em_andamento", "sem_posicionamento")
         }
         
         available = []

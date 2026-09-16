@@ -744,6 +744,10 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     color: var(--danger);
 }
 
+.evaluation-selected-meta strong.is-waiting {
+    color: var(--warning);
+}
+
 .evaluation-dashboard-content {
     margin-top: 24px;
 }
@@ -1949,16 +1953,48 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 
 .evaluation-checklist-toggle-field {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
 }
 
-.evaluation-checklist-toggle {
+.evaluation-checklist-toggle-field .evaluation-checklist-toggle-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    text-transform: none;
+}
+
+.evaluation-checklist-toggle-label strong {
+    display: block;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: none;
+}
+
+.evaluation-checklist-toggle-label small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: none;
+}
+
+.evaluation-checklist-toggle-field .evaluation-checklist-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
     width: auto !important;
+    flex-shrink: 0;
+    margin: 0;
 }
 
 .evaluation-checklist-toggle input[type="checkbox"] {
@@ -1970,33 +2006,40 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 }
 
 .evaluation-checklist-toggle-track {
+    display: block;
     position: relative;
-    width: 42px;
-    height: 24px;
+    width: 46px;
+    height: 26px;
     flex-shrink: 0;
-    background: var(--border);
+    background: var(--border-strong, rgba(0, 0, 0, 0.18));
     border-radius: 999px;
-    transition: background 0.2s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .evaluation-checklist-toggle-thumb {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     background: #ffffff;
     border-radius: 50%;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-    transition: transform 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-track {
     background: var(--verde-principal);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-track .evaluation-checklist-toggle-thumb {
-    transform: translateX(18px);
+    transform: translateX(20px);
+}
+
+.evaluation-checklist-toggle:hover input:not(:disabled) ~ .evaluation-checklist-toggle-track {
+    filter: brightness(0.96);
 }
 
 .evaluation-checklist-toggle input:focus-visible ~ .evaluation-checklist-toggle-track {
@@ -2013,15 +2056,24 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 }
 
 .evaluation-checklist-toggle-state {
-    font-size: 12px;
+    display: inline-block;
+    min-width: 72px;
+    font-size: 11px;
     font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
+    text-align: right;
 }
 
 .evaluation-checklist-toggle input:checked ~ .evaluation-checklist-toggle-state {
     color: var(--verde-principal);
+}
+
+@media (max-width: 560px) {
+    .evaluation-checklist-toggle-field {
+        flex-wrap: wrap;
+    }
 }
 
 .evaluation-checklist-questions {

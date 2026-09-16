@@ -189,6 +189,7 @@
         evaluationFeedbackSendEmailButton: document.getElementById("evaluationFeedbackSendEmailButton"),
         evaluationTermMessage: document.getElementById("evaluationTermMessage"),
         evaluationTermSaveButton: document.getElementById("evaluationTermSaveButton"),
+        evaluationTermUploadHint: document.getElementById("evaluationTermUploadHint"),
         evaluationTermPositions: document.querySelectorAll('[name="evaluationTermPosition"]'),
         evaluationChecklistAddButton: document.getElementById("evaluationChecklistAddButton"),
         evaluationChecklistsMessage: document.getElementById("evaluationChecklistsMessage"),
@@ -501,9 +502,11 @@
         concluido: "Concluída",
     };
 
-    // etapa_atual não é atualizada na recusa nem na conclusão, então o status manda nesses casos
+    // etapa_atual não é atualizada na recusa, na falta de posicionamento nem na conclusão,
+    // então o status manda nesses casos
     function evaluationStageLabel(item) {
         if (item.status === "recusada") return "Recusado";
+        if (item.status === "sem_posicionamento") return "Sem posicionamento";
         if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
@@ -520,6 +523,7 @@
 
     function evaluationProgress(item) {
         if (item.status === "recusada") return { percent: 100, text: "Processo encerrado" };
+        if (item.status === "sem_posicionamento") return { percent: 100, text: "Encerrado (pode reabrir)" };
         if (item.status === "concluida" || item.status === "concluido") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "feedback") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "checklist") return { percent: 66, text: "2 de 3 etapas" };
@@ -567,6 +571,7 @@
     // "Concluída" agrupa concluida/concluido; as demais etapas usam o valor cru de etapaAtual
     function evaluationFilterStageValue(item) {
         if (item.status === "recusada") return "recusada";
+        if (item.status === "sem_posicionamento") return "sem_posicionamento";
         if (item.status === "concluida" || item.status === "concluido") return "concluida";
         return item.etapaAtual;
     }
@@ -590,16 +595,20 @@
         }
 
         el.evaluationProcessItems.innerHTML = visiveis.map((item) => {
-            const closed = item.status !== "em_andamento";
+            // "sem_posicionamento" encerra o fluxo visualmente, mas continua editável
+            // a qualquer momento — por isso não entra no mesmo grupo de recusada/concluída
+            const waiting = item.status === "sem_posicionamento";
+            const terminal = item.status !== "em_andamento" && !waiting;
+            const editable = item.status === "em_andamento" || waiting;
             const rejected = item.status === "recusada";
             const progress = evaluationProgress(item);
             return `
-                <article class="evaluation-process-item${closed ? " is-complete" : ""}${rejected ? " is-rejected" : ""}">
+                <article class="evaluation-process-item${terminal ? " is-complete" : ""}${rejected ? " is-rejected" : ""}${waiting ? " is-waiting" : ""}">
                     <div class="evaluation-process-provider"><i>${escapeHtml(evaluationInitials(item.prestadorNome))}</i><span><strong>${escapeHtml(item.prestadorNome)}</strong><small>${escapeHtml(item.categoriaNome || "Sem categoria")} • ${escapeHtml(item.anoReferencia || "Sem ano")}</small></span></div>
-                    <span class="evaluation-process-stage${rejected ? " is-rejected" : closed ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(evaluationStageLabel(item))}</span>
+                    <span class="evaluation-process-stage${rejected ? " is-rejected" : waiting ? "" : terminal ? " is-complete" : item.etapaAtual === "checklist" ? " is-progress" : ""}">${escapeHtml(evaluationStageLabel(item))}</span>
                     <div class="evaluation-process-progress"><span><i style="width: ${progress.percent}%"></i></span><small>${progress.text}</small></div>
                     <time>${escapeHtml(formatEvaluationDate(item.atualizadoEm || item.iniciadoEm))}</time>
-                    <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${closed ? "Visualizar" : "Continuar"}</button>
+                    <button class="btn evaluation-continue-button" type="button" data-evaluation-open="${Number(item.id)}">${editable ? "Continuar" : "Visualizar"}</button>
                 </article>`;
         }).join("");
     }
@@ -765,6 +774,23 @@
             el.evaluationTermDownload.classList.add("hidden");
         }
         setEvaluationMessage(el.evaluationTermMessage);
+        atualizarDicaTermoAdesao();
+    }
+
+    // Ajusta o texto do documento e do botão de acordo com o posicionamento selecionado,
+    // já que "Sem posicionamento" pode ser salvo sem anexar arquivo
+    function atualizarDicaTermoAdesao() {
+        const position = Array.from(el.evaluationTermPositions).find((input) => input.checked)?.value;
+        if (el.evaluationTermUploadHint) {
+            el.evaluationTermUploadHint.textContent = position === "sem_posicionamento"
+                ? "Opcional para “Sem posicionamento” — pode salvar sem anexar nada."
+                : "Anexe o termo assinado ou o documento relacionado ao posicionamento.";
+        }
+        if (el.evaluationTermSaveButton) {
+            el.evaluationTermSaveButton.textContent = position === "sem_posicionamento"
+                ? "Salvar sem posicionamento"
+                : "Salvar e continuar";
+        }
     }
 
     function checklistDateValue(value) {
@@ -1061,7 +1087,8 @@
                         <label class="evaluation-checklist-general-wide"><span>Nome do checklist *</span><input data-checklist-field="nome" type="text" maxlength="150" placeholder="Ex.: Visita de renovação" value="${escapeHtml(checklist.nome || "")}"${disabled}></label>
                         <label><span>Data da visita</span><input data-checklist-field="dataVisita" type="date" value="${checklistDateValue(checklist.dataVisita)}"${checklist.teveVisita === false ? " disabled" : disabled}></label>
                         <label><span>Data de criação do checklist</span><input data-checklist-field="dataEntregaRelatorio" type="date" value="${checklistDateValue(checklist.dataEntregaRelatorio)}"${disabled}></label>
-                        <label class="evaluation-checklist-toggle-field"><span>Teve visita</span>
+                        <label class="evaluation-checklist-toggle-field evaluation-checklist-general-wide">
+                            <span class="evaluation-checklist-toggle-label"><strong>Teve visita</strong><small>Desative se a visita não chegou a acontecer</small></span>
                             <span class="evaluation-checklist-toggle">
                                 <input data-checklist-field="teveVisita" type="checkbox"${checklist.teveVisita !== false ? " checked" : ""}${disabled}>
                                 <span class="evaluation-checklist-toggle-track"><span class="evaluation-checklist-toggle-thumb"></span></span>
@@ -1258,12 +1285,15 @@
         el.evaluationSelectedName.textContent = item.prestadorNome;
         const statusText = item.status === "recusada"
             ? "Processo encerrado (termo recusado)"
-            : item.status === "em_andamento"
-                ? "Processo em andamento"
-                : "Processo concluído";
+            : item.status === "sem_posicionamento"
+                ? "Processo encerrado (sem posicionamento) — pode ser reaberto a qualquer momento"
+                : item.status === "em_andamento"
+                    ? "Processo em andamento"
+                    : "Processo concluído";
         el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${statusText}`;
         el.evaluationSelectedStage.textContent = evaluationStageLabel(item);
         el.evaluationSelectedStage.classList.toggle("is-rejected", item.status === "recusada");
+        el.evaluationSelectedStage.classList.toggle("is-waiting", item.status === "sem_posicionamento");
         renderTermoAdesao();
         renderChecklistCards();
         renderFeedbackStage();
@@ -1298,7 +1328,8 @@
             return;
         }
         const file = el.evaluationTermFile.files?.[0];
-        if (!file && !state.termoAdesao?.arquivo) {
+        // "Sem posicionamento" pode ser salvo sem anexar o documento do termo
+        if (position !== "sem_posicionamento" && !file && !state.termoAdesao?.arquivo) {
             setEvaluationMessage(el.evaluationTermMessage, "Anexe o documento do termo de adesão.");
             return;
         }
@@ -1324,6 +1355,8 @@
             await carregarAvaliacoes(true);
             if (data.avaliacaoStatus === "recusada") {
                 showFeedback("Termo de adesão recusado. O processo foi encerrado.", "error");
+            } else if (data.avaliacaoStatus === "sem_posicionamento") {
+                showFeedback("Registrado sem posicionamento. O processo foi encerrado, mas pode ser reaberto e editado quando quiser.");
             } else {
                 el.evaluationStepChecklist.checked = true;
                 showFeedback("Termo de adesão salvo com sucesso.");
@@ -1332,7 +1365,7 @@
             setEvaluationMessage(el.evaluationTermMessage, error.message);
         } finally {
             el.evaluationTermSaveButton.disabled = false;
-            el.evaluationTermSaveButton.textContent = "Salvar e continuar";
+            atualizarDicaTermoAdesao();
         }
     }
 
@@ -2663,7 +2696,10 @@
                 el.evaluationTermFileName.textContent = el.evaluationTermFile.files?.[0]?.name || state.termoAdesao?.arquivo?.nome || "Nenhum arquivo selecionado";
                 setEvaluationMessage(el.evaluationTermMessage);
             });
-            el.evaluationTermPositions.forEach((input) => input.addEventListener("change", () => setEvaluationMessage(el.evaluationTermMessage)));
+            el.evaluationTermPositions.forEach((input) => input.addEventListener("change", () => {
+                setEvaluationMessage(el.evaluationTermMessage);
+                atualizarDicaTermoAdesao();
+            }));
             el.evaluationTermSaveButton.addEventListener("click", salvarTermoAdesao);
             el.evaluationAreaDashboard?.addEventListener("change", () => {
                 if (el.evaluationAreaDashboard.checked) carregarDashboardAvaliacoes();
