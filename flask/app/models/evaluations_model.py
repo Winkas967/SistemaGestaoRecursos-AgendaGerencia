@@ -28,16 +28,66 @@ class Evaluation:
 #contem as consultas da tabela de avaliações
 class EvaluationModel:
     
-    #lista todas as avaliacoes com os dados do prestador
+    #monta o trecho FROM/JOIN/WHERE reutilizado pela listagem e pela contagem,
+    #aplicando os filtros de busca/etapa/categoria (usados pela paginacao no servidor)
     @staticmethod
-    def get_all():
+    def _build_list_filter(search=None, stage=None, category=None):
+        where_clauses = []
+        parameters = []
+
+        if search:
+            where_clauses.append("p.nome LIKE %s")
+            parameters.append(f"%{search}%")
+
+        if category:
+            where_clauses.append("cp.nome = %s")
+            parameters.append(category)
+
+        if stage:
+            #reproduz a mesma regra usada no front (evaluationFilterStageValue):
+            #recusada/sem_posicionamento/sem_visita/atendimento_centro_medico usam o
+            #status bruto, concluida agrupa concluida/concluido, as demais etapas usam
+            #o valor cru de etapa_atual
+            where_clauses.append("""
+                CASE
+                    WHEN av.status = 'recusada' THEN 'recusada'
+                    WHEN av.status = 'sem_posicionamento' THEN 'sem_posicionamento'
+                    WHEN av.status = 'sem_visita' THEN 'sem_visita'
+                    WHEN av.status = 'atendimento_centro_medico' THEN 'atendimento_centro_medico'
+                    WHEN av.status IN ('concluida', 'concluido') THEN 'concluida'
+                    ELSE av.etapa_atual
+                END = %s
+            """)
+            parameters.append(stage)
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        base_query = f"""
+            FROM avaliacoes_prestador av
+            INNER JOIN prestadores p
+                ON p.id = av.prestador_id
+            INNER JOIN categorias_prestador cp
+                ON cp.id = p.categoria_id
+            {where_sql}
+        """
+
+        return base_query, parameters
+
+
+    #lista as avaliacoes com os dados do prestador; sem filtros/limite retorna tudo
+    #(usado por quem precisa do conjunto completo, como get_available_providers),
+    #com filtros e limit/offset aplica a busca/paginacao usada pela tela de processos
+    @staticmethod
+    def get_all(search=None, stage=None, category=None, limit=None, offset=None):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
-            cursor.execute("""
+
+            base_query, parameters = EvaluationModel._build_list_filter(search, stage, category)
+
+            select_query = f"""
                 SELECT
                     av.id,
                     av.prestador_id,
@@ -52,22 +102,77 @@ class EvaluationModel:
                     av.iniciado_em,
                     av.concluido_em,
                     av.atualizado_em
-                FROM avaliacoes_prestador av
-                INNER JOIN prestadores p
-                    ON p.id = av.prestador_id
-                INNER JOIN categorias_prestador cp
-                    ON cp.id = p.categoria_id
+                {base_query}
                 ORDER BY
                     COALESCE(av.atualizado_em, av.iniciado_em) DESC,
                     av.id DESC
-            """)
-            
+            """
+
+            query_parameters = list(parameters)
+
+            if limit is not None:
+                select_query += " LIMIT %s OFFSET %s"
+                query_parameters.extend([limit, offset or 0])
+
+            cursor.execute(select_query, tuple(query_parameters))
+
             return cursor.fetchall()
-        
+
         finally:
             if cursor:
                 cursor.close()
-                
+
+            if connection:
+                connection.close()
+
+
+    #lista as categorias que possuem ao menos uma avaliacao — usada para preencher
+    #o filtro de categoria independente da pagina/filtro atual
+    @staticmethod
+    def get_evaluation_categories():
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                SELECT DISTINCT cp.nome
+                FROM categorias_prestador cp
+                INNER JOIN prestadores p ON p.categoria_id = cp.id
+                INNER JOIN avaliacoes_prestador av ON av.prestador_id = p.id
+                ORDER BY cp.nome
+            """)
+
+            return [row["nome"] for row in cursor.fetchall()]
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
+
+    #conta quantas avaliacoes atendem aos mesmos filtros de get_all, para a paginacao
+    @staticmethod
+    def count_all(search=None, stage=None, category=None):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            base_query, parameters = EvaluationModel._build_list_filter(search, stage, category)
+
+            cursor.execute(f"SELECT COUNT(*) AS total {base_query}", tuple(parameters))
+
+            return cursor.fetchone()["total"]
+
+        finally:
+            if cursor:
+                cursor.close()
+
             if connection:
                 connection.close()
                 
@@ -285,7 +390,8 @@ class EvaluationModel:
                     SUM(CASE WHEN classificado.status_adesao = 'aceitou' THEN 1 ELSE 0 END) AS adesao,
                     SUM(CASE WHEN classificado.status_adesao = 'recusou' THEN 1 ELSE 0 END) AS nao_adesao,
                     SUM(CASE WHEN classificado.status_adesao = 'sem_posicionamento' THEN 1 ELSE 0 END) AS nao_posicionaram,
-                    SUM(CASE WHEN classificado.avaliacao_status = 'sem_visita' THEN 1 ELSE 0 END) AS sem_visita
+                    SUM(CASE WHEN classificado.avaliacao_status = 'sem_visita' THEN 1 ELSE 0 END) AS sem_visita,
+                    SUM(CASE WHEN classificado.avaliacao_status = 'atendimento_centro_medico' THEN 1 ELSE 0 END) AS atendimento_centro_medico
                 FROM (
                     SELECT
                         p.id AS prestador_id,
@@ -294,6 +400,7 @@ class EvaluationModel:
                         CASE
                             WHEN av.id IS NULL THEN 'sem_posicionamento'
                             WHEN av.status = 'recusada' THEN 'recusou'
+                            WHEN av.status = 'atendimento_centro_medico' THEN 'atendimento_centro_medico'
                             WHEN t.posicionamento = 'aceitou' THEN 'aceitou'
                             ELSE 'sem_posicionamento'
                         END AS status_adesao
@@ -373,10 +480,11 @@ class EvaluationModel:
                 connection.close()
 
 
-    #retorna o detalhamento por prestador do dashboard, para um ano de referencia
-    #(linha a linha, sem agregacao, para exportacao/consulta rapida)
+    #encerra a avaliacao quando o atendimento for feito diretamente pelo centro
+    #medico/EVB, com o documento comprobatorio anexado — encerramento definitivo,
+    #nao pode ser reaberto (mesmo comportamento de "recusada")
     @staticmethod
-    def get_dashboard_details(year):
+    def close_as_medical_center_service(evaluation_id):
         connection = None
         cursor = None
 
@@ -384,6 +492,90 @@ class EvaluationModel:
             connection, cursor = get_db_connection()
 
             cursor.execute("""
+                UPDATE avaliacoes_prestador
+                SET status = 'atendimento_centro_medico',
+                    concluido_em = CURRENT_TIMESTAMP
+                WHERE id = %s
+                  AND status IN ('em_andamento', 'sem_posicionamento')
+            """, (evaluation_id,))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+
+    #monta o trecho comum (FROM/JOINS/WHERE) do detalhamento do dashboard,
+    #reaproveitado pela listagem e pela contagem (paginacao no servidor)
+    @staticmethod
+    def _build_dashboard_details_filter(year, search=None):
+        where_clauses = ["p.situacao = 'ativo'"]
+        parameters = [year, year]
+
+        if search:
+            where_clauses.append("(p.nome LIKE %s OR cp.nome LIKE %s)")
+            termo = f"%{search}%"
+            parameters.extend([termo, termo])
+
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+        base_query = f"""
+            FROM prestadores p
+            INNER JOIN categorias_prestador cp
+                ON cp.id = p.categoria_id
+            LEFT JOIN (
+                SELECT av1.*
+                FROM avaliacoes_prestador av1
+                WHERE av1.ano_referencia = %s
+                  AND av1.id = (
+                        SELECT MAX(av2.id)
+                        FROM avaliacoes_prestador av2
+                        WHERE av2.prestador_id = av1.prestador_id
+                          AND av2.ano_referencia = %s
+                  )
+            ) av ON av.prestador_id = p.id
+            LEFT JOIN termos_adesao t ON t.avaliacao_id = av.id
+            LEFT JOIN (
+                SELECT ca1.*
+                FROM checklists_avaliacao ca1
+                WHERE ca1.status = 'concluido'
+                  AND ca1.id = (
+                        SELECT MAX(ca2.id)
+                        FROM checklists_avaliacao ca2
+                        WHERE ca2.avaliacao_id = ca1.avaliacao_id
+                          AND ca2.status = 'concluido'
+                  )
+            ) ultimo_checklist ON ultimo_checklist.avaliacao_id = av.id
+            {where_sql}
+        """
+
+        return base_query, parameters
+
+
+    #retorna o detalhamento por prestador do dashboard, para um ano de referencia
+    #(linha a linha, sem agregacao, para exportacao/consulta rapida); com limit/offset
+    #aplica a paginacao usada pela tabela detalhada em tela
+    @staticmethod
+    def get_dashboard_details(year, search=None, limit=None, offset=None):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            base_query, parameters = EvaluationModel._build_dashboard_details_filter(year, search)
+
+            select_query = f"""
                 SELECT
                     p.id AS prestador_id,
                     p.nome AS prestador_nome,
@@ -391,6 +583,7 @@ class EvaluationModel:
                     CASE
                         WHEN av.id IS NULL THEN 'sem_posicionamento'
                         WHEN av.status = 'recusada' THEN 'recusou'
+                        WHEN av.status = 'atendimento_centro_medico' THEN 'atendimento_centro_medico'
                         WHEN t.posicionamento = 'aceitou' THEN 'aceitou'
                         ELSE 'sem_posicionamento'
                     END AS status_adesao,
@@ -401,37 +594,43 @@ class EvaluationModel:
                     ultimo_checklist.classificacao_estrelas,
                     ultimo_checklist.resultado_percentual,
                     ultimo_checklist.concluido_em AS checklist_concluido_em
-                FROM prestadores p
-                INNER JOIN categorias_prestador cp
-                    ON cp.id = p.categoria_id
-                LEFT JOIN (
-                    SELECT av1.*
-                    FROM avaliacoes_prestador av1
-                    WHERE av1.ano_referencia = %s
-                      AND av1.id = (
-                            SELECT MAX(av2.id)
-                            FROM avaliacoes_prestador av2
-                            WHERE av2.prestador_id = av1.prestador_id
-                              AND av2.ano_referencia = %s
-                      )
-                ) av ON av.prestador_id = p.id
-                LEFT JOIN termos_adesao t ON t.avaliacao_id = av.id
-                LEFT JOIN (
-                    SELECT ca1.*
-                    FROM checklists_avaliacao ca1
-                    WHERE ca1.status = 'concluido'
-                      AND ca1.id = (
-                            SELECT MAX(ca2.id)
-                            FROM checklists_avaliacao ca2
-                            WHERE ca2.avaliacao_id = ca1.avaliacao_id
-                              AND ca2.status = 'concluido'
-                      )
-                ) ultimo_checklist ON ultimo_checklist.avaliacao_id = av.id
-                WHERE p.situacao = 'ativo'
+                {base_query}
                 ORDER BY cp.nome, p.nome
-            """, (year, year))
+            """
+
+            query_parameters = list(parameters)
+
+            if limit is not None:
+                select_query += " LIMIT %s OFFSET %s"
+                query_parameters.extend([limit, offset or 0])
+
+            cursor.execute(select_query, tuple(query_parameters))
 
             return cursor.fetchall()
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
+
+    #conta quantos prestadores atendem aos mesmos filtros de get_dashboard_details,
+    #usado para a exportacao (sem paginacao) e para a paginacao da tabela em tela
+    @staticmethod
+    def count_dashboard_details(year, search=None):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            base_query, parameters = EvaluationModel._build_dashboard_details_filter(year, search)
+
+            cursor.execute(f"SELECT COUNT(*) AS total {base_query}", tuple(parameters))
+
+            return cursor.fetchone()["total"]
 
         finally:
             if cursor:

@@ -44,16 +44,60 @@ class Minute:
 #contem as consultas da tabela atas_reuniao
 class MinuteModel:
     
-    #lista todos as atas
+    #monta o trecho FROM/JOIN/WHERE reutilizado pela listagem e pela contagem,
+    #aplicando os filtros de ano/tipo/busca (paginacao no servidor)
     @staticmethod
-    def get_all():
+    def _build_list_filter(year=None, type_id=None, search=None):
+        where_clauses = []
+        parameters = []
+
+        if year:
+            where_clauses.append("YEAR(ar.data_reuniao) = %s")
+            parameters.append(year)
+
+        if type_id:
+            where_clauses.append("ar.tipo_ata_id = %s")
+            parameters.append(type_id)
+
+        if search:
+            where_clauses.append("""(
+                ar.numero_ata LIKE %s
+                OR ta.nome LIKE %s
+                OR ar.pauta LIKE %s
+                OR ar.participantes LIKE %s
+                OR a.nome_original LIKE %s
+            )""")
+            termo = f"%{search}%"
+            parameters.extend([termo, termo, termo, termo, termo])
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        base_query = f"""
+            FROM atas_reuniao ar
+            INNER JOIN tipos_ata ta
+                ON ta.id = ar.tipo_ata_id
+            LEFT JOIN arquivos a
+                ON a.id = ar.arquivo_id
+            {where_sql}
+        """
+
+        return base_query, parameters
+
+
+    #lista as atas com filtros de ano/tipo/busca, ordenacao e paginacao no servidor
+    @staticmethod
+    def get_all(year=None, type_id=None, search=None, order="recentes", limit=None, offset=None):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
-            cursor.execute("""
+
+            base_query, parameters = MinuteModel._build_list_filter(year, type_id, search)
+
+            direcao = "ASC" if order == "antigas" else "DESC"
+
+            select_query = f"""
                 SELECT
                     ar.id,
                     ar.numero_ata,
@@ -71,23 +115,90 @@ class MinuteModel:
                     a.caminho_relativo,
                     a.mime_type,
                     a.tamanho_bytes
-                FROM atas_reuniao ar
-                INNER JOIN tipos_ata ta
-                    ON ta.id = ar.tipo_ata_id
-                LEFT JOIN arquivos a
-                    ON a.id = ar.arquivo_id
-                ORDER BY ar.data_reuniao DESC, ar.id DESC
-            """)
-            
+                {base_query}
+                ORDER BY ar.data_reuniao {direcao}, ar.id {direcao}
+            """
+
+            query_parameters = list(parameters)
+
+            if limit is not None:
+                select_query += " LIMIT %s OFFSET %s"
+                query_parameters.extend([limit, offset or 0])
+
+            cursor.execute(select_query, tuple(query_parameters))
+
             return [
                 Minute(**record)
                 for record in cursor.fetchall()
             ]
-            
+
         finally:
             if cursor:
                 cursor.close()
-                
+
+            if connection:
+                connection.close()
+
+
+    #conta quantas atas atendem aos mesmos filtros de get_all, para a paginacao
+    @staticmethod
+    def count_all(year=None, type_id=None, search=None):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            base_query, parameters = MinuteModel._build_list_filter(year, type_id, search)
+
+            cursor.execute(f"SELECT COUNT(*) AS total {base_query}", tuple(parameters))
+
+            return cursor.fetchone()["total"]
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
+
+    #retorna os agregados globais (anos existentes, total e ultima atualizacao),
+    #independentes dos filtros/paginacao — usados no cabecalho da tela de atas
+    @staticmethod
+    def get_global_stats():
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                SELECT DISTINCT YEAR(data_reuniao) AS ano
+                FROM atas_reuniao
+                WHERE data_reuniao IS NOT NULL
+                ORDER BY ano
+            """)
+            anos = [row["ano"] for row in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT
+                    COUNT(*) AS total,
+                    MAX(GREATEST(COALESCE(atualizado_em, criado_em), COALESCE(criado_em, atualizado_em))) AS ultima_atualizacao
+                FROM atas_reuniao
+            """)
+            resumo = cursor.fetchone()
+
+            return {
+                "anos": anos,
+                "total": resumo["total"] if resumo else 0,
+                "ultima_atualizacao": resumo["ultima_atualizacao"] if resumo else None,
+            }
+
+        finally:
+            if cursor:
+                cursor.close()
+
             if connection:
                 connection.close()
                 

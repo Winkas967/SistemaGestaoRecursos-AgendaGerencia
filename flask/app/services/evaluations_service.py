@@ -2,6 +2,7 @@ from datetime import date
 
 from models.evaluations_model import Evaluation, EvaluationModel
 from models.providers_model import ProviderModel
+from utils.pagination import build_pagination_meta, resolve_pagination
 
 #contem regras dos processos de avaliacao
 class EvaluationService:
@@ -29,15 +30,36 @@ class EvaluationService:
         }
 
 
-    #lista todas as avaliacoes
+    #lista as avaliacoes com busca/etapa/categoria e paginacao no servidor
     @staticmethod
-    def get_all():
-        evaluations = EvaluationModel.get_all()
-        
-        return [
-            EvaluationService.to_dict(evaluation)
-            for evaluation in evaluations
-        ]
+    def get_all(pagina=None, por_pagina=None, busca=None, etapa=None, categoria=None):
+        pagina, por_pagina = resolve_pagination(pagina, por_pagina)
+
+        busca = (busca or "").strip() or None
+        etapa = (etapa or "").strip() or None
+        categoria = (categoria or "").strip() or None
+
+        total = EvaluationModel.count_all(search=busca, stage=etapa, category=categoria)
+
+        offset = (pagina - 1) * por_pagina
+
+        evaluations = EvaluationModel.get_all(
+            search=busca,
+            stage=etapa,
+            category=categoria,
+            limit=por_pagina,
+            offset=offset,
+        )
+
+        return {
+            "registros": [
+                EvaluationService.to_dict(evaluation)
+                for evaluation in evaluations
+            ],
+            "total": total,
+            "categoriasDisponiveis": EvaluationModel.get_evaluation_categories(),
+            **build_pagination_meta(pagina, por_pagina, total),
+        }
         
         
     #busca uma avaliacao pelo identificador
@@ -208,6 +230,7 @@ class EvaluationService:
             "naoAdesao": 0,
             "naoPosicionaram": 0,
             "semVisita": 0,
+            "atendimentoCentroMedico": 0,
             "visitaSemDocumento": 0,
             "estrelas5": 0,
             "estrelas4": 0,
@@ -227,6 +250,7 @@ class EvaluationService:
                 "naoAdesao": int(row["nao_adesao"] or 0),
                 "naoPosicionaram": int(row["nao_posicionaram"] or 0),
                 "semVisita": int(row["sem_visita"] or 0),
+                "atendimentoCentroMedico": int(row["atendimento_centro_medico"] or 0),
                 "visitaSemDocumento": int(row["visita_sem_documento"] or 0),
                 "estrelas5": int(row["estrelas_5"] or 0),
                 "estrelas4": int(row["estrelas_4"] or 0),
@@ -259,6 +283,7 @@ class EvaluationService:
             "aceitou": "Aceitou",
             "recusou": "Recusou",
             "sem_posicionamento": "Não se posicionou",
+            "atendimento_centro_medico": "Atendimento Centro médico/EVB",
         }
         return labels.get(status_adesao, status_adesao or "—")
 
@@ -275,36 +300,70 @@ class EvaluationService:
             "recusada": "Recusada",
             "sem_posicionamento": "Sem posicionamento (aguardando termo)",
             "sem_visita": "Encerrado sem visita",
+            "atendimento_centro_medico": "Atendimento Centro médico/EVB",
         }
         return labels.get(status, status)
 
 
-    #monta o detalhamento por prestador do dashboard (linha a linha), usado
-    #pela tabela detalhada em tela e pela exportacao em excel
+    #converte uma linha do detalhamento do dashboard para o formato do front
     @staticmethod
-    def get_dashboard_details(year=None):
+    def _dashboard_detail_to_dict(row):
+        return {
+            "prestadorNome": row["prestador_nome"],
+            "categoriaNome": row["categoria_nome"],
+            "statusAdesao": EvaluationService._dashboard_status_adesao_label(row["status_adesao"]),
+            "statusAvaliacao": EvaluationService._dashboard_avaliacao_status_label(row["avaliacao_status"]),
+            "teveVisita": bool(row["teve_visita"]) if row["teve_visita"] is not None else None,
+            "estrelas": int(row["classificacao_estrelas"]) if row["classificacao_estrelas"] is not None else None,
+            "resultadoPercentual": float(row["resultado_percentual"]) if row["resultado_percentual"] is not None else None,
+            "iniciadoEm": row["iniciado_em"],
+            "concluidoEm": row["concluido_em"],
+            "checklistConcluidoEm": row["checklist_concluido_em"],
+        }
+
+
+    #monta o detalhamento completo por prestador do dashboard (linha a linha,
+    #sem paginacao), usado pela exportacao em excel
+    @staticmethod
+    def get_dashboard_details_completo(year=None):
         year = EvaluationService._resolve_dashboard_year(year)
 
         rows = EvaluationModel.get_dashboard_details(year)
 
-        registros = [
-            {
-                "prestadorNome": row["prestador_nome"],
-                "categoriaNome": row["categoria_nome"],
-                "statusAdesao": EvaluationService._dashboard_status_adesao_label(row["status_adesao"]),
-                "statusAvaliacao": EvaluationService._dashboard_avaliacao_status_label(row["avaliacao_status"]),
-                "teveVisita": bool(row["teve_visita"]) if row["teve_visita"] is not None else None,
-                "estrelas": int(row["classificacao_estrelas"]) if row["classificacao_estrelas"] is not None else None,
-                "resultadoPercentual": float(row["resultado_percentual"]) if row["resultado_percentual"] is not None else None,
-                "iniciadoEm": row["iniciado_em"],
-                "concluidoEm": row["concluido_em"],
-                "checklistConcluidoEm": row["checklist_concluido_em"],
-            }
-            for row in rows
-        ]
+        registros = [EvaluationService._dashboard_detail_to_dict(row) for row in rows]
 
         return {
             "anoReferencia": year,
             "registros": registros,
             "total": len(registros),
+        }
+
+
+    #monta o detalhamento por prestador do dashboard (linha a linha), com busca
+    #e paginacao no servidor, usado pela tabela detalhada em tela
+    @staticmethod
+    def get_dashboard_details(year=None, pagina=None, por_pagina=None, busca=None):
+        year = EvaluationService._resolve_dashboard_year(year)
+        pagina, por_pagina = resolve_pagination(pagina, por_pagina)
+
+        busca = (busca or "").strip() or None
+
+        total = EvaluationModel.count_dashboard_details(year, search=busca)
+
+        offset = (pagina - 1) * por_pagina
+
+        rows = EvaluationModel.get_dashboard_details(
+            year,
+            search=busca,
+            limit=por_pagina,
+            offset=offset,
+        )
+
+        registros = [EvaluationService._dashboard_detail_to_dict(row) for row in rows]
+
+        return {
+            "anoReferencia": year,
+            "registros": registros,
+            "total": total,
+            **build_pagination_meta(pagina, por_pagina, total),
         }

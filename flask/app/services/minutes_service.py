@@ -2,6 +2,7 @@ from datetime import date
 
 from models.minutes_model import Minute, MinuteModel
 from services.file_storage_service import FileStorageService
+from utils.pagination import build_pagination_meta, resolve_pagination
 
 
 
@@ -135,40 +136,67 @@ class MinutesService:
             "arquivo": file_data,
         }
         
-    #lista todos as atas
+    #resolve o id do tipo de ata a partir do slug usado pelo filtro do front
     @staticmethod
-    def get_all():
-        minutes = MinuteModel.get_all()
-        
+    def _resolve_type_id(type_slug):
+        type_name = MinutesService.TYPE_NAMES.get((type_slug or "").strip())
+
+        if not type_name:
+            return None
+
+        minute_type = MinuteModel.get_type_by_name(type_name)
+
+        return minute_type["id"] if minute_type else None
+
+
+    #lista as atas com busca/ano/tipo/ordenacao e paginacao no servidor; os
+    #agregados (anos existentes, total e ultima atualizacao) sao globais, ou
+    #seja, nao mudam conforme a pagina/filtro, pois alimentam o cabecalho da tela
+    @staticmethod
+    def get_all(pagina=None, por_pagina=None, busca=None, ano=None, tipo=None, ordem="recentes"):
+        pagina, por_pagina = resolve_pagination(pagina, por_pagina)
+
+        busca = (busca or "").strip() or None
+
+        try:
+            ano = int(ano) if ano not in (None, "") else None
+        except (TypeError, ValueError):
+            raise ValueError("O ano informado é inválido.")
+
+        type_id = MinutesService._resolve_type_id(tipo) if tipo else None
+
+        total = MinuteModel.count_all(year=ano, type_id=type_id, search=busca)
+
+        offset = (pagina - 1) * por_pagina
+
+        minutes = MinuteModel.get_all(
+            year=ano,
+            type_id=type_id,
+            search=busca,
+            order=ordem,
+            limit=por_pagina,
+            offset=offset,
+        )
+
         records = [
             MinutesService.to_dict(minute)
             for minute in minutes
         ]
-        
-        years = sorted({
-            minute.data_reuniao.year
-            for minute in minutes
-            if minute.data_reuniao
-        })
-        
-        update_dates = [
-            minute.atualizado_em or minute.criado_em
-            for minute in minutes
-            if minute.atualizado_em or minute.criado_em
-        ]
-        
+
+        global_stats = MinuteModel.get_global_stats()
+
         last_update = "Nenhuma"
-        
-        if update_dates:
-            last_update = max(update_dates).strftime(
-                "%d/%m/%Y %H:%M"
-            )
-            
+
+        if global_stats["ultima_atualizacao"]:
+            last_update = global_stats["ultima_atualizacao"].strftime("%d/%m/%Y %H:%M")
+
         return {
             "registros": records,
-            "anos": years,
-            "total": len(records),
-            "ultimaAtualizacao": last_update
+            "anos": global_stats["anos"],
+            "total": total,
+            "totalGeral": global_stats["total"],
+            "ultimaAtualizacao": last_update,
+            **build_pagination_meta(pagina, por_pagina, total),
         }
         
     #busca uma ata e valida o id

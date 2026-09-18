@@ -11,13 +11,25 @@ agenda_bp = Blueprint(
 )
 
 
-#lista todos os compromissos
+#lista os compromissos; com ano/mes retorna somente o periodo exibido na grade
+#do calendario (usado pela agenda para buscar so o mes visivel em vez de tudo).
+#os responsaveis disponiveis vem sempre completos, independente do periodo
 @agenda_bp.route("", methods=["GET"])
 @permission_required("agenda", "visualizar")
 def get_appointments():
-    appointments = AgendaService.get_all()
-    
-    return jsonify(appointments), 200
+    try:
+        appointments = AgendaService.get_all(
+            year=request.args.get("ano"),
+            month=request.args.get("mes"),
+        )
+
+        return jsonify({
+            "registros": appointments,
+            "responsaveis": AgendaService.get_distinct_responsaveis(),
+        }), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
 
 #cadastra um compromisso
 @agenda_bp.route("", methods=["POST"])

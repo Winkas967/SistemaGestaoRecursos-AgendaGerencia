@@ -12,7 +12,8 @@ class AdhesionTermService:
     VALID_POSITIONS = {
         "aceitou",
         "recusou",
-        "sem_posicionamento"
+        "sem_posicionamento",
+        "atendimento_centro_medico"
     }
     
     ALLOWED_EXTENSIONS = {
@@ -183,6 +184,11 @@ class AdhesionTermService:
                 EvaluationModel.reject(evaluation["id"])
             elif position == "sem_posicionamento":
                 EvaluationModel.close_without_position(evaluation["id"])
+            elif position == "atendimento_centro_medico":
+                #atendimento feito direto pelo centro medico/EVB: encerra a
+                #avaliacao definitivamente assim que o documento e anexado,
+                #sem passar pelo checklist — nao pode ser reaberto (igual "recusou")
+                EvaluationModel.close_as_medical_center_service(evaluation["id"])
             else:
                 #cobre tanto o avanco normal quanto a reabertura de uma
                 #avaliacao que havia sido encerrada sem posicionamento
@@ -212,6 +218,9 @@ class AdhesionTermService:
         elif position == "sem_posicionamento":
             result["avaliacaoEtapaAtual"] = "termo_adesao"
             result["avaliacaoStatus"] = "sem_posicionamento"
+        elif position == "atendimento_centro_medico":
+            result["avaliacaoEtapaAtual"] = "termo_adesao"
+            result["avaliacaoStatus"] = "atendimento_centro_medico"
         else:
             result["avaliacaoEtapaAtual"] = "checklist"
             result["avaliacaoStatus"] = "em_andamento"

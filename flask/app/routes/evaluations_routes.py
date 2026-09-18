@@ -17,16 +17,23 @@ evaluations_bp = Blueprint(
     url_prefix="/api/avaliacoes"
 )
 
-#lista de avaliacoes existentes
+#lista de avaliacoes existentes, com busca/etapa/categoria e paginacao no servidor
 @evaluations_bp.route("", methods=["GET"])
 @permission_required("avaliacao", "visualizar")
 def list_evaluations():
-    evaluations = EvaluationService.get_all()
-    
-    return jsonify({
-        "registros": evaluations,
-        "total": len(evaluations),
-    }), 200
+    try:
+        resultado = EvaluationService.get_all(
+            pagina=request.args.get("pagina"),
+            por_pagina=request.args.get("porPagina"),
+            busca=request.args.get("busca"),
+            etapa=request.args.get("etapa"),
+            categoria=request.args.get("categoria"),
+        )
+
+        return jsonify(resultado), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
     
     
 #lista os cadastros disponiveis para avaliacao
@@ -56,12 +63,18 @@ def get_evaluations_dashboard():
         return jsonify({"erro": str(error)}), 400
 
 
-#detalhamento do dashboard linha a linha por prestador, para o ano de referencia
+#detalhamento do dashboard linha a linha por prestador, para o ano de referencia,
+#com busca e paginacao no servidor
 @evaluations_bp.route("/dashboard/detalhado", methods=["GET"])
 @permission_required("avaliacao", "visualizar")
 def get_evaluations_dashboard_details():
     try:
-        details = EvaluationService.get_dashboard_details(request.args.get("ano"))
+        details = EvaluationService.get_dashboard_details(
+            year=request.args.get("ano"),
+            pagina=request.args.get("pagina"),
+            por_pagina=request.args.get("porPagina"),
+            busca=request.args.get("busca"),
+        )
 
         return jsonify(details), 200
 

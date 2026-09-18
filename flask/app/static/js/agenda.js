@@ -15,6 +15,7 @@
         { key: "naoPosicionaram", label: "Não se posicionaram", color: "var(--viz-cat-3)" },
         { key: "semVisita", label: "Sem visita", color: "var(--viz-cat-4)" },
         { key: "visitaSemDocumento", label: "Visita sem documento", color: "var(--viz-cat-5)" },
+        { key: "atendimentoCentroMedico", label: "Atendimento Centro médico/EVB", color: "var(--viz-cat-6)" },
     ];
     // series do grafico de estrelas — escala divergente centrada entre 02 e 03 estrelas
     const DASHBOARD_STARS_NEGATIVE_SERIES = [
@@ -47,6 +48,7 @@
 
     let state = {
         compromissos: [],
+        responsaveisDisponiveis: [],
         calendarCursor: new Date(),
         selectedDate: toISODate(new Date()),
         deletingId: null,
@@ -70,6 +72,9 @@
         avaliacoes: [],
         avaliacoesCarregadas: false,
         avaliacoesLoading: false,
+        avaliacoesPagina: 1,
+        avaliacoesTotalPaginas: 1,
+        avaliacoesPorPagina: 20,
         avaliacaoSelecionada: null,
         termoAdesao: null,
         checklistsAvaliacao: [],
@@ -79,6 +84,14 @@
         dashboardLoading: false,
         dashboardDetalhesRegistros: [],
         dashboardDetalhesLoading: false,
+        dashboardDetalhesPagina: 1,
+        dashboardDetalhesTotalPaginas: 1,
+        dashboardDetalhesPorPagina: 20,
+        dashboardDetalhesAno: null,
+        atasPagina: 1,
+        atasTotalPaginas: 1,
+        atasPorPagina: 20,
+        atasTotalGeral: 0,
     };
 
     const el = {
@@ -99,6 +112,10 @@
         minutesTypeFilter: document.getElementById("minutesTypeFilter"),
         minutesOrder: document.getElementById("minutesOrder"),
         minutesList: document.getElementById("minutesList"),
+        minutesPagination: document.getElementById("minutesPagination"),
+        minutesPrevPage: document.getElementById("minutesPrevPage"),
+        minutesNextPage: document.getElementById("minutesNextPage"),
+        minutesPageInfo: document.getElementById("minutesPageInfo"),
         minutesFormError: document.getElementById("minutesFormError"),
         themeToggle: document.getElementById("themeToggle"),
         themeIconSun: document.getElementById("iconSun"),
@@ -196,6 +213,14 @@
         evaluationChartStarsLegend: document.getElementById("evaluationChartStarsLegend"),
         evaluationDashboardDetailsBody: document.getElementById("evaluationDashboardDetailsBody"),
         evaluationDashboardSearch: document.getElementById("evaluationDashboardSearch"),
+        evaluationDashboardDetailsPagination: document.getElementById("evaluationDashboardDetailsPagination"),
+        evaluationDashboardDetailsPrevPage: document.getElementById("evaluationDashboardDetailsPrevPage"),
+        evaluationDashboardDetailsNextPage: document.getElementById("evaluationDashboardDetailsNextPage"),
+        evaluationDashboardDetailsPageInfo: document.getElementById("evaluationDashboardDetailsPageInfo"),
+        evaluationProcessPagination: document.getElementById("evaluationProcessPagination"),
+        evaluationProcessPrevPage: document.getElementById("evaluationProcessPrevPage"),
+        evaluationProcessNextPage: document.getElementById("evaluationProcessNextPage"),
+        evaluationProcessPageInfo: document.getElementById("evaluationProcessPageInfo"),
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
@@ -266,6 +291,39 @@
         return div.innerHTML;
     }
 
+    // atrasa a execucao de fn ate o usuario parar de digitar — usado nos campos
+    // de busca que agora disparam uma nova consulta ao servidor (paginacao no servidor)
+    function debounce(fn, wait = 350) {
+        let timer = null;
+        return (...args) => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => fn(...args), wait);
+        };
+    }
+
+    // monta a querystring a partir de um objeto, ignorando valores vazios/nulos
+    function buildQueryString(params) {
+        const query = new URLSearchParams();
+        Object.entries(params || {}).forEach(([chave, valor]) => {
+            if (valor === null || valor === undefined || valor === "") return;
+            query.set(chave, valor);
+        });
+        const texto = query.toString();
+        return texto ? `?${texto}` : "";
+    }
+
+    // atualiza uma barra de paginacao generica (anterior/proxima + "Página X de Y"),
+    // usada pelas listas paginadas no servidor
+    function renderPaginationBar(containerEl, infoEl, prevBtn, nextBtn, pagina, totalPaginas, totalRegistros) {
+        if (!containerEl) return;
+        const paginas = Math.max(1, Number(totalPaginas) || 1);
+        const atual = Math.min(Math.max(Number(pagina) || 1, 1), paginas);
+        if (infoEl) infoEl.textContent = `Página ${atual} de ${paginas}`;
+        if (prevBtn) prevBtn.disabled = atual <= 1;
+        if (nextBtn) nextBtn.disabled = atual >= paginas;
+        containerEl.classList.toggle("hidden", !totalRegistros);
+    }
+
     function showFeedback(message, type = "success") {
         el.feedback.textContent = message;
         el.feedback.className = `feedback ${type}`;
@@ -323,6 +381,11 @@
         el.minutesFormError.classList.add("hidden");
     }
 
+    function filtrarAtas() {
+        state.atasPagina = 1;
+        carregarAtas(true);
+    }
+
     function normalizarBuscaAta(valor) {
         return String(valor || "")
             .normalize("NFD")
@@ -330,15 +393,31 @@
             .toLowerCase();
     }
 
-    async function carregarAtas() {
+    async function carregarAtas(force = false) {
+        if (state.atasLoading) return;
+        if (state.atasCarregadas && !force) {
+            renderAtas();
+            return;
+        }
         state.atasLoading = true;
         el.minutesList.innerHTML = '<div class="minutes-empty"><p>Carregando atas...</p></div>';
         try {
-            const dados = await requestJson(MINUTES_API_URL);
+            const query = buildQueryString({
+                pagina: state.atasPagina,
+                porPagina: state.atasPorPagina,
+                busca: el.minutesSearch.value.trim(),
+                ano: el.minutesYearFilter.value,
+                tipo: el.minutesTypeFilter.value,
+                ordem: el.minutesOrder.value,
+            });
+            const dados = await requestJson(`${MINUTES_API_URL}${query}`);
             state.atas = dados.registros || [];
             state.atasAnos = dados.anos || [];
+            state.atasTotalGeral = dados.totalGeral || 0;
+            state.atasPagina = dados.pagina || 1;
+            state.atasTotalPaginas = dados.totalPaginas || 1;
             state.atasCarregadas = true;
-            el.minutesTotal.textContent = String(dados.total || 0);
+            el.minutesTotal.textContent = String(dados.totalGeral || 0);
             el.minutesLastUpdate.textContent = dados.ultimaAtualizacao || "Nenhuma";
             atualizarFiltroAnosAtas();
             renderAtas();
@@ -356,33 +435,19 @@
         if (state.atasAnos.map(String).includes(atual)) el.minutesYearFilter.value = atual;
     }
 
-    function atasFiltradas() {
-        const busca = normalizarBuscaAta(el.minutesSearch.value.trim());
-        const ano = el.minutesYearFilter.value;
-        const tipo = el.minutesTypeFilter.value;
-        const resultado = state.atas.filter((ata) => {
-            if (ano && String(ata.ano) !== ano) return false;
-            if (tipo && ata.tipo !== tipo) return false;
-            if (!busca) return true;
-            return normalizarBuscaAta([
-                ata.numero,
-                ata.tipoTexto,
-                ata.pauta,
-                ata.participantes,
-                ata.arquivo?.nome,
-            ].join(" ")).includes(busca);
-        });
-        resultado.sort((a, b) => {
-            const comparacao = String(a.data).localeCompare(String(b.data));
-            return el.minutesOrder.value === "antigas" ? comparacao : -comparacao;
-        });
-        return resultado;
-    }
-
     function renderAtas() {
-        const atas = atasFiltradas();
+        const atas = state.atas;
+        renderPaginationBar(
+            el.minutesPagination,
+            el.minutesPageInfo,
+            el.minutesPrevPage,
+            el.minutesNextPage,
+            state.atasPagina,
+            state.atasTotalPaginas,
+            atas.length,
+        );
         if (!atas.length) {
-            const temAtas = state.atas.length > 0;
+            const temAtas = state.atasTotalGeral > 0;
             el.minutesList.innerHTML = `
                 <div class="minutes-empty">
                     <span class="minutes-empty-icon">
@@ -458,7 +523,8 @@
             el.minutesForm.reset();
             el.minutesFileName.textContent = "PDF, DOC ou DOCX";
             fecharFormularioAta();
-            await carregarAtas();
+            state.atasPagina = 1;
+            await carregarAtas(true);
             showFeedback("Ata adicionada com sucesso.");
         } catch (error) {
             el.minutesFormError.textContent = error.message;
@@ -473,7 +539,7 @@
         if (!window.confirm("Deseja apagar esta ata e o arquivo anexado?")) return;
         try {
             await requestJson(`${MINUTES_API_URL}/${id}`, { method: "DELETE" });
-            await carregarAtas();
+            await carregarAtas(true);
             showFeedback("Ata apagada com sucesso.");
         } catch (error) {
             showFeedback(error.message, "error");
@@ -537,6 +603,7 @@
         if (item.status === "recusada") return "Recusado";
         if (item.status === "sem_posicionamento") return "Sem posicionamento";
         if (item.status === "sem_visita") return "Sem visita";
+        if (item.status === "atendimento_centro_medico") return "Atendimento Centro médico/EVB";
         if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
@@ -555,6 +622,7 @@
         if (item.status === "recusada") return { percent: 100, text: "Processo encerrado" };
         if (item.status === "sem_posicionamento") return { percent: 100, text: "Encerrado (pode reabrir)" };
         if (item.status === "sem_visita") return { percent: 100, text: "Encerrado (pode reabrir)" };
+        if (item.status === "atendimento_centro_medico") return { percent: 100, text: "Processo encerrado" };
         if (item.status === "concluida" || item.status === "concluido") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "feedback") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "checklist") return { percent: 66, text: "2 de 3 etapas" };
@@ -588,15 +656,15 @@
         element.classList.toggle("hidden", !message);
     }
 
-    // Preenche o filtro de categoria com as categorias que realmente existem nas avaliações carregadas
-    function popularFiltroCategoriaAvaliacao() {
+    // Preenche o filtro de categoria com as categorias que possuem avaliação —
+    // a lista vem do servidor (categoriasDisponiveis), independente da página/filtro
+    // atual, para não "sumir" opções conforme o usuário navega pelas páginas
+    function popularFiltroCategoriaAvaliacao(categorias) {
         if (!el.evaluationFilterCategory) return;
         const atual = el.evaluationFilterCategory.value;
-        const categorias = Array.from(new Set(
-            state.avaliacoes.map((item) => item.categoriaNome).filter(Boolean)
-        )).sort((a, b) => a.localeCompare(b, "pt-BR"));
+        const lista = (categorias || []).slice().sort((a, b) => a.localeCompare(b, "pt-BR"));
         el.evaluationFilterCategory.innerHTML = '<option value="">Todas as categorias</option>'
-            + categorias.map((nome) => `<option value="${escapeHtml(nome)}"${nome === atual ? " selected" : ""}>${escapeHtml(nome)}</option>`).join("");
+            + lista.map((nome) => `<option value="${escapeHtml(nome)}"${nome === atual ? " selected" : ""}>${escapeHtml(nome)}</option>`).join("");
     }
 
     // "Concluída" agrupa concluida/concluido; as demais etapas usam o valor cru de etapaAtual
@@ -604,25 +672,30 @@
         if (item.status === "recusada") return "recusada";
         if (item.status === "sem_posicionamento") return "sem_posicionamento";
         if (item.status === "sem_visita") return "sem_visita";
+        if (item.status === "atendimento_centro_medico") return "atendimento_centro_medico";
         if (item.status === "concluida" || item.status === "concluido") return "concluida";
         return item.etapaAtual;
     }
 
+    // A busca/etapa/categoria e a paginação já são aplicadas no servidor —
+    // state.avaliacoes contém exatamente os registros da página atual.
     function renderAvaliacoes() {
         if (!el.evaluationProcessItems) return;
-        // Avaliações recusadas aparecem junto com as demais em todas as etapas;
-        // o filtro de etapa "Recusado" ainda permite isolar só elas quando quiser.
-        const searchTerm = (el.evaluationFilterSearch?.value || "").trim().toLowerCase();
-        const stageFilter = el.evaluationFilterStage?.value || "";
-        const categoryFilter = el.evaluationFilterCategory?.value || "";
-        const visiveis = state.avaliacoes.filter((item) => {
-            if (stageFilter && evaluationFilterStageValue(item) !== stageFilter) return false;
-            if (searchTerm && !String(item.prestadorNome || "").toLowerCase().includes(searchTerm)) return false;
-            if (categoryFilter && item.categoriaNome !== categoryFilter) return false;
-            return true;
-        });
+        const visiveis = state.avaliacoes;
+        renderPaginationBar(
+            el.evaluationProcessPagination,
+            el.evaluationProcessPageInfo,
+            el.evaluationProcessPrevPage,
+            el.evaluationProcessNextPage,
+            state.avaliacoesPagina,
+            state.avaliacoesTotalPaginas,
+            visiveis.length,
+        );
         if (!visiveis.length) {
-            el.evaluationProcessItems.innerHTML = '<div class="evaluation-list-message">Nenhuma avaliação iniciada. Clique em “Iniciar nova avaliação” para começar.</div>';
+            const semFiltro = !(el.evaluationFilterSearch?.value || el.evaluationFilterStage?.value || el.evaluationFilterCategory?.value);
+            el.evaluationProcessItems.innerHTML = semFiltro
+                ? '<div class="evaluation-list-message">Nenhuma avaliação iniciada. Clique em “Iniciar nova avaliação” para começar.</div>'
+                : '<div class="evaluation-list-message">Nenhuma avaliação encontrada para os filtros atuais.</div>';
             return;
         }
 
@@ -645,17 +718,32 @@
         }).join("");
     }
 
+    // Busca/etapa/categoria e paginação são aplicadas no servidor — força uma
+    // nova consulta sempre que chamada (mudou filtro, mudou página, ou reload)
     async function carregarAvaliacoes(force = false) {
-        if (state.avaliacoesLoading || (state.avaliacoesCarregadas && !force)) return;
+        if (state.avaliacoesLoading) return;
+        if (state.avaliacoesCarregadas && !force) {
+            renderAvaliacoes();
+            return;
+        }
         state.avaliacoesLoading = true;
         if (!state.avaliacoesCarregadas && el.evaluationProcessItems) {
             el.evaluationProcessItems.innerHTML = '<div class="evaluation-list-message">Carregando avaliações...</div>';
         }
         try {
-            const data = await requestJson(EVALUATIONS_API_URL);
+            const query = buildQueryString({
+                pagina: state.avaliacoesPagina,
+                porPagina: state.avaliacoesPorPagina,
+                busca: el.evaluationFilterSearch?.value?.trim(),
+                etapa: el.evaluationFilterStage?.value,
+                categoria: el.evaluationFilterCategory?.value,
+            });
+            const data = await requestJson(`${EVALUATIONS_API_URL}${query}`);
             state.avaliacoes = Array.isArray(data.registros) ? data.registros : [];
+            state.avaliacoesPagina = data.pagina || 1;
+            state.avaliacoesTotalPaginas = data.totalPaginas || 1;
             state.avaliacoesCarregadas = true;
-            popularFiltroCategoriaAvaliacao();
+            popularFiltroCategoriaAvaliacao(data.categoriasDisponiveis);
             renderAvaliacoes();
         } catch (error) {
             if (el.evaluationProcessItems) el.evaluationProcessItems.innerHTML = `<div class="evaluation-list-message is-error">${escapeHtml(error.message)}</div>`;
@@ -704,6 +792,7 @@
                         <td>${Number(item.naoAdesao)}</td>
                         <td>${Number(item.naoPosicionaram)}</td>
                         <td>${Number(item.semVisita)}</td>
+                        <td>${Number(item.atendimentoCentroMedico)}</td>
                         <td>${Number(item.visitaSemDocumento)}</td>
                         <td>${Number(item.estrelas5)}</td>
                         <td>${Number(item.estrelas4)}</td>
@@ -712,7 +801,7 @@
                         <td>${Number(item.estrelas1)}</td>
                         <td>${Number(item.estrelas0)}</td>
                     </tr>`).join("")
-                : '<tr><td colspan="12" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
+                : '<tr><td colspan="13" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
         }
 
         if (el.evaluationDashboardTableFoot) {
@@ -723,6 +812,7 @@
                     <td>${Number(totais.naoAdesao || 0)}</td>
                     <td>${Number(totais.naoPosicionaram || 0)}</td>
                     <td>${Number(totais.semVisita || 0)}</td>
+                    <td>${Number(totais.atendimentoCentroMedico || 0)}</td>
                     <td>${Number(totais.visitaSemDocumento || 0)}</td>
                     <td>${Number(totais.estrelas5 || 0)}</td>
                     <td>${Number(totais.estrelas4 || 0)}</td>
@@ -861,29 +951,39 @@
             </tr>`).join("");
     }
 
-    // filtra as linhas ja carregadas da tabela detalhada por prestador/categoria,
-    // sem nova chamada ao servidor
+    // busca/paginação da tabela detalhada agora acontecem no servidor — volta pra
+    // página 1 e refaz a consulta com o termo atual
     function filtrarDashboardDetalhes() {
-        const termo = (el.evaluationDashboardSearch?.value || "").trim().toLowerCase();
-        if (!termo) {
-            renderDashboardDetails(state.dashboardDetalhesRegistros);
-            return;
-        }
-        const filtrados = state.dashboardDetalhesRegistros.filter((item) => (
-            item.prestadorNome?.toLowerCase().includes(termo)
-            || item.categoriaNome?.toLowerCase().includes(termo)
-        ));
-        renderDashboardDetails(filtrados);
+        state.dashboardDetalhesPagina = 1;
+        carregarDashboardDetalhesAvaliacoes(state.dashboardDetalhesAno, true);
     }
 
-    async function carregarDashboardDetalhesAvaliacoes(ano) {
-        if (!el.evaluationDashboardDetailsBody || state.dashboardDetalhesLoading) return;
+    async function carregarDashboardDetalhesAvaliacoes(ano, force = false) {
+        if (!el.evaluationDashboardDetailsBody || (state.dashboardDetalhesLoading && !force)) return;
+        state.dashboardDetalhesAno = ano;
         state.dashboardDetalhesLoading = true;
         el.evaluationDashboardDetailsBody.innerHTML = '<tr><td colspan="9" class="evaluation-dashboard-loading">Carregando dados...</td></tr>';
         try {
-            const detalhes = await requestJson(`${EVALUATIONS_API_URL}/dashboard/detalhado${ano ? `?ano=${encodeURIComponent(ano)}` : ""}`);
+            const query = buildQueryString({
+                ano,
+                pagina: state.dashboardDetalhesPagina,
+                porPagina: state.dashboardDetalhesPorPagina,
+                busca: el.evaluationDashboardSearch?.value?.trim(),
+            });
+            const detalhes = await requestJson(`${EVALUATIONS_API_URL}/dashboard/detalhado${query}`);
             state.dashboardDetalhesRegistros = Array.isArray(detalhes.registros) ? detalhes.registros : [];
-            filtrarDashboardDetalhes();
+            state.dashboardDetalhesPagina = detalhes.pagina || 1;
+            state.dashboardDetalhesTotalPaginas = detalhes.totalPaginas || 1;
+            renderDashboardDetails(state.dashboardDetalhesRegistros);
+            renderPaginationBar(
+                el.evaluationDashboardDetailsPagination,
+                el.evaluationDashboardDetailsPageInfo,
+                el.evaluationDashboardDetailsPrevPage,
+                el.evaluationDashboardDetailsNextPage,
+                state.dashboardDetalhesPagina,
+                state.dashboardDetalhesTotalPaginas,
+                state.dashboardDetalhesRegistros.length,
+            );
         } catch (error) {
             el.evaluationDashboardDetailsBody.innerHTML = `<tr><td colspan="9" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
         } finally {
@@ -900,7 +1000,7 @@
         if (!el.evaluationDashboardTableBody) return;
         if (state.dashboardLoading || (state.dashboardCarregado && !force)) return;
         state.dashboardLoading = true;
-        el.evaluationDashboardTableBody.innerHTML = '<tr><td colspan="12" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>';
+        el.evaluationDashboardTableBody.innerHTML = '<tr><td colspan="13" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>';
         try {
             const ano = el.evaluationDashboardYear?.value || "";
             atualizarLinkExportacaoDashboard(ano);
@@ -908,9 +1008,10 @@
             state.dashboardCarregado = true;
             renderDashboardAvaliacoes(dashboard);
             renderDashboardCharts(dashboard);
-            carregarDashboardDetalhesAvaliacoes(ano);
+            state.dashboardDetalhesPagina = 1;
+            carregarDashboardDetalhesAvaliacoes(ano, true);
         } catch (error) {
-            el.evaluationDashboardTableBody.innerHTML = `<tr><td colspan="12" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
+            el.evaluationDashboardTableBody.innerHTML = `<tr><td colspan="13" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
         } finally {
             state.dashboardLoading = false;
         }
@@ -997,12 +1098,16 @@
         if (el.evaluationTermUploadHint) {
             el.evaluationTermUploadHint.textContent = position === "sem_posicionamento"
                 ? "Opcional para “Sem posicionamento” — pode salvar sem anexar nada."
-                : "Anexe o termo assinado ou o documento relacionado ao posicionamento.";
+                : position === "atendimento_centro_medico"
+                    ? "Obrigatório — anexe o comprovante do atendimento pelo Centro médico/EVB. Ao salvar, o atendimento é encerrado."
+                    : "Anexe o termo assinado ou o documento relacionado ao posicionamento.";
         }
         if (el.evaluationTermSaveButton) {
             el.evaluationTermSaveButton.textContent = position === "sem_posicionamento"
                 ? "Salvar sem posicionamento"
-                : "Salvar e continuar";
+                : position === "atendimento_centro_medico"
+                    ? "Salvar e encerrar atendimento"
+                    : "Salvar e continuar";
         }
     }
 
@@ -1553,9 +1658,11 @@
                 ? "Processo encerrado (sem posicionamento) — pode ser reaberto a qualquer momento"
                 : item.status === "sem_visita"
                     ? "Processo encerrado (sem visita) — pode ser reaberto a qualquer momento"
-                    : item.status === "em_andamento"
-                        ? "Processo em andamento"
-                        : "Processo concluído";
+                    : item.status === "atendimento_centro_medico"
+                        ? "Processo encerrado (atendimento pelo Centro médico/EVB)"
+                        : item.status === "em_andamento"
+                            ? "Processo em andamento"
+                            : "Processo concluído";
         el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${statusText}`;
         el.evaluationSelectedStage.textContent = evaluationStageLabel(item);
         el.evaluationSelectedStage.classList.toggle("is-rejected", item.status === "recusada");
@@ -1623,6 +1730,8 @@
                 showFeedback("Termo de adesão recusado. O processo foi encerrado.", "error");
             } else if (data.avaliacaoStatus === "sem_posicionamento") {
                 showFeedback("Registrado sem posicionamento. O processo foi encerrado, mas pode ser reaberto e editado quando quiser.");
+            } else if (data.avaliacaoStatus === "atendimento_centro_medico") {
+                showFeedback("Atendimento pelo Centro médico/EVB registrado. O processo foi encerrado.");
             } else {
                 el.evaluationStepChecklist.checked = true;
                 showFeedback("Termo de adesão salvo com sucesso.");
@@ -1749,15 +1858,31 @@
         }
     }
 
+    // busca somente os compromissos do periodo exibido na grade do calendario
+    // (mes visivel + dias esmaecidos do mes anterior/seguinte), em vez da agenda
+    // inteira — refeita sempre que o mes visivel muda
     async function carregarCompromissos() {
         try {
-            state.compromissos = await requestJson(API_URL);
+            const query = buildQueryString({
+                ano: state.calendarCursor.getFullYear(),
+                mes: state.calendarCursor.getMonth() + 1,
+            });
+            const dados = await requestJson(`${API_URL}${query}`);
+            state.compromissos = Array.isArray(dados.registros) ? dados.registros : [];
+            state.responsaveisDisponiveis = Array.isArray(dados.responsaveis) ? dados.responsaveis : [];
             refreshResponsavelFilter();
             renderCalendar();
             renderDay();
         } catch (error) {
             showFeedback(error.message, "error");
         }
+    }
+
+    // busca/status/categoria e paginação (por prestador) agora acontecem no
+    // servidor — volta pra página 1 e refaz a consulta com os filtros atuais
+    function filtrarDocumentacao() {
+        state.docsPage = 1;
+        carregarDocumentacao(true);
     }
 
     async function carregarDocumentacao(force = false) {
@@ -1770,7 +1895,15 @@
         el.docsDoctorsList.innerHTML = `<div class="docs-empty">Carregando documentação...</div>`;
 
         try {
-            state.documentacao = await requestJson(DOCS_API_URL);
+            const query = buildQueryString({
+                pagina: state.docsPage,
+                porPagina: state.docsPageSize,
+                busca: el.docsSearchInput.value.trim(),
+                status: el.docsStatusFilter.value,
+                categoria: el.docsCategoryFilter.value,
+            });
+            state.documentacao = await requestJson(`${DOCS_API_URL}${query}`);
+            state.docsPage = state.documentacao.pagina || 1;
             state.docsAlterados.clear();
             renderDocumentacao();
         } catch (error) {
@@ -1991,33 +2124,18 @@
         await Promise.all(ids.map((id) => salvarDocumentoAutomaticamente(id)));
     }
 
+    // O resumo (contadores/percentual/alerta de vencimento) vem pronto do
+    // servidor — já considera a categoria selecionada, mas não a busca/status/
+    // página atual, então não muda só porque o usuário navega entre páginas
     function renderResumoDocumentacao() {
-        const categoria = el.docsCategoryFilter.value;
-        const catalogo = new Map(
-            (state.documentacao?.medicos || []).map((medico) => [medico.nome.toLowerCase(), medico])
-        );
-        const registros = (state.documentacao?.registros || []).filter((item) => {
-            const nomeCadastro = (item.medico || item.nome || item.valores?.[0] || "").toLowerCase();
-            const cadastro = catalogo.get(nomeCadastro);
-            if (cadastro?.descredenciado) return false;
-            if (categoria === "todos") return true;
-            const tipoCadastro = cadastro?.tipo || "credenciado";
-            return tipoCadastro === categoria;
-        });
-        const statusNormalizado = (item) => (item.status || "").trim().toUpperCase();
-        const registrosAvaliados = registros.filter((item) => !item.naoIndicado);
-        const resumo = {
-            total: registrosAvaliados.length,
-            conformes: registrosAvaliados.filter((item) => statusNormalizado(item) === "CONFORME").length,
-            pendentes: registrosAvaliados.filter((item) => statusNormalizado(item) === "PENDENTE").length,
-            notificados: registrosAvaliados.filter((item) => statusNormalizado(item) === "NOTIFICADO").length,
-            naoIndicados: registros.length - registrosAvaliados.length,
+        const resumo = state.documentacao?.resumo || {
+            total: 0, conformes: 0, pendentes: 0, notificados: 0, naoIndicados: 0,
         };
         const total = resumo.total;
         const percentualStatus = (quantidade) => total
             ? `${((quantidade || 0) / total * 100).toFixed(2).replace(".", ",")}%`
             : "0,00%";
-        const percentual = percentualStatus(resumo.conformes);
+        const percentual = state.documentacao?.percentualTexto || percentualStatus(resumo.conformes);
         const metaIndicador = 75;
         const percentualNumerico = total ? (resumo.conformes / total) * 100 : 0;
         const metaAtingida = percentualNumerico >= metaIndicador;
@@ -2047,7 +2165,7 @@
             </div>
         `).join("");
 
-        renderAvisoVencimentoDocumentos(registros);
+        renderAvisoVencimentoDocumentos(state.documentacao?.avisoVencimento || []);
     }
 
     function diasAteVencimento(valor) {
@@ -2095,24 +2213,20 @@
         el.docsExpiryAlert.classList.remove("hidden");
     }
 
+    // busca/status/categoria e paginação (por prestador) já vêm aplicadas do
+    // servidor — medicosFiltrados() só reagrupa os documentos da página atual
     function renderDocumentacao() {
         renderResumoDocumentacao();
-        const medicos = medicosFiltrados();
-        const totalDocs = medicos.reduce((total, medico) => total + medico.documentos.length, 0);
-        const totalPages = Math.max(1, Math.ceil(medicos.length / state.docsPageSize));
-        if (state.docsPage > totalPages) state.docsPage = totalPages;
-        if (state.docsPage < 1) state.docsPage = 1;
-        const start = (state.docsPage - 1) * state.docsPageSize;
-        const medicosPagina = medicos.slice(start, start + state.docsPageSize);
+        const medicosPagina = medicosFiltrados();
+        const totalDocs = medicosPagina.reduce((total, medico) => total + medico.documentos.length, 0);
+        const totalPrestadores = state.documentacao?.totalPrestadores ?? medicosPagina.length;
+        const totalPaginas = state.documentacao?.totalPaginas || 1;
 
         atualizarContadorAlteracoes();
-        el.docsResultCount.textContent = `${medicos.length} cadastro${medicos.length === 1 ? "" : "s"} e ${totalDocs} documento${totalDocs === 1 ? "" : "s"} encontrados.`;
-        el.docsPageInfo.textContent = `Página ${state.docsPage} de ${totalPages}`;
-        el.docsPrevPage.disabled = state.docsPage <= 1;
-        el.docsNextPage.disabled = state.docsPage >= totalPages;
-        el.docsPagination.classList.toggle("hidden", medicos.length === 0);
+        el.docsResultCount.textContent = `${totalPrestadores} cadastro${totalPrestadores === 1 ? "" : "s"} e ${totalDocs} documento${totalDocs === 1 ? "" : "s"} encontrados.`;
+        renderPaginationBar(el.docsPagination, el.docsPageInfo, el.docsPrevPage, el.docsNextPage, state.docsPage, totalPaginas, totalPrestadores);
 
-        if (medicos.length === 0) {
+        if (medicosPagina.length === 0) {
             el.docsDoctorsList.innerHTML = `<div class="docs-empty">Nenhum registro encontrado para os filtros atuais.</div>`;
             return;
         }
@@ -2664,9 +2778,11 @@
                 state.selectedDate = iso;
                 if (muted) {
                     state.calendarCursor = new Date(cellDate.getFullYear(), cellDate.getMonth(), 1);
+                    carregarCompromissos();
+                } else {
+                    renderCalendar();
+                    renderDay();
                 }
-                renderCalendar();
-                renderDay();
             });
 
             el.calGrid.appendChild(cell);
@@ -2688,7 +2804,7 @@
             }
             button.addEventListener("click", () => {
                 state.calendarCursor = new Date(pickerYear, index, 1);
-                renderCalendar();
+                carregarCompromissos();
                 closeMonthYearPicker();
             });
             el.myGrid.appendChild(button);
@@ -2705,8 +2821,10 @@
         el.myPicker.classList.remove("open");
     }
 
+    // as opcoes vem do servidor (responsaveisDisponiveis), independente do mes
+    // visivel — assim a lista nao muda conforme o usuario navega pelo calendario
     function refreshResponsavelFilter() {
-        const responsaveis = Array.from(new Set(state.compromissos.map((item) => item.responsavel).filter(Boolean))).sort();
+        const responsaveis = (state.responsaveisDisponiveis || []).slice().sort();
         const current = el.filterResponsavel.value;
         el.filterResponsavel.innerHTML = '<option value="">Todos</option>' + responsaveis.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
         el.filterResponsavel.value = responsaveis.includes(current) ? current : "";
@@ -2941,9 +3059,29 @@
         el.agendaTabs.forEach((tab) => {
             tab.addEventListener("click", () => switchView(tab.dataset.view));
         });
-        el.evaluationFilterSearch?.addEventListener("input", renderAvaliacoes);
-        el.evaluationFilterStage?.addEventListener("change", renderAvaliacoes);
-        el.evaluationFilterCategory?.addEventListener("change", renderAvaliacoes);
+        const buscarAvaliacoesDebounced = debounce(() => {
+            state.avaliacoesPagina = 1;
+            carregarAvaliacoes(true);
+        });
+        el.evaluationFilterSearch?.addEventListener("input", buscarAvaliacoesDebounced);
+        el.evaluationFilterStage?.addEventListener("change", () => {
+            state.avaliacoesPagina = 1;
+            carregarAvaliacoes(true);
+        });
+        el.evaluationFilterCategory?.addEventListener("change", () => {
+            state.avaliacoesPagina = 1;
+            carregarAvaliacoes(true);
+        });
+        el.evaluationProcessPrevPage?.addEventListener("click", () => {
+            if (state.avaliacoesPagina <= 1) return;
+            state.avaliacoesPagina -= 1;
+            carregarAvaliacoes(true);
+        });
+        el.evaluationProcessNextPage?.addEventListener("click", () => {
+            if (state.avaliacoesPagina >= state.avaliacoesTotalPaginas) return;
+            state.avaliacoesPagina += 1;
+            carregarAvaliacoes(true);
+        });
         if (el.evaluationNewTrigger && el.evaluationNewOverlay) {
             el.evaluationNewTrigger.addEventListener("click", openEvaluationModal);
             el.evaluationModalCloseButtons.forEach((button) => {
@@ -2971,7 +3109,17 @@
                 if (el.evaluationAreaDashboard.checked) carregarDashboardAvaliacoes();
             });
             el.evaluationDashboardYear?.addEventListener("change", () => carregarDashboardAvaliacoes(true));
-            el.evaluationDashboardSearch?.addEventListener("input", filtrarDashboardDetalhes);
+            el.evaluationDashboardSearch?.addEventListener("input", debounce(filtrarDashboardDetalhes));
+            el.evaluationDashboardDetailsPrevPage?.addEventListener("click", () => {
+                if (state.dashboardDetalhesPagina <= 1) return;
+                state.dashboardDetalhesPagina -= 1;
+                carregarDashboardDetalhesAvaliacoes(state.dashboardDetalhesAno, true);
+            });
+            el.evaluationDashboardDetailsNextPage?.addEventListener("click", () => {
+                if (state.dashboardDetalhesPagina >= state.dashboardDetalhesTotalPaginas) return;
+                state.dashboardDetalhesPagina += 1;
+                carregarDashboardDetalhesAvaliacoes(state.dashboardDetalhesAno, true);
+            });
             el.evaluationChecklistAddButton.addEventListener("click", criarNovoChecklist);
             el.evaluationChecklistsList.addEventListener("click", async (event) => {
                 const button = event.target.closest("[data-action]");
@@ -3058,10 +3206,20 @@
             el.minutesFileName.textContent = el.minutesFile.files?.[0]?.name || "PDF, DOC ou DOCX";
         });
         el.minutesForm.addEventListener("submit", salvarAta);
-        el.minutesSearch.addEventListener("input", renderAtas);
-        el.minutesYearFilter.addEventListener("change", renderAtas);
-        el.minutesTypeFilter.addEventListener("change", renderAtas);
-        el.minutesOrder.addEventListener("change", renderAtas);
+        el.minutesSearch.addEventListener("input", debounce(filtrarAtas));
+        el.minutesYearFilter.addEventListener("change", filtrarAtas);
+        el.minutesTypeFilter.addEventListener("change", filtrarAtas);
+        el.minutesOrder.addEventListener("change", filtrarAtas);
+        el.minutesPrevPage?.addEventListener("click", () => {
+            if (state.atasPagina <= 1) return;
+            state.atasPagina -= 1;
+            carregarAtas(true);
+        });
+        el.minutesNextPage?.addEventListener("click", () => {
+            if (state.atasPagina >= state.atasTotalPaginas) return;
+            state.atasPagina += 1;
+            carregarAtas(true);
+        });
         el.themeToggle.addEventListener("click", toggleTheme);
         el.exportMonthPdfBtn.addEventListener("click", () => {
             const ano = state.calendarCursor.getFullYear();
@@ -3071,11 +3229,11 @@
         el.newApptBtn.addEventListener("click", () => openModal());
         el.prevMonth.addEventListener("click", () => {
             state.calendarCursor = new Date(state.calendarCursor.getFullYear(), state.calendarCursor.getMonth() - 1, 1);
-            renderCalendar();
+            carregarCompromissos();
         });
         el.nextMonth.addEventListener("click", () => {
             state.calendarCursor = new Date(state.calendarCursor.getFullYear(), state.calendarCursor.getMonth() + 1, 1);
-            renderCalendar();
+            carregarCompromissos();
         });
         el.calMonthLabel.addEventListener("click", () => {
             if (el.myPicker.classList.contains("open")) closeMonthYearPicker();
@@ -3144,25 +3302,18 @@
             }
         });
         el.docsPrevPage.addEventListener("click", () => {
+            if (state.docsPage <= 1) return;
             state.docsPage -= 1;
-            renderDocumentacao();
+            carregarDocumentacao(true);
         });
         el.docsNextPage.addEventListener("click", () => {
+            if (state.docsPage >= (state.documentacao?.totalPaginas || 1)) return;
             state.docsPage += 1;
-            renderDocumentacao();
+            carregarDocumentacao(true);
         });
-        el.docsStatusFilter.addEventListener("change", () => {
-            state.docsPage = 1;
-            renderDocumentacao();
-        });
-        el.docsCategoryFilter.addEventListener("change", () => {
-            state.docsPage = 1;
-            renderDocumentacao();
-        });
-        el.docsSearchInput.addEventListener("input", () => {
-            state.docsPage = 1;
-            renderDocumentacao();
-        });
+        el.docsStatusFilter.addEventListener("change", filtrarDocumentacao);
+        el.docsCategoryFilter.addEventListener("change", filtrarDocumentacao);
+        el.docsSearchInput.addEventListener("input", debounce(filtrarDocumentacao));
         el.confirmOverlay.addEventListener("click", (event) => {
             if (event.target === el.confirmOverlay) el.confirmOverlay.classList.remove("open");
         });

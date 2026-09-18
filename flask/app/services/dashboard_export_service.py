@@ -53,6 +53,7 @@ class DashboardExportService:
             "Não adesão",
             "Não se posicionaram",
             "Sem visita",
+            "Atendimento Centro médico/EVB",
             "Visita sem documento",
             "05 estrelas",
             "04 estrelas",
@@ -71,6 +72,7 @@ class DashboardExportService:
                 item["naoAdesao"],
                 item["naoPosicionaram"],
                 item["semVisita"],
+                item["atendimentoCentroMedico"],
                 item["visitaSemDocumento"],
                 item["estrelas5"],
                 item["estrelas4"],
@@ -88,6 +90,7 @@ class DashboardExportService:
             totais["naoAdesao"],
             totais["naoPosicionaram"],
             totais["semVisita"],
+            totais["atendimentoCentroMedico"],
             totais["visitaSemDocumento"],
             totais["estrelas5"],
             totais["estrelas4"],
@@ -150,7 +153,7 @@ class DashboardExportService:
     @staticmethod
     def build_workbook(year=None):
         dashboard = EvaluationService.get_dashboard(year)
-        details = EvaluationService.get_dashboard_details(dashboard["anoReferencia"])
+        details = EvaluationService.get_dashboard_details_completo(dashboard["anoReferencia"])
 
         workbook = Workbook()
         DashboardExportService._build_summary_sheet(workbook, dashboard)

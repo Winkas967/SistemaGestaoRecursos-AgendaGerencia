@@ -12,11 +12,24 @@ documents_bp = Blueprint(
 )
 
 
-# Lista prestadores, documentos e indicadores
+# Lista prestadores, documentos e indicadores, com busca/status/categoria e
+# paginacao no servidor (por prestador)
 @documents_bp.route("", methods=["GET"])
 @permission_required("documentacao", "visualizar")
 def get_documents():
-    return jsonify(DocumentsService.get_all()), 200
+    try:
+        resultado = DocumentsService.get_all(
+            pagina=request.args.get("pagina"),
+            por_pagina=request.args.get("porPagina"),
+            busca=request.args.get("busca"),
+            status=request.args.get("status"),
+            categoria=request.args.get("categoria"),
+        )
+
+        return jsonify(resultado), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
 
 
 # Cadastra um documento

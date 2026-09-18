@@ -123,13 +123,33 @@ class AgendaService:
         }
         
         
-    #lista todos os compromissos
+    #lista os compromissos; com ano/mes busca somente o periodo (usado pelo
+    #calendario, que carrega so o mes visivel em vez da agenda inteira)
     @staticmethod
-    def get_all():
+    def get_all(year=None, month=None):
+        if (year is None) != (month is None):
+            raise ValueError("Informe o ano e o mês juntos para filtrar o período.")
+
+        if year is not None:
+            try:
+                year = int(year)
+                month = int(month)
+            except (TypeError, ValueError):
+                raise ValueError("O período informado é inválido.")
+
+            if month < 1 or month > 12:
+                raise ValueError("O mês informado é inválido.")
+
         return [
             appointment.to_dict()
-            for appointment in AgendaModel.get_all()
+            for appointment in AgendaModel.get_all(year=year, month=month)
         ]
+
+    #lista os responsaveis distintos, para preencher o filtro independente do
+    #mes/periodo atualmente carregado
+    @staticmethod
+    def get_distinct_responsaveis():
+        return AgendaModel.get_distinct_responsaveis()
         
     #busca um compromisso pelo id
     @staticmethod

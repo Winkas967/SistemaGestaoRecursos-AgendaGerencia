@@ -19,7 +19,7 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-4') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-6') }}">
 </head>
 <body>
 {% set current_page = "agenda" %}
@@ -241,6 +241,11 @@
             <div class="minutes-list" id="minutesList">
                 <div class="minutes-empty"><p>Carregando atas...</p></div>
             </div>
+            <div class="pagination-bar hidden" id="minutesPagination">
+                <button class="btn" id="minutesPrevPage" type="button">Anterior</button>
+                <span id="minutesPageInfo">Página 1 de 1</span>
+                <button class="btn" id="minutesNextPage" type="button">Próxima</button>
+            </div>
         </div>
     </section>
 
@@ -288,6 +293,7 @@
                             <option value="recusada">Recusado</option>
                             <option value="sem_posicionamento">Sem posicionamento</option>
                             <option value="sem_visita">Sem visita</option>
+                            <option value="atendimento_centro_medico">Atendimento Centro médico/EVB</option>
                         </select>
                     </label>
                     <label><span>Categoria</span><select id="evaluationFilterCategory"><option value="">Todas as categorias</option></select></label>
@@ -295,6 +301,11 @@
                 <div class="evaluation-process-table-head"><span>Cadastro</span><span>Etapa atual</span><span>Progresso</span><span>Atualização</span><span></span></div>
                 <div class="evaluation-process-items" id="evaluationProcessItems">
                     <div class="evaluation-list-message">Carregando avaliações...</div>
+                </div>
+                <div class="pagination-bar hidden" id="evaluationProcessPagination">
+                    <button class="btn" id="evaluationProcessPrevPage" type="button">Anterior</button>
+                    <span id="evaluationProcessPageInfo">Página 1 de 1</span>
+                    <button class="btn" id="evaluationProcessNextPage" type="button">Próxima</button>
                 </div>
             </div>
 
@@ -355,6 +366,12 @@
                                     <input type="radio" name="evaluationTermPosition" value="sem_posicionamento">
                                     <span class="evaluation-choice-icon" aria-hidden="true">...</span>
                                     <span><strong>Sem posicionamento</strong><small>Aguardando resposta</small></span>
+                                    <i aria-hidden="true"></i>
+                                </label>
+                                <label class="is-medical">
+                                    <input type="radio" name="evaluationTermPosition" value="atendimento_centro_medico">
+                                    <span class="evaluation-choice-icon" aria-hidden="true">+</span>
+                                    <span><strong>Atendimento Centro médico/EVB</strong><small>Documento obrigatório · encerra o atendimento</small></span>
                                     <i aria-hidden="true"></i>
                                 </label>
                             </div>
@@ -468,6 +485,7 @@
                                 <th>Não Adesão</th>
                                 <th>Não se posicionaram</th>
                                 <th>Sem visita</th>
+                                <th>Atendimento Centro médico/EVB</th>
                                 <th>Visita realizada/falta envio dos documentos</th>
                                 <th>05 estrelas</th>
                                 <th>04 estrelas</th>
@@ -478,7 +496,7 @@
                             </tr>
                         </thead>
                         <tbody id="evaluationDashboardTableBody">
-                            <tr><td colspan="12" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
+                            <tr><td colspan="13" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
                         </tbody>
                         <tfoot id="evaluationDashboardTableFoot"></tfoot>
                     </table>
@@ -519,6 +537,11 @@
                                 <tr><td colspan="9" class="evaluation-dashboard-loading">Carregando dados...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="pagination-bar hidden" id="evaluationDashboardDetailsPagination">
+                        <button class="btn" id="evaluationDashboardDetailsPrevPage" type="button">Anterior</button>
+                        <span id="evaluationDashboardDetailsPageInfo">Página 1 de 1</span>
+                        <button class="btn" id="evaluationDashboardDetailsNextPage" type="button">Próxima</button>
                     </div>
                 </div>
             </div>
@@ -781,7 +804,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-6') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-8') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>

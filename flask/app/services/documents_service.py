@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from models.documents_model import Document, DocumentModel
 from models.providers_model import ProviderModel
 from services.file_storage_service import FileStorageService
+from utils.pagination import build_pagination_meta, resolve_pagination
 
 
 # Contém as regras de negócio da Documentação
@@ -121,36 +122,124 @@ class DocumentsService:
             DocumentModel.update(document)
         return documents
 
-    # Lista prestadores, documentos e indicadores
+    # Verifica se um documento atende ao status/busca informados (mesma regra
+    # usada pelo filtro da tela, para decidir quais documentos/prestadores aparecem)
     @staticmethod
-    def get_all():
+    def _document_matches(document, status=None, search=None):
+        if status and (document.status or "").strip().upper() != status:
+            return False
+
+        if not search:
+            return True
+
+        campos = " ".join([
+            document.prestador_nome or "",
+            document.nome or "",
+            document.observacao or "",
+            document.status or "",
+        ]).lower()
+
+        return search in campos
+
+    # Lista prestadores, documentos e indicadores, com busca/status/categoria e
+    # paginacao no servidor (por prestador); o resumo e o percentual continuam
+    # calculados sobre a base completa, para não variarem conforme a página/filtro
+    @staticmethod
+    def get_all(pagina=None, por_pagina=None, busca=None, status=None, categoria=None):
+        pagina, por_pagina = resolve_pagination(pagina, por_pagina)
+
+        busca = (busca or "").strip().lower() or None
+        status = (status or "").strip().upper() or None
+        categoria = (categoria or "").strip() or None
+        mostrar_descredenciados = categoria == "descredenciados"
+
         providers = ProviderModel.get_all()
         documents = DocumentsService.refresh_automatic_statuses(
             DocumentModel.get_all()
         )
         provider_by_id = {provider.id: provider for provider in providers}
-        active_documents = [
-            document for document in documents
-            if provider_by_id.get(document.prestador_id)
-            and provider_by_id[document.prestador_id].situacao != "descredenciado"
-        ]
+
+        # resumo/percentual/alerta de vencimento excluem descredenciados sempre e
+        # respeitam a categoria selecionada, mas nao a busca/status/pagina — por
+        # isso nao mudam so porque o usuario troca de pagina ou digita uma busca
+        def no_escopo_do_resumo(document):
+            provider = provider_by_id.get(document.prestador_id)
+            if provider and provider.situacao == "descredenciado":
+                return False
+            if categoria and categoria != "todos":
+                tipo_cadastro = provider.categoria_slug if provider else "credenciado"
+                if tipo_cadastro != categoria:
+                    return False
+            return True
+
+        active_documents = [document for document in documents if no_escopo_do_resumo(document)]
         evaluated = [document for document in active_documents if not document.nao_indicado]
         conforming = sum(document.status == "CONFORME" for document in evaluated)
         pending = sum(document.status == "PENDENTE" for document in evaluated)
         notified = sum(document.status == "NOTIFICADO" for document in evaluated)
-        total = len(evaluated)
-        percentage = conforming / total * 100 if total else 0
+        total_evaluated = len(evaluated)
+        percentage = conforming / total_evaluated * 100 if total_evaluated else 0
+
+        # candidatos ao alerta de vencimento (sem paginacao): mesmo escopo do
+        # resumo, excluindo nao indicados e documentos sem validade
+        aviso_vencimento = [
+            document for document in active_documents
+            if not document.nao_indicado and not document.sem_validade
+        ]
+
+        documentos_filtrados = [
+            document for document in documents
+            if DocumentsService._document_matches(document, status, busca)
+        ]
+        documentos_por_prestador = {}
+        for document in documentos_filtrados:
+            documentos_por_prestador.setdefault(document.prestador_id, []).append(document)
+
+        prestadores_visiveis = []
+        for provider in providers:
+            if (provider.situacao == "descredenciado") != mostrar_descredenciados:
+                continue
+            if not mostrar_descredenciados and categoria and categoria != "todos" and provider.categoria_slug != categoria:
+                continue
+
+            tem_documento_correspondente = provider.id in documentos_por_prestador
+
+            if status:
+                if not tem_documento_correspondente:
+                    continue
+            elif busca:
+                nome_bate = busca in (provider.nome or "").lower()
+                if not nome_bate and not tem_documento_correspondente:
+                    continue
+
+            prestadores_visiveis.append(provider)
+
+        prestadores_visiveis.sort(key=lambda provider: (provider.nome or "").lower())
+
+        total_prestadores = len(prestadores_visiveis)
+        offset = (pagina - 1) * por_pagina
+        prestadores_pagina = prestadores_visiveis[offset:offset + por_pagina]
+        ids_pagina = {provider.id for provider in prestadores_pagina}
+
+        registros_pagina = [
+            document for document in documentos_filtrados
+            if document.prestador_id in ids_pagina
+        ]
+
         return {
-            "medicos": [DocumentsService.provider_to_dict(provider) for provider in providers],
-            "registros": [DocumentsService.document_to_dict(document) for document in documents],
+            "medicos": [DocumentsService.provider_to_dict(provider) for provider in prestadores_pagina],
+            "registros": [DocumentsService.document_to_dict(document) for document in registros_pagina],
             "resumo": {
-                "total": total,
+                "total": total_evaluated,
                 "conformes": conforming,
                 "pendentes": pending,
                 "notificados": notified,
-                "naoIndicados": len(active_documents) - total,
+                "naoIndicados": len(active_documents) - total_evaluated,
             },
             "percentualTexto": f"{percentage:.2f}%".replace(".", ","),
+            "avisoVencimento": [DocumentsService.document_to_dict(document) for document in aviso_vencimento],
+            "totalPrestadores": total_prestadores,
+            **build_pagination_meta(pagina, por_pagina, total_prestadores),
         }
 
     # Cadastra um documento

@@ -20,6 +20,7 @@
     --viz-cat-3: #1baf7a;
     --viz-cat-4: #eda100;
     --viz-cat-5: #e87ba4;
+    --viz-cat-6: #008300;
 
     /* rampa divergente do grafico de estrelas (00=pior/vermelho -> 05=melhor/azul),
        ponto neutro entre 02 e 03 estrelas */
@@ -51,6 +52,7 @@
     --viz-cat-3: #199e70;
     --viz-cat-4: #c98500;
     --viz-cat-5: #d55181;
+    --viz-cat-6: #008300;
 
     --viz-star-0: #e66767;
     --viz-star-1: #a14d4c;
@@ -1836,7 +1838,7 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 
 .evaluation-choice-options {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
 }
 
@@ -1890,6 +1892,11 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     font-size: 15px;
 }
 
+.evaluation-choice-options label.is-medical .evaluation-choice-icon {
+    color: var(--info);
+    background: color-mix(in srgb, var(--info) 10%, transparent);
+}
+
 .evaluation-choice-options label > span:nth-of-type(2) {
     align-self: center;
 }
@@ -1931,6 +1938,16 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 .evaluation-choice-options label.is-waiting:has(input:checked) > i {
     background: var(--warning);
     box-shadow: 0 0 0 2px var(--warning);
+}
+
+.evaluation-choice-options label.is-medical:has(input:checked) {
+    border-color: var(--info);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 9%, transparent);
+}
+
+.evaluation-choice-options label.is-medical:has(input:checked) > i {
+    background: var(--info);
+    box-shadow: 0 0 0 2px var(--info);
 }
 
 .evaluation-term-body .evaluation-upload-box {
@@ -2769,6 +2786,10 @@ html[data-theme="dark"] .evaluation-new-backdrop {
     .evaluation-provider-bar,
     .evaluation-form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .evaluation-choice-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .evaluation-list-head {
@@ -5205,6 +5226,27 @@ textarea:focus {
 }
 
 .docs-pagination span {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+/* barra de paginação genérica — avaliações (processos), tabela detalhada do
+   dashboard e atas reaproveitam o mesmo estilo do .docs-pagination */
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 0 4px;
+}
+
+.pagination-bar.hidden {
+    display: none;
+}
+
+.pagination-bar span {
     color: var(--text-muted);
     font-size: 13px;
     font-weight: 900;

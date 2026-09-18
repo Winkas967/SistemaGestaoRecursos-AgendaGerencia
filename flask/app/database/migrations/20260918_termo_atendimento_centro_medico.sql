@@ -1,0 +1,16 @@
+-- Registra a adicao da opcao "Atendimento Centro medico/EVB" ao termo de
+-- adesao: quando selecionada, exige documento comprobatorio e encerra a
+-- avaliacao definitivamente (mesmo comportamento de "recusada", nao pode
+-- ser reaberta).
+--
+-- Este arquivo nao altera a estrutura do banco:
+--   - avaliacoes_prestador.status ja e VARCHAR(30) livre, sem CHECK/ENUM
+--     (indice proprio idx_avaliacoes_status, criado em 20260903_evaluations.sql).
+--     Novo valor aceito nessa coluna: 'atendimento_centro_medico'.
+--   - termos_adesao.posicionamento ja e VARCHAR(30) livre, sem CHECK/ENUM
+--     (indice proprio idx_termos_posicionamento, criado em 20260903_evaluations.sql).
+--     Novo valor aceito nessa coluna: 'atendimento_centro_medico'.
+--
+-- Existe apenas para manter o historico de migracoes completo. E seguro
+-- executar em qualquer banco, inclusive mais de uma vez.
+SELECT 1;

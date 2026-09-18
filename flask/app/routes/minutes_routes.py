@@ -11,13 +11,24 @@ minutes_bp = Blueprint(
 )
 
 
-#lista todas as atas
+#lista as atas, com busca/ano/tipo/ordenacao e paginacao no servidor
 @minutes_bp.route("", methods=["GET"])
 @permission_required("atas", "visualizar")
 def get_minutes():
-    minutes = MinutesService.get_all()
-    
-    return jsonify(minutes), 200
+    try:
+        minutes = MinutesService.get_all(
+            pagina=request.args.get("pagina"),
+            por_pagina=request.args.get("porPagina"),
+            busca=request.args.get("busca"),
+            ano=request.args.get("ano"),
+            tipo=request.args.get("tipo"),
+            ordem=request.args.get("ordem", "recentes"),
+        )
+
+        return jsonify(minutes), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
 
 #cadastra uma ata e salva o anexo
 @minutes_bp.route("", methods=["POST"])

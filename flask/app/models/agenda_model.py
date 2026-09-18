@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from database.connection import get_db_connection
 
 #representa um compromisso retornado pelo banco
@@ -60,16 +62,44 @@ class AgendaAppointment:
 #contem as consultas da tabela agenda_compromissos
 class AgendaModel:
     
-    #lista todos os compromissos
+    #lista os compromissos; sem ano/mes retorna todos (usado pela exportacao em
+    #pdf e por quem precisa do conjunto completo), com ano/mes retorna somente o
+    #periodo informado — usado pela agenda (calendario), que busca so o mes visivel
+    #calcula o intervalo de datas exibido na grade do calendario para um mes
+    #(inclui os dias esmaecidos do mes anterior/seguinte que preenchem a grade),
+    #replicando o calculo feito no front (renderCalendar)
     @staticmethod
-    def get_all():
+    def _calendar_grid_range(year, month):
+        first_of_month = date(year, month, 1)
+        #getDay() do JS: domingo=0..sabado=6; date.weekday() do Python: segunda=0..domingo=6
+        start_weekday = (first_of_month.weekday() + 1) % 7
+        range_start = first_of_month - timedelta(days=start_weekday)
+
+        next_month_first = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        days_in_month = (next_month_first - first_of_month).days
+
+        cells_count = -(-(start_weekday + days_in_month) // 7) * 7
+        range_end = range_start + timedelta(days=cells_count - 1)
+
+        return range_start, range_end
+
+    @staticmethod
+    def get_all(year=None, month=None):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
-            cursor.execute("""
+
+            where_sql = ""
+            parameters = []
+
+            if year and month:
+                range_start, range_end = AgendaModel._calendar_grid_range(year, month)
+                where_sql = "WHERE data BETWEEN %s AND %s"
+                parameters = [range_start, range_end]
+
+            cursor.execute(f"""
                         SELECT
                             id,
                             titulo,
@@ -84,21 +114,49 @@ class AgendaModel:
                             criado_em,
                             atualizado_em
                         FROM agenda_compromissos
+                        {where_sql}
                         ORDER BY data, hora_inicio, id
-                           """)
-            
+                           """, tuple(parameters))
+
             return [
                 AgendaAppointment(**record)
                 for record in cursor.fetchall()
             ]
-            
+
         finally:
             if cursor:
                 cursor.close()
-                
+
             if connection:
                 connection.close()
-                
+
+    #lista os responsaveis distintos ja usados em compromissos — independente do
+    #mes visivel, usada para preencher o filtro sem que as opcoes mudem conforme
+    #o usuario navega pelo calendario
+    @staticmethod
+    def get_distinct_responsaveis():
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                SELECT DISTINCT responsavel
+                FROM agenda_compromissos
+                WHERE responsavel IS NOT NULL AND responsavel <> ''
+                ORDER BY responsavel
+            """)
+
+            return [row["responsavel"] for row in cursor.fetchall()]
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
     #busca um compromisso pelo ID
     @staticmethod
     def get_by_id(appointment_id):
