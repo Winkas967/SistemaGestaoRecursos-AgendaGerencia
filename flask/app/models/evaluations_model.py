@@ -332,6 +332,9 @@ class EvaluationModel:
                             WHERE cf.checklist_avaliacao_id = ca.id
                         ) THEN 1 ELSE 0 END
                     ) AS visita_sem_documento,
+                    SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 0 THEN 1 ELSE 0 END) AS estrelas_0,
+                    SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 1 THEN 1 ELSE 0 END) AS estrelas_1,
+                    SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 2 THEN 1 ELSE 0 END) AS estrelas_2,
                     SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 3 THEN 1 ELSE 0 END) AS estrelas_3,
                     SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 4 THEN 1 ELSE 0 END) AS estrelas_4,
                     SUM(CASE WHEN ca.status = 'concluido' AND ca.classificacao_estrelas = 5 THEN 1 ELSE 0 END) AS estrelas_5
@@ -352,12 +355,83 @@ class EvaluationModel:
                 summary.append({
                     **row,
                     "visita_sem_documento": checklist_data.get("visita_sem_documento", 0),
+                    "estrelas_0": checklist_data.get("estrelas_0", 0),
+                    "estrelas_1": checklist_data.get("estrelas_1", 0),
+                    "estrelas_2": checklist_data.get("estrelas_2", 0),
                     "estrelas_3": checklist_data.get("estrelas_3", 0),
                     "estrelas_4": checklist_data.get("estrelas_4", 0),
                     "estrelas_5": checklist_data.get("estrelas_5", 0),
                 })
 
             return summary
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
+
+    #retorna o detalhamento por prestador do dashboard, para um ano de referencia
+    #(linha a linha, sem agregacao, para exportacao/consulta rapida)
+    @staticmethod
+    def get_dashboard_details(year):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                SELECT
+                    p.id AS prestador_id,
+                    p.nome AS prestador_nome,
+                    cp.nome AS categoria_nome,
+                    CASE
+                        WHEN av.id IS NULL THEN 'sem_posicionamento'
+                        WHEN av.status = 'recusada' THEN 'recusou'
+                        WHEN t.posicionamento = 'aceitou' THEN 'aceitou'
+                        ELSE 'sem_posicionamento'
+                    END AS status_adesao,
+                    av.status AS avaliacao_status,
+                    av.iniciado_em,
+                    av.concluido_em,
+                    ultimo_checklist.teve_visita,
+                    ultimo_checklist.classificacao_estrelas,
+                    ultimo_checklist.resultado_percentual,
+                    ultimo_checklist.concluido_em AS checklist_concluido_em
+                FROM prestadores p
+                INNER JOIN categorias_prestador cp
+                    ON cp.id = p.categoria_id
+                LEFT JOIN (
+                    SELECT av1.*
+                    FROM avaliacoes_prestador av1
+                    WHERE av1.ano_referencia = %s
+                      AND av1.id = (
+                            SELECT MAX(av2.id)
+                            FROM avaliacoes_prestador av2
+                            WHERE av2.prestador_id = av1.prestador_id
+                              AND av2.ano_referencia = %s
+                      )
+                ) av ON av.prestador_id = p.id
+                LEFT JOIN termos_adesao t ON t.avaliacao_id = av.id
+                LEFT JOIN (
+                    SELECT ca1.*
+                    FROM checklists_avaliacao ca1
+                    WHERE ca1.status = 'concluido'
+                      AND ca1.id = (
+                            SELECT MAX(ca2.id)
+                            FROM checklists_avaliacao ca2
+                            WHERE ca2.avaliacao_id = ca1.avaliacao_id
+                              AND ca2.status = 'concluido'
+                      )
+                ) ultimo_checklist ON ultimo_checklist.avaliacao_id = av.id
+                WHERE p.situacao = 'ativo'
+                ORDER BY cp.nome, p.nome
+            """, (year, year))
+
+            return cursor.fetchall()
 
         finally:
             if cursor:

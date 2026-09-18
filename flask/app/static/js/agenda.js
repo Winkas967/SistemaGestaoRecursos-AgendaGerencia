@@ -7,6 +7,26 @@
     const MINUTES_API_URL = "/api/agenda/atas";
     const EMAIL_SETTINGS_API_URL = "/api/configuracoes/avisos-documentacao";
     const EVALUATIONS_API_URL = "/api/avaliacoes";
+    // series do grafico de status do dashboard — ordem categorica fixa (nunca reordenar
+    // por filtro), cores definidas como variaveis CSS para acompanhar o tema claro/escuro
+    const DASHBOARD_STATUS_SERIES = [
+        { key: "adesao", label: "Adesão", color: "var(--viz-cat-1)" },
+        { key: "naoAdesao", label: "Não adesão", color: "var(--viz-cat-2)" },
+        { key: "naoPosicionaram", label: "Não se posicionaram", color: "var(--viz-cat-3)" },
+        { key: "semVisita", label: "Sem visita", color: "var(--viz-cat-4)" },
+        { key: "visitaSemDocumento", label: "Visita sem documento", color: "var(--viz-cat-5)" },
+    ];
+    // series do grafico de estrelas — escala divergente centrada entre 02 e 03 estrelas
+    const DASHBOARD_STARS_NEGATIVE_SERIES = [
+        { key: "estrelas2", label: "02 estrelas", color: "var(--viz-star-2)" },
+        { key: "estrelas1", label: "01 estrela", color: "var(--viz-star-1)" },
+        { key: "estrelas0", label: "00 estrelas", color: "var(--viz-star-0)" },
+    ];
+    const DASHBOARD_STARS_POSITIVE_SERIES = [
+        { key: "estrelas3", label: "03 estrelas", color: "var(--viz-star-3)" },
+        { key: "estrelas4", label: "04 estrelas", color: "var(--viz-star-4)" },
+        { key: "estrelas5", label: "05 estrelas", color: "var(--viz-star-5)" },
+    ];
     const THEME_KEY = "theme";
     const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -57,6 +77,8 @@
         feedbackChecklistId: null,
         dashboardCarregado: false,
         dashboardLoading: false,
+        dashboardDetalhesRegistros: [],
+        dashboardDetalhesLoading: false,
     };
 
     const el = {
@@ -167,6 +189,13 @@
         evaluationDashboardTableBody: document.getElementById("evaluationDashboardTableBody"),
         evaluationDashboardTableFoot: document.getElementById("evaluationDashboardTableFoot"),
         evaluationDashboardAdhesionAvg: document.getElementById("evaluationDashboardAdhesionAvg"),
+        evaluationDashboardExport: document.getElementById("evaluationDashboardExport"),
+        evaluationChartStatus: document.getElementById("evaluationChartStatus"),
+        evaluationChartStatusLegend: document.getElementById("evaluationChartStatusLegend"),
+        evaluationChartStars: document.getElementById("evaluationChartStars"),
+        evaluationChartStarsLegend: document.getElementById("evaluationChartStarsLegend"),
+        evaluationDashboardDetailsBody: document.getElementById("evaluationDashboardDetailsBody"),
+        evaluationDashboardSearch: document.getElementById("evaluationDashboardSearch"),
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
@@ -650,6 +679,18 @@
         return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
     }
 
+    function formatDashboardDateTime(value) {
+        const date = parseDisplayDate(value);
+        if (!date) return "—";
+        return new Intl.DateTimeFormat("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        }).format(date);
+    }
+
     function renderDashboardAvaliacoes(dashboard) {
         const categorias = Array.isArray(dashboard.categorias) ? dashboard.categorias : [];
         const totais = dashboard.totais || {};
@@ -664,11 +705,14 @@
                         <td>${Number(item.naoPosicionaram)}</td>
                         <td>${Number(item.semVisita)}</td>
                         <td>${Number(item.visitaSemDocumento)}</td>
-                        <td>${Number(item.estrelas3)}</td>
-                        <td>${Number(item.estrelas4)}</td>
                         <td>${Number(item.estrelas5)}</td>
+                        <td>${Number(item.estrelas4)}</td>
+                        <td>${Number(item.estrelas3)}</td>
+                        <td>${Number(item.estrelas2)}</td>
+                        <td>${Number(item.estrelas1)}</td>
+                        <td>${Number(item.estrelas0)}</td>
                     </tr>`).join("")
-                : '<tr><td colspan="9" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
+                : '<tr><td colspan="12" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
         }
 
         if (el.evaluationDashboardTableFoot) {
@@ -680,9 +724,12 @@
                     <td>${Number(totais.naoPosicionaram || 0)}</td>
                     <td>${Number(totais.semVisita || 0)}</td>
                     <td>${Number(totais.visitaSemDocumento || 0)}</td>
-                    <td>${Number(totais.estrelas3 || 0)}</td>
-                    <td>${Number(totais.estrelas4 || 0)}</td>
                     <td>${Number(totais.estrelas5 || 0)}</td>
+                    <td>${Number(totais.estrelas4 || 0)}</td>
+                    <td>${Number(totais.estrelas3 || 0)}</td>
+                    <td>${Number(totais.estrelas2 || 0)}</td>
+                    <td>${Number(totais.estrelas1 || 0)}</td>
+                    <td>${Number(totais.estrelas0 || 0)}</td>
                 </tr>`;
         }
 
@@ -691,18 +738,179 @@
         }
     }
 
+    // monta um grafico de barras horizontais empilhadas (100%) por categoria — usado
+    // para o grafico de status do processo (categorico, ordem fixa das series)
+    function renderStackedBarChart(container, legendEl, categorias, series) {
+        if (!container) return;
+
+        if (legendEl) {
+            legendEl.innerHTML = series.map((item) => `
+                <span class="evaluation-chart-legend-item">
+                    <span class="evaluation-chart-legend-dot" style="background:${item.color}"></span>
+                    ${escapeHtml(item.label)}
+                </span>`).join("");
+        }
+
+        if (!categorias.length) {
+            container.innerHTML = '<p class="evaluation-chart-empty">Sem dados para o período selecionado.</p>';
+            return;
+        }
+
+        container.innerHTML = categorias.map((categoria) => {
+            const total = series.reduce((sum, item) => sum + (Number(categoria[item.key]) || 0), 0);
+
+            const segments = series.map((item) => {
+                const value = Number(categoria[item.key]) || 0;
+                if (!value || !total) return "";
+                const percent = (value / total) * 100;
+                const showLabel = percent >= 8;
+                return `<span class="evaluation-chart-segment" tabindex="0" style="width:${percent.toFixed(2)}%; background:${item.color}" data-tooltip="${escapeHtml(item.label)}: ${value} (${percent.toFixed(1)}%)">${showLabel ? value : ""}</span>`;
+            }).join("");
+
+            return `
+                <div class="evaluation-chart-row">
+                    <div class="evaluation-chart-row-label">
+                        <span>${escapeHtml(categoria.categoriaNome)}</span>
+                        <small>${total} prestador(es)</small>
+                    </div>
+                    <div class="evaluation-chart-track">${total ? segments : '<span class="evaluation-chart-track-empty">Sem registros</span>'}</div>
+                </div>`;
+        }).join("");
+    }
+
+    // monta o grafico divergente de distribuicao de estrelas por categoria, centrado
+    // entre 02 e 03 estrelas (braço negativo á esquerda, positivo á direita)
+    function renderDivergingStarsChart(container, legendEl, categorias) {
+        if (!container) return;
+
+        const allSeries = [...DASHBOARD_STARS_NEGATIVE_SERIES, ...DASHBOARD_STARS_POSITIVE_SERIES]
+            .slice()
+            .sort((a, b) => Number(a.key.replace("estrelas", "")) - Number(b.key.replace("estrelas", "")));
+
+        if (legendEl) {
+            legendEl.innerHTML = allSeries.map((item) => `
+                <span class="evaluation-chart-legend-item">
+                    <span class="evaluation-chart-legend-dot" style="background:${item.color}"></span>
+                    ${escapeHtml(item.label)}
+                </span>`).join("");
+        }
+
+        if (!categorias.length) {
+            container.innerHTML = '<p class="evaluation-chart-empty">Sem dados para o período selecionado.</p>';
+            return;
+        }
+
+        const arm = (categoria, seriesList) => seriesList.reduce((sum, item) => sum + (Number(categoria[item.key]) || 0), 0);
+        const maxArm = categorias.reduce((max, categoria) => Math.max(
+            max,
+            arm(categoria, DASHBOARD_STARS_NEGATIVE_SERIES),
+            arm(categoria, DASHBOARD_STARS_POSITIVE_SERIES),
+        ), 0) || 1;
+
+        const buildSegments = (categoria, seriesList) => seriesList.map((item) => {
+            const value = Number(categoria[item.key]) || 0;
+            if (!value) return "";
+            const percent = (value / maxArm) * 100;
+            const showLabel = percent >= 12;
+            return `<span class="evaluation-chart-segment" tabindex="0" style="width:${percent.toFixed(2)}%; background:${item.color}" data-tooltip="${escapeHtml(item.label)}: ${value}">${showLabel ? value : ""}</span>`;
+        }).join("");
+
+        container.innerHTML = categorias.map((categoria) => {
+            const negativeTotal = arm(categoria, DASHBOARD_STARS_NEGATIVE_SERIES);
+            const positiveTotal = arm(categoria, DASHBOARD_STARS_POSITIVE_SERIES);
+
+            return `
+                <div class="evaluation-chart-row">
+                    <div class="evaluation-chart-row-label">
+                        <span>${escapeHtml(categoria.categoriaNome)}</span>
+                        <small>${negativeTotal + positiveTotal} checklist(s) concluído(s)</small>
+                    </div>
+                    <div class="evaluation-chart-track evaluation-chart-track-diverging">
+                        <div class="evaluation-chart-half evaluation-chart-half-negative">${buildSegments(categoria, DASHBOARD_STARS_NEGATIVE_SERIES)}</div>
+                        <div class="evaluation-chart-half evaluation-chart-half-positive">${buildSegments(categoria, DASHBOARD_STARS_POSITIVE_SERIES)}</div>
+                    </div>
+                </div>`;
+        }).join("");
+    }
+
+    function renderDashboardCharts(dashboard) {
+        const categorias = Array.isArray(dashboard.categorias) ? dashboard.categorias : [];
+        renderStackedBarChart(el.evaluationChartStatus, el.evaluationChartStatusLegend, categorias, DASHBOARD_STATUS_SERIES);
+        renderDivergingStarsChart(el.evaluationChartStars, el.evaluationChartStarsLegend, categorias);
+    }
+
+    function renderDashboardDetails(registros) {
+        if (!el.evaluationDashboardDetailsBody) return;
+
+        if (!registros.length) {
+            el.evaluationDashboardDetailsBody.innerHTML = '<tr><td colspan="9" class="evaluation-dashboard-loading">Nenhum registro encontrado.</td></tr>';
+            return;
+        }
+
+        el.evaluationDashboardDetailsBody.innerHTML = registros.map((item) => `
+            <tr>
+                <td>${escapeHtml(item.categoriaNome)}</td>
+                <td>${escapeHtml(item.prestadorNome)}</td>
+                <td>${escapeHtml(item.statusAdesao)}</td>
+                <td>${escapeHtml(item.statusAvaliacao)}</td>
+                <td>${item.teveVisita === null || item.teveVisita === undefined ? "—" : (item.teveVisita ? "Sim" : "Não")}</td>
+                <td>${item.estrelas === null || item.estrelas === undefined ? "—" : `${String(item.estrelas).padStart(2, "0")} ★`}</td>
+                <td>${item.resultadoPercentual === null || item.resultadoPercentual === undefined ? "—" : formatDashboardPercent(item.resultadoPercentual)}</td>
+                <td>${formatDashboardDateTime(item.iniciadoEm)}</td>
+                <td>${formatDashboardDateTime(item.concluidoEm)}</td>
+            </tr>`).join("");
+    }
+
+    // filtra as linhas ja carregadas da tabela detalhada por prestador/categoria,
+    // sem nova chamada ao servidor
+    function filtrarDashboardDetalhes() {
+        const termo = (el.evaluationDashboardSearch?.value || "").trim().toLowerCase();
+        if (!termo) {
+            renderDashboardDetails(state.dashboardDetalhesRegistros);
+            return;
+        }
+        const filtrados = state.dashboardDetalhesRegistros.filter((item) => (
+            item.prestadorNome?.toLowerCase().includes(termo)
+            || item.categoriaNome?.toLowerCase().includes(termo)
+        ));
+        renderDashboardDetails(filtrados);
+    }
+
+    async function carregarDashboardDetalhesAvaliacoes(ano) {
+        if (!el.evaluationDashboardDetailsBody || state.dashboardDetalhesLoading) return;
+        state.dashboardDetalhesLoading = true;
+        el.evaluationDashboardDetailsBody.innerHTML = '<tr><td colspan="9" class="evaluation-dashboard-loading">Carregando dados...</td></tr>';
+        try {
+            const detalhes = await requestJson(`${EVALUATIONS_API_URL}/dashboard/detalhado${ano ? `?ano=${encodeURIComponent(ano)}` : ""}`);
+            state.dashboardDetalhesRegistros = Array.isArray(detalhes.registros) ? detalhes.registros : [];
+            filtrarDashboardDetalhes();
+        } catch (error) {
+            el.evaluationDashboardDetailsBody.innerHTML = `<tr><td colspan="9" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
+        } finally {
+            state.dashboardDetalhesLoading = false;
+        }
+    }
+
+    function atualizarLinkExportacaoDashboard(ano) {
+        if (!el.evaluationDashboardExport) return;
+        el.evaluationDashboardExport.href = `${EVALUATIONS_API_URL}/dashboard/exportar${ano ? `?ano=${encodeURIComponent(ano)}` : ""}`;
+    }
+
     async function carregarDashboardAvaliacoes(force = false) {
         if (!el.evaluationDashboardTableBody) return;
         if (state.dashboardLoading || (state.dashboardCarregado && !force)) return;
         state.dashboardLoading = true;
-        el.evaluationDashboardTableBody.innerHTML = '<tr><td colspan="8" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>';
+        el.evaluationDashboardTableBody.innerHTML = '<tr><td colspan="12" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>';
         try {
             const ano = el.evaluationDashboardYear?.value || "";
+            atualizarLinkExportacaoDashboard(ano);
             const dashboard = await requestJson(`${EVALUATIONS_API_URL}/dashboard${ano ? `?ano=${encodeURIComponent(ano)}` : ""}`);
             state.dashboardCarregado = true;
             renderDashboardAvaliacoes(dashboard);
+            renderDashboardCharts(dashboard);
+            carregarDashboardDetalhesAvaliacoes(ano);
         } catch (error) {
-            el.evaluationDashboardTableBody.innerHTML = `<tr><td colspan="8" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
+            el.evaluationDashboardTableBody.innerHTML = `<tr><td colspan="12" class="evaluation-dashboard-loading is-error">${escapeHtml(error.message)}</td></tr>`;
         } finally {
             state.dashboardLoading = false;
         }
@@ -1065,7 +1273,12 @@
                 ? `${Number(checklist.resultadoPercentual).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
                 : "--";
             const starsText = hasResult ? `${"★".repeat(stars)}${"☆".repeat(5 - stars)}` : "--";
-            const disabled = completed ? " disabled" : "";
+            // O checklist concluído não trava mais: continua editável enquanto a avaliação
+            // estiver em andamento — salvar de novo devolve o checklist para "em_preenchimento".
+            // "sem_visita" também continua editável: salvar reabre o atendimento automaticamente
+            const isSemVisita = state.avaliacaoSelecionada?.status === "sem_visita";
+            const evaluationEditable = state.avaliacaoSelecionada?.status === "em_andamento" || isSemVisita;
+            const disabled = evaluationEditable ? "" : " disabled";
             const answerOptions = [
                 ["conforme", "Conforme"],
                 ["parcialmente_conforme", "Parcialmente conforme"],
@@ -1100,7 +1313,7 @@
                                 <b class="evaluation-checklist-toggle-state">${checklist.teveVisita !== false ? "Ativado" : "Desativado"}</b>
                             </span>
                         </label>
-                        ${!completed ? `<div class="evaluation-checklist-close-visit-action evaluation-checklist-general-wide"${checklist.teveVisita === false ? "" : " hidden"}><button class="btn btn-warning-outline" type="button" data-action="close-without-visit">Encerrar atendimento</button></div>` : ""}
+                        ${(evaluationEditable && !completed && !isSemVisita) ? `<div class="evaluation-checklist-close-visit-action evaluation-checklist-general-wide"${checklist.teveVisita === false ? "" : " hidden"}><button class="btn btn-warning-outline" type="button" data-action="close-without-visit">Encerrar atendimento</button></div>` : ""}
                         <label class="evaluation-checklist-general-wide"><span>Observações gerais</span><textarea data-checklist-field="observacoesGerais" rows="4"${disabled}>${escapeHtml(checklist.observacoesGerais || "")}</textarea></label>
                     </div>
                     <div class="evaluation-checklist-questions">
@@ -1115,7 +1328,11 @@
                         </section>`).join("")}
                     </div>
                     <p class="evaluation-form-message hidden" data-checklist-message></p>
-                    ${completed ? `<div class="evaluation-stage-actions"><span class="evaluation-feedback-state">${checklist.feedback?.status === "concluido" ? "Feedback concluído" : "Feedback pendente"}</span><button class="btn btn-primary" type="button" data-action="open-feedback">${checklist.feedback?.status === "concluido" ? "Visualizar feedback" : "Abrir feedback"}</button></div>` : `<div class="evaluation-stage-actions"><button class="btn" type="button" data-action="save-checklist">Salvar rascunho</button><button class="btn btn-primary" type="button" data-action="complete-checklist"${progress.total && progress.answered === progress.total && checklist.nome ? "" : " disabled"}>Concluir checklist</button></div>`}
+                    <div class="evaluation-stage-actions">
+                        <button class="btn" type="button" data-action="save-checklist"${disabled}>Salvar rascunho</button>
+                        <button class="btn btn-primary" type="button" data-action="complete-checklist"${(evaluationEditable && progress.total && progress.answered === progress.total && checklist.nome) ? "" : " disabled"}>Concluir checklist</button>
+                    </div>
+                    ${completed ? `<div class="evaluation-stage-actions"><span class="evaluation-feedback-state">${checklist.feedback?.status === "concluido" ? "Feedback concluído" : "Feedback pendente"}</span><button class="btn btn-primary" type="button" data-action="open-feedback">${checklist.feedback?.status === "concluido" ? "Visualizar feedback" : "Abrir feedback"}</button></div>` : ""}
                 </div>
             </article>`;
         }).join("");
@@ -1149,17 +1366,31 @@
                 method: "PUT",
                 body: JSON.stringify(checklistCardPayload(card)),
             });
+            // "sem_visita" reabre sozinho ao salvar — o backend avisa pelo avaliacaoStatus
+            const reopened = checklist.avaliacaoStatus === "em_andamento";
             if (conclude) {
                 checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}/concluir`, { method: "POST" });
             }
             state.checklistsAvaliacao = state.checklistsAvaliacao.map((item) => item.checklistId === checklistId ? checklist : item);
-            renderChecklistCards();
+            if (reopened) {
+                state.avaliacaoSelecionada.status = "em_andamento";
+                state.avaliacaoSelecionada.etapaAtual = "checklist";
+                renderAvaliacaoSelecionada();
+                state.avaliacoesCarregadas = false;
+                await carregarAvaliacoes(true);
+            } else {
+                renderChecklistCards();
+            }
             if (conclude) {
                 state.feedbackChecklistId = checklistId;
                 renderFeedbackStage();
                 el.evaluationStepFeedback.checked = true;
             }
-            showFeedback(conclude ? `Checklist concluído: ${checklist.resultadoPercentual}% • ${checklist.classificacaoEstrelas} estrela(s).` : "Rascunho salvo com sucesso.");
+            showFeedback(conclude
+                ? `Checklist concluído: ${checklist.resultadoPercentual}% • ${checklist.classificacaoEstrelas} estrela(s).`
+                : reopened
+                    ? "Rascunho salvo. O atendimento foi reaberto e pode ser continuado."
+                    : "Rascunho salvo com sucesso.");
         } catch (error) {
             setEvaluationMessage(message, error.message);
         }
@@ -2740,6 +2971,7 @@
                 if (el.evaluationAreaDashboard.checked) carregarDashboardAvaliacoes();
             });
             el.evaluationDashboardYear?.addEventListener("change", () => carregarDashboardAvaliacoes(true));
+            el.evaluationDashboardSearch?.addEventListener("input", filtrarDashboardDetalhes);
             el.evaluationChecklistAddButton.addEventListener("click", criarNovoChecklist);
             el.evaluationChecklistsList.addEventListener("click", async (event) => {
                 const button = event.target.closest("[data-action]");

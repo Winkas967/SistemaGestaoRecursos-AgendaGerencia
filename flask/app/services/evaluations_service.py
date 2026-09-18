@@ -180,18 +180,24 @@ class EvaluationService:
         return EvaluationService.get_by_id(evaluation["id"])
 
 
-    #monta o resumo do dashboard de avaliacoes, agregado por categoria, para um ano de referencia
+    #normaliza/valida o ano de referencia informado nos filtros do dashboard
     @staticmethod
-    def get_dashboard(year=None):
+    def _resolve_dashboard_year(year):
         current_year = date.today().year
 
         if year in (None, ""):
-            year = current_year
-        else:
-            try:
-                year = int(year)
-            except (TypeError, ValueError):
-                raise ValueError("O ano informado é inválido.")
+            return current_year
+
+        try:
+            return int(year)
+        except (TypeError, ValueError):
+            raise ValueError("O ano informado é inválido.")
+
+
+    #monta o resumo do dashboard de avaliacoes, agregado por categoria, para um ano de referencia
+    @staticmethod
+    def get_dashboard(year=None):
+        year = EvaluationService._resolve_dashboard_year(year)
 
         rows = EvaluationModel.get_dashboard_summary(year)
 
@@ -203,9 +209,12 @@ class EvaluationService:
             "naoPosicionaram": 0,
             "semVisita": 0,
             "visitaSemDocumento": 0,
-            "estrelas3": 0,
-            "estrelas4": 0,
             "estrelas5": 0,
+            "estrelas4": 0,
+            "estrelas3": 0,
+            "estrelas2": 0,
+            "estrelas1": 0,
+            "estrelas0": 0,
         }
 
         for row in rows:
@@ -219,9 +228,12 @@ class EvaluationService:
                 "naoPosicionaram": int(row["nao_posicionaram"] or 0),
                 "semVisita": int(row["sem_visita"] or 0),
                 "visitaSemDocumento": int(row["visita_sem_documento"] or 0),
-                "estrelas3": int(row["estrelas_3"] or 0),
-                "estrelas4": int(row["estrelas_4"] or 0),
                 "estrelas5": int(row["estrelas_5"] or 0),
+                "estrelas4": int(row["estrelas_4"] or 0),
+                "estrelas3": int(row["estrelas_3"] or 0),
+                "estrelas2": int(row["estrelas_2"] or 0),
+                "estrelas1": int(row["estrelas_1"] or 0),
+                "estrelas0": int(row["estrelas_0"] or 0),
             }
             categorias.append(item)
             for key in totais:
@@ -237,4 +249,62 @@ class EvaluationService:
             "categorias": categorias,
             "totais": totais,
             "mediaAdesaoPercentual": media_adesao,
+        }
+
+
+    #traduz o status de adesao para o rotulo exibido ao usuario
+    @staticmethod
+    def _dashboard_status_adesao_label(status_adesao):
+        labels = {
+            "aceitou": "Aceitou",
+            "recusou": "Recusou",
+            "sem_posicionamento": "Não se posicionou",
+        }
+        return labels.get(status_adesao, status_adesao or "—")
+
+
+    #traduz o status da avaliacao para o rotulo exibido ao usuario
+    @staticmethod
+    def _dashboard_avaliacao_status_label(status):
+        if not status:
+            return "Sem avaliação iniciada"
+
+        labels = {
+            "em_andamento": "Em andamento",
+            "concluida": "Concluída",
+            "recusada": "Recusada",
+            "sem_posicionamento": "Sem posicionamento (aguardando termo)",
+            "sem_visita": "Encerrado sem visita",
+        }
+        return labels.get(status, status)
+
+
+    #monta o detalhamento por prestador do dashboard (linha a linha), usado
+    #pela tabela detalhada em tela e pela exportacao em excel
+    @staticmethod
+    def get_dashboard_details(year=None):
+        year = EvaluationService._resolve_dashboard_year(year)
+
+        rows = EvaluationModel.get_dashboard_details(year)
+
+        registros = [
+            {
+                "prestadorNome": row["prestador_nome"],
+                "categoriaNome": row["categoria_nome"],
+                "statusAdesao": EvaluationService._dashboard_status_adesao_label(row["status_adesao"]),
+                "statusAvaliacao": EvaluationService._dashboard_avaliacao_status_label(row["avaliacao_status"]),
+                "teveVisita": bool(row["teve_visita"]) if row["teve_visita"] is not None else None,
+                "estrelas": int(row["classificacao_estrelas"]) if row["classificacao_estrelas"] is not None else None,
+                "resultadoPercentual": float(row["resultado_percentual"]) if row["resultado_percentual"] is not None else None,
+                "iniciadoEm": row["iniciado_em"],
+                "concluidoEm": row["concluido_em"],
+                "checklistConcluidoEm": row["checklist_concluido_em"],
+            }
+            for row in rows
+        ]
+
+        return {
+            "anoReferencia": year,
+            "registros": registros,
+            "total": len(registros),
         }

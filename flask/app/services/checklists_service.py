@@ -193,13 +193,15 @@ class ChecklistService:
         if not isinstance(data, dict):
             raise ValueError("Os dados do checklist são inválidos.")
         evaluation = EvaluationService.get_by_id(evaluation_id)
-        if evaluation["status"] != "em_andamento":
+        # uma avaliacao encerrada sem visita continua editavel a qualquer momento —
+        # editar o checklist reabre o processo automaticamente (ver reopened abaixo)
+        if evaluation["status"] not in ("em_andamento", "sem_visita"):
             raise ValueError("Esta avaliação não está em andamento.")
         checklist = ChecklistModel.get_by_id(evaluation["id"], checklist_id)
         if not checklist:
             raise ValueError("O checklist não foi encontrado nesta avaliação.")
-        if checklist["status"] == "concluido":
-            raise ValueError("Um checklist concluído não pode ser alterado.")
+        # um checklist concluido nao fica travado: editar devolve para "em_preenchimento"
+        # (ChecklistModel.update_evaluation_checklist cuida dessa transicao)
 
         structure = ChecklistModel.get_structure(checklist["modelo_id"])
         valid_question_ids = {item["pergunta_id"] for item in structure}
@@ -227,7 +229,15 @@ class ChecklistService:
         }
         ChecklistModel.update_evaluation_checklist(checklist["id"], checklist_data, user_id)
         ChecklistModel.save_answers(checklist["id"], answers)
-        return ChecklistService.get_by_id(evaluation["id"], checklist["id"])
+
+        reopened = evaluation["status"] == "sem_visita"
+        if reopened:
+            EvaluationModel.reopen_to_stage(evaluation["id"], "checklist")
+
+        result = ChecklistService.get_by_id(evaluation["id"], checklist["id"])
+        if reopened:
+            result["avaliacaoStatus"] = "em_andamento"
+        return result
 
     # Calcula o percentual e a classificação do checklist
     @staticmethod

@@ -297,15 +297,16 @@ class ChecklistModel:
                 connection.close()
                 
                 
-    #atualiza os dados gerais do checklist
+    #atualiza os dados gerais do checklist — reabre para rascunho mesmo se ja
+    #estava concluido, para que editar depois do envio nunca trave o checklist
     @staticmethod
     def update_evaluation_checklist(checklist_id, data, user_id=None):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
+
             cursor.execute("""
                 UPDATE checklists_avaliacao
                 SET
@@ -331,7 +332,7 @@ class ChecklistModel:
                     preenchido_por_id = %s,
                     status = 'em_preenchimento'
                 WHERE id = %s
-                  AND status = 'em_preenchimento'
+                  AND status IN ('em_preenchimento', 'concluido')
             """, (
                 data.get("nome"),
                 data.get("nome_fantasia"),

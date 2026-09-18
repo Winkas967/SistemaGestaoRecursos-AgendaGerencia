@@ -19,7 +19,7 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-3') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-4') }}">
 </head>
 <body>
 {% set current_page = "agenda" %}
@@ -433,6 +433,29 @@
                     </div>
                     <div class="evaluation-dashboard-filters">
                         <label><span>Ano de referência</span><select id="evaluationDashboardYear" aria-label="Filtrar dashboard por ano de referência"></select></label>
+                        <a class="btn btn-primary evaluation-dashboard-export" id="evaluationDashboardExport" href="#" aria-label="Exportar indicadores em planilha Excel">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Exportar Excel
+                        </a>
+                    </div>
+                </div>
+
+                <div class="evaluation-dashboard-charts" id="evaluationDashboardCharts">
+                    <div class="evaluation-chart-card">
+                        <div class="evaluation-chart-head">
+                            <h4>Status do processo por categoria</h4>
+                            <p>Participação de cada situação dentro do total de prestadores da categoria.</p>
+                        </div>
+                        <div class="evaluation-chart-legend" id="evaluationChartStatusLegend"></div>
+                        <div class="evaluation-chart-body" id="evaluationChartStatus"></div>
+                    </div>
+                    <div class="evaluation-chart-card">
+                        <div class="evaluation-chart-head">
+                            <h4>Distribuição de estrelas por categoria</h4>
+                            <p>Avaliações concluídas nos checklists, de 00 (pior) a 05 (melhor), centralizadas em 03 estrelas.</p>
+                        </div>
+                        <div class="evaluation-chart-legend" id="evaluationChartStarsLegend"></div>
+                        <div class="evaluation-chart-body" id="evaluationChartStars"></div>
                     </div>
                 </div>
 
@@ -446,13 +469,16 @@
                                 <th>Não se posicionaram</th>
                                 <th>Sem visita</th>
                                 <th>Visita realizada/falta envio dos documentos</th>
-                                <th>03 estrelas</th>
-                                <th>04 estrelas</th>
                                 <th>05 estrelas</th>
+                                <th>04 estrelas</th>
+                                <th>03 estrelas</th>
+                                <th>02 estrelas</th>
+                                <th>01 estrela</th>
+                                <th>00 estrelas</th>
                             </tr>
                         </thead>
                         <tbody id="evaluationDashboardTableBody">
-                            <tr><td colspan="9" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
+                            <tr><td colspan="12" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
                         </tbody>
                         <tfoot id="evaluationDashboardTableFoot"></tfoot>
                     </table>
@@ -461,6 +487,39 @@
                 <div class="evaluation-dashboard-analysis">
                     <h4>Análise dos resultados</h4>
                     <p><strong>Média de porcentagem</strong>: <span id="evaluationDashboardAdhesionAvg">--</span> adesão</p>
+                </div>
+
+                <div class="evaluation-dashboard-details">
+                    <div class="evaluation-dashboard-details-head">
+                        <div>
+                            <h4>Dados detalhados por prestador</h4>
+                            <p>Uma linha por prestador — pronta para selecionar, copiar ou conferir individualmente.</p>
+                        </div>
+                        <label class="evaluation-dashboard-search">
+                            <span class="sr-only">Buscar prestador</span>
+                            <input type="search" id="evaluationDashboardSearch" placeholder="Buscar por prestador ou categoria...">
+                        </label>
+                    </div>
+                    <div class="evaluation-dashboard-table-wrap evaluation-dashboard-table-wrap-details">
+                        <table class="evaluation-dashboard-table evaluation-dashboard-table-details">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Prestador</th>
+                                    <th>Status de adesão</th>
+                                    <th>Status da avaliação</th>
+                                    <th>Teve visita</th>
+                                    <th>Estrelas</th>
+                                    <th>Resultado</th>
+                                    <th>Iniciado em</th>
+                                    <th>Concluído em</th>
+                                </tr>
+                            </thead>
+                            <tbody id="evaluationDashboardDetailsBody">
+                                <tr><td colspan="9" class="evaluation-dashboard-loading">Carregando dados...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -722,7 +781,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-3') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-6') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>

@@ -6,6 +6,7 @@ from services.adhesion_terms_service import AdhesionTermService
 from services.checklists_service import ChecklistService
 from services.checklist_feedbacks_service import ChecklistFeedbackService
 from services.checklist_feedback_email_service import ChecklistFeedbackEmailService
+from services.dashboard_export_service import DashboardExportService
 
 
 
@@ -50,6 +51,37 @@ def get_evaluations_dashboard():
         dashboard = EvaluationService.get_dashboard(request.args.get("ano"))
 
         return jsonify(dashboard), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#detalhamento do dashboard linha a linha por prestador, para o ano de referencia
+@evaluations_bp.route("/dashboard/detalhado", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def get_evaluations_dashboard_details():
+    try:
+        details = EvaluationService.get_dashboard_details(request.args.get("ano"))
+
+        return jsonify(details), 200
+
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
+#exporta o dashboard (resumo + detalhamento) em uma planilha excel
+@evaluations_bp.route("/dashboard/exportar", methods=["GET"])
+@permission_required("avaliacao", "visualizar")
+def export_evaluations_dashboard():
+    try:
+        buffer, year = DashboardExportService.build_workbook(request.args.get("ano"))
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"dashboard-avaliacoes-{year}.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
     except ValueError as error:
         return jsonify({"erro": str(error)}), 400
