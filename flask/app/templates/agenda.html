@@ -19,7 +19,7 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-6') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-7') }}">
 </head>
 <body>
 {% set current_page = "agenda" %}
@@ -547,6 +547,33 @@
             </div>
         </div>
     </section>
+
+    <section class="agenda-view next-visits-view" id="proximasVisitasView">
+        <div class="panel next-visits-panel">
+            <div class="docs-head">
+                <div>
+                    <span class="eyebrow">Qualidade da rede</span>
+                    <h2>Próximas visitas</h2>
+                    <p>Data prevista da próxima visita de cada prestador, calculada a partir do último feedback concluído. Prestadores sem nenhum feedback concluído não aparecem nesta lista.</p>
+                </div>
+            </div>
+
+            <div class="docs-filters">
+                <div class="field docs-search">
+                    <label for="nextVisitsSearchInput">Buscar</label>
+                    <input type="text" id="nextVisitsSearchInput" placeholder="Nome do prestador...">
+                </div>
+            </div>
+
+            <div class="docs-result-count" id="nextVisitsResultCount"></div>
+            <div class="next-visits-list" id="nextVisitsList"></div>
+            <div class="pagination-bar hidden" id="nextVisitsPagination">
+                <button class="btn" id="nextVisitsPrevPage" type="button">Anterior</button>
+                <span id="nextVisitsPageInfo">Página 1 de 1</span>
+                <button class="btn" id="nextVisitsNextPage" type="button">Próxima</button>
+            </div>
+        </div>
+    </section>
 </div>
 </div>
 
@@ -804,7 +831,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-8') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-9') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>

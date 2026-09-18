@@ -7,6 +7,7 @@
     const MINUTES_API_URL = "/api/agenda/atas";
     const EMAIL_SETTINGS_API_URL = "/api/configuracoes/avisos-documentacao";
     const EVALUATIONS_API_URL = "/api/avaliacoes";
+    const NEXT_VISITS_API_URL = "/api/agenda/proximas-visitas";
     // series do grafico de status do dashboard — ordem categorica fixa (nunca reordenar
     // por filtro), cores definidas como variaveis CSS para acompanhar o tema claro/escuro
     const DASHBOARD_STATUS_SERIES = [
@@ -92,6 +93,12 @@
         atasTotalPaginas: 1,
         atasPorPagina: 20,
         atasTotalGeral: 0,
+        proximasVisitas: [],
+        proximasVisitasCarregadas: false,
+        proximasVisitasLoading: false,
+        proximasVisitasPagina: 1,
+        proximasVisitasTotalPaginas: 1,
+        proximasVisitasPorPagina: 20,
     };
 
     const el = {
@@ -256,6 +263,13 @@
         evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
         evaluationFeedbackFinalize: document.getElementById("evaluationFeedbackFinalize"),
         evaluationFinalizeButton: document.getElementById("evaluationFinalizeButton"),
+        nextVisitsSearchInput: document.getElementById("nextVisitsSearchInput"),
+        nextVisitsResultCount: document.getElementById("nextVisitsResultCount"),
+        nextVisitsList: document.getElementById("nextVisitsList"),
+        nextVisitsPagination: document.getElementById("nextVisitsPagination"),
+        nextVisitsPrevPage: document.getElementById("nextVisitsPrevPage"),
+        nextVisitsNextPage: document.getElementById("nextVisitsNextPage"),
+        nextVisitsPageInfo: document.getElementById("nextVisitsPageInfo"),
     };
 
     function toISODate(date) {
@@ -367,6 +381,9 @@
         if (view === "avaliacao") {
             popularAnoDashboard();
             if (el.evaluationAreaDashboard?.checked) carregarDashboardAvaliacoes();
+        }
+        if (view === "proximas-visitas" && !state.proximasVisitasCarregadas && !state.proximasVisitasLoading) {
+            carregarProximasVisitas();
         }
     }
 
@@ -493,6 +510,88 @@
         el.minutesList.querySelectorAll('[data-action="delete-minute"]').forEach((button) => {
             button.addEventListener("click", () => excluirAta(Number(button.dataset.id)));
         });
+    }
+
+    function filtrarProximasVisitas() {
+        state.proximasVisitasPagina = 1;
+        carregarProximasVisitas(true);
+    }
+
+    // busca a lista de proximas visitas (data ja calculada pelo servidor a
+    // partir do ultimo feedback concluido de cada prestador) com busca e
+    // paginacao no servidor
+    async function carregarProximasVisitas(force = false) {
+        if (state.proximasVisitasLoading) return;
+        if (state.proximasVisitasCarregadas && !force) {
+            renderProximasVisitas();
+            return;
+        }
+        state.proximasVisitasLoading = true;
+        el.nextVisitsList.innerHTML = `<div class="docs-empty">Carregando próximas visitas...</div>`;
+        try {
+            const query = buildQueryString({
+                pagina: state.proximasVisitasPagina,
+                porPagina: state.proximasVisitasPorPagina,
+                busca: el.nextVisitsSearchInput.value.trim(),
+            });
+            const dados = await requestJson(`${NEXT_VISITS_API_URL}${query}`);
+            state.proximasVisitas = dados.registros || [];
+            state.proximasVisitasPagina = dados.pagina || 1;
+            state.proximasVisitasTotalPaginas = dados.totalPaginas || 1;
+            state.proximasVisitasTotal = dados.total || 0;
+            state.proximasVisitasCarregadas = true;
+            renderProximasVisitas();
+        } catch (error) {
+            el.nextVisitsList.innerHTML = `<div class="docs-empty">Não foi possível carregar as próximas visitas: ${escapeHtml(error.message)}</div>`;
+        } finally {
+            state.proximasVisitasLoading = false;
+        }
+    }
+
+    function renderProximasVisitas() {
+        const registros = state.proximasVisitas;
+        const total = state.proximasVisitasTotal || 0;
+
+        el.nextVisitsResultCount.textContent = `${total} prestador${total === 1 ? "" : "es"} com próxima visita prevista.`;
+        renderPaginationBar(
+            el.nextVisitsPagination,
+            el.nextVisitsPageInfo,
+            el.nextVisitsPrevPage,
+            el.nextVisitsNextPage,
+            state.proximasVisitasPagina,
+            state.proximasVisitasTotalPaginas,
+            total,
+        );
+
+        if (!registros.length) {
+            el.nextVisitsList.innerHTML = `<div class="docs-empty">Nenhuma próxima visita encontrada. Prestadores só aparecem aqui depois do primeiro feedback concluído.</div>`;
+            return;
+        }
+
+        el.nextVisitsList.innerHTML = registros.map((item) => {
+            const dias = item.diasRestantes;
+            const urgencia = dias === null || dias === undefined ? "normal" : dias < 0 ? "atrasada" : dias <= 30 ? "proxima" : "normal";
+            const tempoTexto = dias === null || dias === undefined
+                ? "--"
+                : dias < 0
+                    ? `Atrasada há ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? "" : "s"}`
+                    : dias === 0
+                        ? "Vence hoje"
+                        : `Em ${dias} dia${dias === 1 ? "" : "s"}`;
+
+            return `
+                <article class="next-visit-card">
+                    <div class="next-visit-main">
+                        <strong>${escapeHtml(item.prestadorNome)}</strong>
+                        <span class="next-visit-category">${escapeHtml(item.categoria || "")}</span>
+                    </div>
+                    <div class="next-visit-meta">
+                        <span class="next-visit-date">${escapeHtml(formatChecklistShortDate(item.proximaVisitaEm))}</span>
+                        <span class="next-visit-badge ${urgencia}">${tempoTexto}</span>
+                    </div>
+                </article>
+            `;
+        }).join("");
     }
 
     async function salvarAta(event) {
@@ -3219,6 +3318,17 @@
             if (state.atasPagina >= state.atasTotalPaginas) return;
             state.atasPagina += 1;
             carregarAtas(true);
+        });
+        el.nextVisitsSearchInput?.addEventListener("input", debounce(filtrarProximasVisitas));
+        el.nextVisitsPrevPage?.addEventListener("click", () => {
+            if (state.proximasVisitasPagina <= 1) return;
+            state.proximasVisitasPagina -= 1;
+            carregarProximasVisitas(true);
+        });
+        el.nextVisitsNextPage?.addEventListener("click", () => {
+            if (state.proximasVisitasPagina >= state.proximasVisitasTotalPaginas) return;
+            state.proximasVisitasPagina += 1;
+            carregarProximasVisitas(true);
         });
         el.themeToggle.addEventListener("click", toggleTheme);
         el.exportMonthPdfBtn.addEventListener("click", () => {

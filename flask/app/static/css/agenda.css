@@ -176,6 +176,11 @@ button {
     animation: card-in 0.22s ease both;
 }
 
+.app-shell:has(.agenda-tab[data-view="proximas-visitas"].active) #proximasVisitasView {
+    display: block;
+    animation: card-in 0.22s ease both;
+}
+
 .evaluation-panel {
     padding: 32px;
     overflow: hidden;
@@ -3027,6 +3032,82 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 .docs-expiry-alert small {
     display: block;
     margin-top: 8px;
+}
+
+.next-visits-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.next-visit-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.next-visit-main {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.next-visit-main strong {
+    color: var(--text);
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+.next-visit-category {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.next-visit-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.next-visit-date {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.next-visit-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.next-visit-badge.normal {
+    color: var(--verde-principal);
+    background: rgba(0, 153, 92, 0.12);
+}
+
+.next-visit-badge.proxima {
+    color: #d97706;
+    background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
+.next-visit-badge.atrasada {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
 }
 
 .minutes-head {

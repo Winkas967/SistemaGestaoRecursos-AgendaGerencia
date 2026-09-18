@@ -62,6 +62,51 @@ class ChecklistFeedbackModel:
             if connection:
                 connection.close()
 
+    # Busca o feedback concluido mais recente de cada prestador que ja teve
+    # visita concluida, com a data da proxima visita ja calculada
+    # (concluido_em + retorno_meses) — usada pela lista de Proximas Visitas.
+    # Prestadores descredenciados ou sem nenhum feedback concluido nao aparecem;
+    # o agrupamento "um registro por prestador" e feito em Python pelo service,
+    # pois a consulta ja vem ordenada por prestador e por data de conclusao.
+    @staticmethod
+    def get_completed_with_next_visit():
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+            cursor.execute("""
+                SELECT
+                    p.id AS prestador_id,
+                    p.nome AS prestador_nome,
+                    cp.nome AS categoria_nome,
+                    cf.checklist_avaliacao_id,
+                    cf.concluido_em,
+                    cf.retorno_meses,
+                    DATE_ADD(cf.concluido_em, INTERVAL cf.retorno_meses MONTH) AS proxima_visita_em
+                FROM checklist_feedbacks cf
+                INNER JOIN checklists_avaliacao ca
+                    ON ca.id = cf.checklist_avaliacao_id
+                INNER JOIN avaliacoes_prestador av
+                    ON av.id = ca.avaliacao_id
+                INNER JOIN prestadores p
+                    ON p.id = av.prestador_id
+                INNER JOIN categorias_prestador cp
+                    ON cp.id = p.categoria_id
+                WHERE cf.status = 'concluido'
+                  AND cf.retorno_meses IS NOT NULL
+                  AND cf.concluido_em IS NOT NULL
+                  AND p.situacao != 'descredenciado'
+                ORDER BY p.nome ASC, cf.concluido_em DESC
+            """)
+            return cursor.fetchall()
+
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
     # Cria ou atualiza o rascunho do feedback
     @staticmethod
     def save(checklist_id, content, user_id):
