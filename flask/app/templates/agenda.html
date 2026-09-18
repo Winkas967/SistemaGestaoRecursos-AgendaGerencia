@@ -19,7 +19,7 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260915-3') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-3') }}">
 </head>
 <body>
 {% set current_page = "agenda" %}
@@ -287,6 +287,7 @@
                             <option value="concluida">Concluída</option>
                             <option value="recusada">Recusado</option>
                             <option value="sem_posicionamento">Sem posicionamento</option>
+                            <option value="sem_visita">Sem visita</option>
                         </select>
                     </label>
                     <label><span>Categoria</span><select id="evaluationFilterCategory"><option value="">Todas as categorias</option></select></label>
@@ -443,6 +444,7 @@
                                 <th>Adesão</th>
                                 <th>Não Adesão</th>
                                 <th>Não se posicionaram</th>
+                                <th>Sem visita</th>
                                 <th>Visita realizada/falta envio dos documentos</th>
                                 <th>03 estrelas</th>
                                 <th>04 estrelas</th>
@@ -450,7 +452,7 @@
                             </tr>
                         </thead>
                         <tbody id="evaluationDashboardTableBody">
-                            <tr><td colspan="8" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
+                            <tr><td colspan="9" class="evaluation-dashboard-loading">Carregando indicadores...</td></tr>
                         </tbody>
                         <tfoot id="evaluationDashboardTableFoot"></tfoot>
                     </table>
@@ -720,7 +722,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260915-2') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-3') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>

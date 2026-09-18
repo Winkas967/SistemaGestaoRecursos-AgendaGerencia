@@ -34,15 +34,13 @@ class SettingsService:
             if SettingsService.to_boolean(enabled)
             else "false"
         )
-        
-        updated = SettingsModel.update_value(
+
+        #update_value faz upsert: cria a configuracao se ainda nao existir
+        SettingsModel.update_value(
             SettingsService.EMAIL_NOTIFICATIONS_KEY,
             new_value
         )
-        
-        if not updated:
-            raise ValueError("A configuração de envio de e-mails não foi encontrada.")
-        
+
         return {
             "ativo": new_value == "true"
         }

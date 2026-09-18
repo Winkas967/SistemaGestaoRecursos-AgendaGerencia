@@ -136,7 +136,7 @@ class EvaluationModel:
                     atualizado_em
                 FROM avaliacoes_prestador
                 WHERE prestador_id = %s
-                  AND status IN ('em_andamento', 'sem_posicionamento')
+                  AND status IN ('em_andamento', 'sem_posicionamento', 'sem_visita')
                 ORDER BY id DESC
                 LIMIT 1
             """, (provider_id,))
@@ -284,11 +284,13 @@ class EvaluationModel:
                     COUNT(*) AS total_prestadores,
                     SUM(CASE WHEN classificado.status_adesao = 'aceitou' THEN 1 ELSE 0 END) AS adesao,
                     SUM(CASE WHEN classificado.status_adesao = 'recusou' THEN 1 ELSE 0 END) AS nao_adesao,
-                    SUM(CASE WHEN classificado.status_adesao = 'sem_posicionamento' THEN 1 ELSE 0 END) AS nao_posicionaram
+                    SUM(CASE WHEN classificado.status_adesao = 'sem_posicionamento' THEN 1 ELSE 0 END) AS nao_posicionaram,
+                    SUM(CASE WHEN classificado.avaliacao_status = 'sem_visita' THEN 1 ELSE 0 END) AS sem_visita
                 FROM (
                     SELECT
                         p.id AS prestador_id,
                         p.categoria_id,
+                        av.status AS avaliacao_status,
                         CASE
                             WHEN av.id IS NULL THEN 'sem_posicionamento'
                             WHEN av.status = 'recusada' THEN 'recusou'
@@ -431,7 +433,7 @@ class EvaluationModel:
                 connection.close()
 
 
-    #reabre uma avaliacao sem posicionamento e avanca para a etapa informada
+    #reabre uma avaliacao sem posicionamento/sem visita e avanca para a etapa informada
     @staticmethod
     def reopen_to_stage(evaluation_id, stage):
         connection = None
@@ -445,8 +447,41 @@ class EvaluationModel:
                 SET status = 'em_andamento',
                     etapa_atual = %s
                 WHERE id = %s
-                  AND status IN ('em_andamento', 'sem_posicionamento')
+                  AND status IN ('em_andamento', 'sem_posicionamento', 'sem_visita')
             """, (stage, evaluation_id))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+
+    #encerra a avaliacao quando o checklist indicar que a visita nao aconteceu,
+    #mas mantem o processo passivel de edicao (nao marca concluido_em)
+    @staticmethod
+    def close_without_visit(evaluation_id):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            cursor.execute("""
+                UPDATE avaliacoes_prestador
+                SET status = 'sem_visita'
+                WHERE id = %s
+                  AND status IN ('em_andamento', 'sem_visita')
+            """, (evaluation_id,))
 
             updated = cursor.rowcount > 0
             connection.commit()

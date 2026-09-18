@@ -14,3 +14,5 @@ Antes de aplicar em produção, faça backup do banco e execute os arquivos usan
 
 8. `migrations/20260908_checklist_nome.sql` — adiciona o nome do checklist (usado para identificar cada checklist nas telas de avaliação).
 9. `migrations/20260910_checklist_teve_visita.sql` — adiciona o indicador de "teve visita ou não" ao checklist.
+10. `migrations/20260916_configuracoes_sistema.sql` — cria a tabela de configurações gerais do sistema (usada pelo botão de avisos por e-mail da documentação) e o registro padrão, começando desligado.
+11. `migrations/20260918_checklist_encerramento_sem_visita.sql` — registra o novo status "sem_visita" das avaliações (botão "Encerrar atendimento" no checklist). Não altera a estrutura do banco, apenas documenta a mudança.

@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from models.checklist_feedbacks_model import ChecklistFeedbackModel
 from models.checklists_model import ChecklistModel
+from models.evaluations_model import EvaluationModel
 from services.evaluations_service import EvaluationService
 
 
@@ -275,3 +276,25 @@ class ChecklistService:
         result = ChecklistService.calculate_result(ChecklistModel.get_result_summary(checklist["id"]))
         ChecklistModel.complete(checklist["id"], result["percentual"], result["estrelas"], user_id)
         return ChecklistService.get_by_id(evaluation["id"], checklist["id"])
+
+    # Encerra o atendimento quando a visita nao aconteceu, mesmo sem passar pelo
+    # checklist e pelo feedback — o processo fica marcado como "sem_visita" mas
+    # continua editavel/reaberto a qualquer momento, assim como o sem_posicionamento
+    @staticmethod
+    def close_without_visit(evaluation_id, checklist_id, user_id=None):
+        evaluation = EvaluationService.get_by_id(evaluation_id)
+        if evaluation["status"] != "em_andamento":
+            raise ValueError("Esta avaliação não está em andamento.")
+        checklist = ChecklistModel.get_by_id(evaluation["id"], checklist_id)
+        if not checklist:
+            raise ValueError("O checklist não foi encontrado nesta avaliação.")
+        if checklist["status"] == "concluido":
+            raise ValueError("Este checklist já foi concluído.")
+        if checklist["teve_visita"]:
+            raise ValueError('Desative "Teve visita" antes de encerrar o atendimento sem visita.')
+
+        EvaluationModel.close_without_visit(evaluation["id"])
+
+        result = ChecklistService.to_dict(evaluation, checklist)
+        result["avaliacaoStatus"] = "sem_visita"
+        return result

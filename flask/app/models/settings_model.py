@@ -32,25 +32,25 @@ class SettingsModel:
                 connection.close()
                 
                 
-    #atualiza o valor de uma config
+    #cria ou atualiza o valor de uma config (upsert, para nunca falhar
+    #silenciosamente quando a chave ainda nao existir na tabela)
     @staticmethod
     def update_value(key, value):
         connection = None
         cursor = None
-        
+
         try:
             connection, cursor = get_db_connection()
-            
+
             cursor.execute("""
-                           UPDATE configuracoes_sistema
-                           SET valor = %s
-                           WHERE chave = %s
-                           """,(value,key),)
-            
-            updated = cursor.rowcount > 0
+                           INSERT INTO configuracoes_sistema (chave, valor)
+                           VALUES (%s, %s)
+                           ON DUPLICATE KEY UPDATE valor = VALUES(valor)
+                           """,(key,value),)
+
             connection.commit()
-            
-            return updated
+
+            return True
         
         except Exception:
             if connection:

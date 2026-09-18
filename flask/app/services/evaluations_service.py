@@ -66,9 +66,9 @@ class EvaluationService:
         providers_in_progress = {
             evaluation["prestador_id"]
             for evaluation in evaluations
-            #sem_posicionamento fecha o fluxo mas continua editavel, então o cadastro
-            #segue "ocupado" até o posicionamento ser definido
-            if evaluation["status"] in ("em_andamento", "sem_posicionamento")
+            #sem_posicionamento e sem_visita fecham o fluxo mas continuam editaveis, então o
+            #cadastro segue "ocupado" até o posicionamento/a visita ser definida
+            if evaluation["status"] in ("em_andamento", "sem_posicionamento", "sem_visita")
         }
         
         available = []
@@ -201,6 +201,7 @@ class EvaluationService:
             "adesao": 0,
             "naoAdesao": 0,
             "naoPosicionaram": 0,
+            "semVisita": 0,
             "visitaSemDocumento": 0,
             "estrelas3": 0,
             "estrelas4": 0,
@@ -216,6 +217,7 @@ class EvaluationService:
                 "adesao": int(row["adesao"] or 0),
                 "naoAdesao": int(row["nao_adesao"] or 0),
                 "naoPosicionaram": int(row["nao_posicionaram"] or 0),
+                "semVisita": int(row["sem_visita"] or 0),
                 "visitaSemDocumento": int(row["visita_sem_documento"] or 0),
                 "estrelas3": int(row["estrelas_3"] or 0),
                 "estrelas4": int(row["estrelas_4"] or 0),

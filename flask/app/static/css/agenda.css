@@ -89,6 +89,25 @@ button {
     filter: brightness(0.94);
 }
 
+.btn-warning-outline {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+
+.btn-warning-outline:hover {
+    filter: brightness(0.96);
+}
+
+.evaluation-checklist-close-visit-action {
+    display: flex;
+    margin-top: -4px;
+}
+
+.evaluation-checklist-close-visit-action[hidden] {
+    display: none;
+}
+
 .danger-btn {
     color: #ffffff;
     background: var(--danger);

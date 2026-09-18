@@ -507,6 +507,7 @@
     function evaluationStageLabel(item) {
         if (item.status === "recusada") return "Recusado";
         if (item.status === "sem_posicionamento") return "Sem posicionamento";
+        if (item.status === "sem_visita") return "Sem visita";
         if (item.status === "concluida" || item.status === "concluido") return "Concluída";
         return EVALUATION_STAGE_LABELS[item.etapaAtual] || item.etapaAtual;
     }
@@ -524,6 +525,7 @@
     function evaluationProgress(item) {
         if (item.status === "recusada") return { percent: 100, text: "Processo encerrado" };
         if (item.status === "sem_posicionamento") return { percent: 100, text: "Encerrado (pode reabrir)" };
+        if (item.status === "sem_visita") return { percent: 100, text: "Encerrado (pode reabrir)" };
         if (item.status === "concluida" || item.status === "concluido") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "feedback") return { percent: 100, text: "3 de 3 etapas" };
         if (item.etapaAtual === "checklist") return { percent: 66, text: "2 de 3 etapas" };
@@ -572,6 +574,7 @@
     function evaluationFilterStageValue(item) {
         if (item.status === "recusada") return "recusada";
         if (item.status === "sem_posicionamento") return "sem_posicionamento";
+        if (item.status === "sem_visita") return "sem_visita";
         if (item.status === "concluida" || item.status === "concluido") return "concluida";
         return item.etapaAtual;
     }
@@ -595,9 +598,9 @@
         }
 
         el.evaluationProcessItems.innerHTML = visiveis.map((item) => {
-            // "sem_posicionamento" encerra o fluxo visualmente, mas continua editável
-            // a qualquer momento — por isso não entra no mesmo grupo de recusada/concluída
-            const waiting = item.status === "sem_posicionamento";
+            // "sem_posicionamento"/"sem_visita" encerram o fluxo visualmente, mas continuam
+            // editáveis a qualquer momento — por isso não entram no grupo de recusada/concluída
+            const waiting = item.status === "sem_posicionamento" || item.status === "sem_visita";
             const terminal = item.status !== "em_andamento" && !waiting;
             const editable = item.status === "em_andamento" || waiting;
             const rejected = item.status === "recusada";
@@ -659,12 +662,13 @@
                         <td>${Number(item.adesao)}</td>
                         <td>${Number(item.naoAdesao)}</td>
                         <td>${Number(item.naoPosicionaram)}</td>
+                        <td>${Number(item.semVisita)}</td>
                         <td>${Number(item.visitaSemDocumento)}</td>
                         <td>${Number(item.estrelas3)}</td>
                         <td>${Number(item.estrelas4)}</td>
                         <td>${Number(item.estrelas5)}</td>
                     </tr>`).join("")
-                : '<tr><td colspan="8" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
+                : '<tr><td colspan="9" class="evaluation-dashboard-loading">Nenhum prestador cadastrado.</td></tr>';
         }
 
         if (el.evaluationDashboardTableFoot) {
@@ -674,6 +678,7 @@
                     <td>${Number(totais.adesao || 0)}</td>
                     <td>${Number(totais.naoAdesao || 0)}</td>
                     <td>${Number(totais.naoPosicionaram || 0)}</td>
+                    <td>${Number(totais.semVisita || 0)}</td>
                     <td>${Number(totais.visitaSemDocumento || 0)}</td>
                     <td>${Number(totais.estrelas3 || 0)}</td>
                     <td>${Number(totais.estrelas4 || 0)}</td>
@@ -1095,6 +1100,7 @@
                                 <b class="evaluation-checklist-toggle-state">${checklist.teveVisita !== false ? "Ativado" : "Desativado"}</b>
                             </span>
                         </label>
+                        ${!completed ? `<div class="evaluation-checklist-close-visit-action evaluation-checklist-general-wide"${checklist.teveVisita === false ? "" : " hidden"}><button class="btn btn-warning-outline" type="button" data-action="close-without-visit">Encerrar atendimento</button></div>` : ""}
                         <label class="evaluation-checklist-general-wide"><span>Observações gerais</span><textarea data-checklist-field="observacoesGerais" rows="4"${disabled}>${escapeHtml(checklist.observacoesGerais || "")}</textarea></label>
                     </div>
                     <div class="evaluation-checklist-questions">
@@ -1154,6 +1160,33 @@
                 el.evaluationStepFeedback.checked = true;
             }
             showFeedback(conclude ? `Checklist concluído: ${checklist.resultadoPercentual}% • ${checklist.classificacaoEstrelas} estrela(s).` : "Rascunho salvo com sucesso.");
+        } catch (error) {
+            setEvaluationMessage(message, error.message);
+        }
+    }
+
+    // Encerra o atendimento quando a visita não aconteceu, mesmo sem ter passado pelo feedback
+    async function encerrarAtendimentoSemVisita(card) {
+        const evaluation = state.avaliacaoSelecionada;
+        const checklistId = Number(card.dataset.checklistCard);
+        const message = card.querySelector("[data-checklist-message]");
+        setEvaluationMessage(message);
+        try {
+            // Salva o rascunho primeiro: "teve visita" desmarcado só existe no formulário
+            // até aqui — sem isso o backend ainda vê o valor antigo salvo e recusa o pedido
+            await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}`, {
+                method: "PUT",
+                body: JSON.stringify(checklistCardPayload(card)),
+            });
+            const checklist = await requestJson(`${EVALUATIONS_API_URL}/${evaluation.id}/checklists/${checklistId}/encerrar-sem-visita`, {
+                method: "POST",
+            });
+            state.checklistsAvaliacao = state.checklistsAvaliacao.map((item) => item.checklistId === checklistId ? checklist : item);
+            state.avaliacaoSelecionada.status = checklist.avaliacaoStatus || state.avaliacaoSelecionada.status;
+            renderAvaliacaoSelecionada();
+            state.avaliacoesCarregadas = false;
+            await carregarAvaliacoes(true);
+            showFeedback("Atendimento encerrado sem visita. O processo pode ser reaberto e editado quando quiser.");
         } catch (error) {
             setEvaluationMessage(message, error.message);
         }
@@ -1287,13 +1320,15 @@
             ? "Processo encerrado (termo recusado)"
             : item.status === "sem_posicionamento"
                 ? "Processo encerrado (sem posicionamento) — pode ser reaberto a qualquer momento"
-                : item.status === "em_andamento"
-                    ? "Processo em andamento"
-                    : "Processo concluído";
+                : item.status === "sem_visita"
+                    ? "Processo encerrado (sem visita) — pode ser reaberto a qualquer momento"
+                    : item.status === "em_andamento"
+                        ? "Processo em andamento"
+                        : "Processo concluído";
         el.evaluationSelectedSubtitle.textContent = `${item.categoriaNome || "Sem categoria"} • Avaliação ${item.anoReferencia} • ${statusText}`;
         el.evaluationSelectedStage.textContent = evaluationStageLabel(item);
         el.evaluationSelectedStage.classList.toggle("is-rejected", item.status === "recusada");
-        el.evaluationSelectedStage.classList.toggle("is-waiting", item.status === "sem_posicionamento");
+        el.evaluationSelectedStage.classList.toggle("is-waiting", item.status === "sem_posicionamento" || item.status === "sem_visita");
         renderTermoAdesao();
         renderChecklistCards();
         renderFeedbackStage();
@@ -2721,6 +2756,10 @@
                     if (window.confirm("Deseja concluir este checklist? As respostas não poderão mais ser alteradas.")) {
                         await salvarChecklistCard(card, true);
                     }
+                } else if (button.dataset.action === "close-without-visit") {
+                    if (window.confirm("Deseja encerrar o atendimento sem visita? O processo será encerrado, mas pode ser reaberto e editado a qualquer momento.")) {
+                        await encerrarAtendimentoSemVisita(card);
+                    }
                 } else if (button.dataset.action === "open-feedback") {
                     abrirFeedback(checklistId);
                 }
@@ -2737,12 +2776,14 @@
                     const card = event.target.closest("[data-checklist-card]");
                     const visitDateInput = card?.querySelector('[data-checklist-field="dataVisita"]');
                     const toggleState = event.target.closest(".evaluation-checklist-toggle")?.querySelector(".evaluation-checklist-toggle-state");
+                    const closeAction = card?.querySelector(".evaluation-checklist-close-visit-action");
                     const teveVisita = event.target.checked;
                     if (visitDateInput) {
                         visitDateInput.disabled = !teveVisita;
                         if (!teveVisita) visitDateInput.value = "";
                     }
                     if (toggleState) toggleState.textContent = teveVisita ? "Ativado" : "Desativado";
+                    if (closeAction) closeAction.hidden = teveVisita;
                     return;
                 }
                 if (!event.target.matches('input[type="radio"]')) return;

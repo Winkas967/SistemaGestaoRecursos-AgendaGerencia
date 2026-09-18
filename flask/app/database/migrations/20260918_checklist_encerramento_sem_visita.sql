@@ -1,0 +1,14 @@
+-- Registra a adicao do status "sem_visita" ao fluxo de avaliacoes, usado pelo
+-- botao "Encerrar atendimento" no checklist quando "Teve visita" esta desativado
+-- (o processo fica encerrado, mas continua editavel/reaberto a qualquer momento,
+-- assim como o status "sem_posicionamento" do termo de adesao).
+--
+-- Este arquivo nao altera a estrutura do banco: avaliacoes_prestador.status ja e
+-- VARCHAR(30) livre, sem CHECK/ENUM, e ja possui indice proprio
+-- (idx_avaliacoes_status, criado em 20260903_evaluations.sql). O novo valor
+-- 'sem_visita' e aceito nessa coluna sem nenhuma mudanca de schema — o mesmo
+-- padrao ja usado para o status 'sem_posicionamento'.
+--
+-- Existe apenas para manter o historico de migracoes completo. E seguro
+-- executar em qualquer banco, inclusive mais de uma vez.
+SELECT 1;

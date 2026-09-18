@@ -257,6 +257,25 @@ def complete_evaluation_checklist(evaluation_id, checklist_id):
         return jsonify({"erro": str(error)}), 400
 
 
+#encerra o atendimento quando o checklist indicar que a visita nao aconteceu,
+#mesmo sem ter passado pelo feedback
+@evaluations_bp.route(
+    "/<int:evaluation_id>/checklists/<int:checklist_id>/encerrar-sem-visita",
+    methods=["POST"],
+)
+@permission_required("avaliacao", "editar")
+def close_checklist_without_visit(evaluation_id, checklist_id):
+    try:
+        checklist = ChecklistService.close_without_visit(
+            evaluation_id=evaluation_id,
+            checklist_id=checklist_id,
+            user_id=session.get("user_id"),
+        )
+        return jsonify(checklist), 200
+    except ValueError as error:
+        return jsonify({"erro": str(error)}), 400
+
+
 #busca o feedback individual de um checklist
 @evaluations_bp.route(
     "/<int:evaluation_id>/checklists/<int:checklist_id>/feedback",
