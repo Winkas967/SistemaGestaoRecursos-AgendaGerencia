@@ -231,6 +231,7 @@
         evaluationProcessList: document.getElementById("evaluationProcessList"),
         evaluationProcessDetail: document.getElementById("evaluationProcessDetail"),
         evaluationProviderSelect: document.getElementById("evaluationProviderSelect"),
+        evaluationNewYear: document.getElementById("evaluationNewYear"),
         evaluationStartButton: document.getElementById("evaluationStartButton"),
         evaluationNewError: document.getElementById("evaluationNewError"),
         evaluationSelectedAvatar: document.getElementById("evaluationSelectedAvatar"),
@@ -1122,11 +1123,24 @@
         setEvaluationMessage(el.evaluationNewError);
     }
 
+    // preenche o ano de referencia da nova avaliacao — mesmo intervalo usado no
+    // filtro do dashboard, sempre reiniciando no ano atual a cada abertura do modal
+    function popularAnoNovaAvaliacao() {
+        if (!el.evaluationNewYear) return;
+        const anoAtual = new Date().getFullYear();
+        const anos = [];
+        for (let ano = anoAtual + 1; ano >= anoAtual - 4; ano -= 1) anos.push(ano);
+        el.evaluationNewYear.innerHTML = anos
+            .map((ano) => `<option value="${ano}"${ano === anoAtual ? " selected" : ""}>${ano}</option>`)
+            .join("");
+    }
+
     async function openEvaluationModal() {
         if (!el.evaluationNewOverlay) return;
         el.evaluationNewOverlay.classList.add("open");
         document.body.classList.add("modal-open");
         setEvaluationMessage(el.evaluationNewError);
+        popularAnoNovaAvaliacao();
         el.evaluationProviderSelect.disabled = true;
         el.evaluationStartButton.disabled = true;
         el.evaluationProviderSelect.innerHTML = '<option value="">Carregando cadastros...</option>';
@@ -1149,6 +1163,7 @@
             setEvaluationMessage(el.evaluationNewError, "Selecione um cadastro para iniciar a avaliação.");
             return;
         }
+        const anoReferencia = Number(el.evaluationNewYear?.value) || undefined;
         el.evaluationStartButton.disabled = true;
         el.evaluationStartButton.textContent = "Iniciando...";
         try {
@@ -1156,6 +1171,7 @@
                 method: "POST",
                 body: JSON.stringify({
                     prestadorId: providerId,
+                    anoReferencia,
                 }),
             });
             closeEvaluationModal();

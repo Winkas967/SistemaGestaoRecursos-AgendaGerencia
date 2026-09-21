@@ -593,6 +593,11 @@
                 </select>
                 <small>Serão listados apenas os cadastros que ainda não possuem uma avaliação em andamento.</small>
             </label>
+            <label class="evaluation-new-field">
+                <span>Ano de referência</span>
+                <select id="evaluationNewYear"></select>
+                <small>Define em qual ano essa avaliação vai aparecer no dashboard.</small>
+            </label>
             <div class="evaluation-new-info">
                 <span class="evaluation-new-info-icon" aria-hidden="true">i</span>
                 <div><strong>Um único processo por cadastro</strong><p>Depois de iniciado, o cadastro permanecerá vinculado ao termo de adesão, ao checklist e ao feedback final.</p></div>
@@ -831,7 +836,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-9') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20260918-10') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>
