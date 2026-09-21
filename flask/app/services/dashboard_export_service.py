@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -112,6 +113,17 @@ class DashboardExportService:
         DashboardExportService._autosize_columns(sheet)
 
 
+    # "Iniciado em" pode vir so com data (data da visita digitada no checklist)
+    # ou com data e hora (fallback para criado_em/iniciado_em) — formata sem
+    # hora no primeiro caso, para nao exibir "00:00" enganoso na planilha.
+    @staticmethod
+    def _format_iniciado_em(value):
+        if not value:
+            return "—"
+        if isinstance(value, datetime):
+            return value.strftime("%d/%m/%Y %H:%M")
+        return value.strftime("%d/%m/%Y")
+
     #monta a aba com o detalhamento linha a linha por prestador
     @staticmethod
     def _build_details_sheet(workbook, details):
@@ -142,7 +154,7 @@ class DashboardExportService:
                 teve_visita_label,
                 item["estrelas"] if item["estrelas"] is not None else "—",
                 item["resultadoPercentual"] if item["resultadoPercentual"] is not None else "—",
-                item["iniciadoEm"].strftime("%d/%m/%Y %H:%M") if item["iniciadoEm"] else "—",
+                DashboardExportService._format_iniciado_em(item["iniciadoEm"]),
                 item["concluidoEm"].strftime("%d/%m/%Y %H:%M") if item["concluidoEm"] else "—",
             ])
 

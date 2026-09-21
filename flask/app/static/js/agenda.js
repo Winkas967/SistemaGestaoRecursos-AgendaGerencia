@@ -879,6 +879,22 @@
         }).format(date);
     }
 
+    // "Iniciado em" agora pode vir de um campo so-data (data da visita digitada
+    // no checklist, "YYYY-MM-DD") ou de um timestamp (criado_em/iniciado_em) —
+    // exibe sem hora quando for so-data, para nao mostrar "00:00" enganoso.
+    function formatDashboardIniciadoEm(value) {
+        if (!value) return "—";
+        const somenteData = /^\d{4}-\d{2}-\d{2}$/.test(String(value));
+        if (!somenteData) return formatDashboardDateTime(value);
+        const date = parseDisplayDate(value);
+        if (!date) return "—";
+        return new Intl.DateTimeFormat("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        }).format(date);
+    }
+
     function renderDashboardAvaliacoes(dashboard) {
         const categorias = Array.isArray(dashboard.categorias) ? dashboard.categorias : [];
         const totais = dashboard.totais || {};
@@ -1046,7 +1062,7 @@
                 <td>${item.teveVisita === null || item.teveVisita === undefined ? "—" : (item.teveVisita ? "Sim" : "Não")}</td>
                 <td>${item.estrelas === null || item.estrelas === undefined ? "—" : `${String(item.estrelas).padStart(2, "0")} ★`}</td>
                 <td>${item.resultadoPercentual === null || item.resultadoPercentual === undefined ? "—" : formatDashboardPercent(item.resultadoPercentual)}</td>
-                <td>${formatDashboardDateTime(item.iniciadoEm)}</td>
+                <td>${formatDashboardIniciadoEm(item.iniciadoEm)}</td>
                 <td>${formatDashboardDateTime(item.concluidoEm)}</td>
             </tr>`).join("");
     }

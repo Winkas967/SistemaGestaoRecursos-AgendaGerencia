@@ -593,7 +593,9 @@ class EvaluationModel:
                     ultimo_checklist.teve_visita,
                     ultimo_checklist.classificacao_estrelas,
                     ultimo_checklist.resultado_percentual,
-                    ultimo_checklist.concluido_em AS checklist_concluido_em
+                    ultimo_checklist.concluido_em AS checklist_concluido_em,
+                    ultimo_checklist.data_visita AS checklist_data_visita,
+                    ultimo_checklist.criado_em AS checklist_criado_em
                 {base_query}
                 ORDER BY cp.nome, p.nome
             """

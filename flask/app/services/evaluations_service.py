@@ -316,7 +316,10 @@ class EvaluationService:
             "teveVisita": bool(row["teve_visita"]) if row["teve_visita"] is not None else None,
             "estrelas": int(row["classificacao_estrelas"]) if row["classificacao_estrelas"] is not None else None,
             "resultadoPercentual": float(row["resultado_percentual"]) if row["resultado_percentual"] is not None else None,
-            "iniciadoEm": row["iniciado_em"],
+            # "Iniciado em" reflete a data digitada pelo usuario no checklist
+            # (data da visita), caindo para a data de criacao do checklist e,
+            # por ultimo, para o inicio da avaliacao quando ainda nao ha checklist.
+            "iniciadoEm": row["checklist_data_visita"] or row["checklist_criado_em"] or row["iniciado_em"],
             "concluidoEm": row["concluido_em"],
             "checklistConcluidoEm": row["checklist_concluido_em"],
         }
