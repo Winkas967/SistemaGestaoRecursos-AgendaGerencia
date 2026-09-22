@@ -5,8 +5,8 @@ from utils.pagination import build_pagination_meta, resolve_pagination
 
 
 # Contem as regras da lista de Proximas Visitas: a data prevista e sempre
-# calculada a partir do ultimo feedback concluido de cada prestador
-# (concluido_em + retorno_meses da classificacao) — nao existe campo proprio
+# calculada a partir da data da visita digitada pelo usuario no checklist
+# (data_visita + retorno_meses da classificacao) — nao existe campo proprio
 # no banco nem edicao manual, para evitar que a data fique desatualizada.
 class NextVisitsService:
 
@@ -29,14 +29,14 @@ class NextVisitsService:
             "prestadorId": record["prestador_id"],
             "prestadorNome": record["prestador_nome"],
             "categoria": record["categoria_nome"],
-            "ultimoFeedbackEm": record["concluido_em"],
+            "dataVisitaEm": record["data_visita"],
             "retornoMeses": record["retorno_meses"],
             "proximaVisitaEm": record["proxima_visita_em"],
             "diasRestantes": NextVisitsService._dias_restantes(record["proxima_visita_em"]),
         }
 
     # Mantem somente o feedback concluido mais recente de cada prestador — a
-    # consulta ja vem ordenada por prestador e por concluido_em decrescente,
+    # consulta ja vem ordenada por prestador e por data_visita decrescente,
     # entao o primeiro registro encontrado para cada prestador e o mais recente
     @staticmethod
     def _mais_recente_por_prestador(records):

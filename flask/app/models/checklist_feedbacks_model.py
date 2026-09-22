@@ -64,10 +64,14 @@ class ChecklistFeedbackModel:
 
     # Busca o feedback concluido mais recente de cada prestador que ja teve
     # visita concluida, com a data da proxima visita ja calculada
-    # (concluido_em + retorno_meses) — usada pela lista de Proximas Visitas.
-    # Prestadores descredenciados ou sem nenhum feedback concluido nao aparecem;
-    # o agrupamento "um registro por prestador" e feito em Python pelo service,
-    # pois a consulta ja vem ordenada por prestador e por data de conclusao.
+    # (data_visita do checklist + retorno_meses) — usada pela lista de
+    # Proximas Visitas. A base e a data da visita digitada pelo usuario no
+    # checklist (data_visita), nao a data em que o feedback foi concluido no
+    # sistema (concluido_em), que so serve de desempate/registro auxiliar.
+    # Prestadores descredenciados ou sem nenhum feedback concluido com
+    # data_visita preenchida nao aparecem; o agrupamento "um registro por
+    # prestador" e feito em Python pelo service, pois a consulta ja vem
+    # ordenada por prestador e por data da visita.
     @staticmethod
     def get_completed_with_next_visit():
         connection = None
@@ -81,9 +85,10 @@ class ChecklistFeedbackModel:
                     p.nome AS prestador_nome,
                     cp.nome AS categoria_nome,
                     cf.checklist_avaliacao_id,
+                    ca.data_visita,
                     cf.concluido_em,
                     cf.retorno_meses,
-                    DATE_ADD(cf.concluido_em, INTERVAL cf.retorno_meses MONTH) AS proxima_visita_em
+                    DATE_ADD(ca.data_visita, INTERVAL cf.retorno_meses MONTH) AS proxima_visita_em
                 FROM checklist_feedbacks cf
                 INNER JOIN checklists_avaliacao ca
                     ON ca.id = cf.checklist_avaliacao_id
@@ -95,9 +100,9 @@ class ChecklistFeedbackModel:
                     ON cp.id = p.categoria_id
                 WHERE cf.status = 'concluido'
                   AND cf.retorno_meses IS NOT NULL
-                  AND cf.concluido_em IS NOT NULL
+                  AND ca.data_visita IS NOT NULL
                   AND p.situacao != 'descredenciado'
-                ORDER BY p.nome ASC, cf.concluido_em DESC
+                ORDER BY p.nome ASC, ca.data_visita DESC, cf.concluido_em DESC
             """)
             return cursor.fetchall()
 
