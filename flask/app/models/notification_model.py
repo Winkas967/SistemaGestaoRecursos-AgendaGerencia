@@ -2,7 +2,17 @@ from database.connection import get_db_connection
 
 
 class NotificationModel:
-    # Lista documentos que vencem de hoje até os próximos 60 dias
+    # Lista documentos elegiveis para aviso por e-mail: vencimento igual ou
+    # anterior a hoje (cobre o dia exato E qualquer atraso — pausa longa,
+    # lancamento retroativo, etc.) OU marcados manualmente como pendente
+    # (status = 'PENDENTE' com status_manual = TRUE, nao o calculado
+    # automaticamente). Documentos sem data_vencimento ficam de fora mesmo
+    # que marcados pendente manualmente, pois o e-mail sempre informa a data
+    # de vencimento. O NOT EXISTS garante que um documento ja avisado para
+    # aquela data_vencimento nunca mais volta a aparecer aqui — e o
+    # claim()/avisos_email_enviados (ver EmailNotificationsService) garante
+    # a atomicidade final, entao nunca sai mais de 1 e-mail por
+    # documento+data_vencimento, nao importa qual dos dois criterios bateu.
     @staticmethod
     def get_due_documents():
         connection = None
@@ -26,7 +36,17 @@ class NotificationModel:
                   AND TRIM(p.email_notificacao) <> ''
                   AND dp.sem_validade = FALSE
                   AND dp.nao_indicado = FALSE
-                  AND dp.data_vencimento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 60 DAY)
+                  AND dp.data_vencimento IS NOT NULL
+                  AND (
+                        dp.data_vencimento <= CURDATE()
+                        OR (dp.status = 'PENDENTE' AND dp.status_manual = TRUE)
+                      )
+                  AND NOT EXISTS (
+                        SELECT 1
+                        FROM avisos_email_enviados ae
+                        WHERE ae.documento_id = dp.id
+                          AND ae.chave = CONCAT('aviso:', DATE_FORMAT(dp.data_vencimento, '%Y-%m-%d'))
+                      )
                 ORDER BY dp.data_vencimento, p.nome, dp.nome
                 """
             )

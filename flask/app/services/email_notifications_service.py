@@ -23,7 +23,13 @@ class EmailNotificationsService:
         for item in NotificationModel.get_due_documents():
             result["encontrados"] += 1
             expiration = item["data_vencimento"]
-            key = f"vencimento-60:{expiration.isoformat()}"
+            # A chave identifica o documento + seu ciclo de vencimento, nao o
+            # motivo do disparo — assim, se o mesmo documento bater tanto no
+            # dia do vencimento quanto no criterio de "marcado pendente", o
+            # segundo disparo encontra a chave ja reservada e nao duplica.
+            # Se o documento for renovado (vencimento mudar), a chave muda
+            # junto e ele volta a ficar elegivel para um novo aviso.
+            key = f"aviso:{expiration.isoformat() if expiration else 'sem-data'}"
             recipient = item["email_destinatario"]
 
             if not NotificationModel.claim(
