@@ -133,9 +133,15 @@ class ChecklistService:
             raise ValueError("Esta avaliação não está em andamento.")
         if evaluation["etapaAtual"] == "termo_adesao":
             raise ValueError("Conclua o termo de adesão antes de criar um checklist.")
-        model = ChecklistModel.get_model_by_category(evaluation["categoriaId"])
+        model = ChecklistModel.get_model_by_category(
+            evaluation["categoriaId"], evaluation["anoReferencia"]
+        )
         if not model:
-            raise ValueError("Não existe um checklist configurado para esta categoria.")
+            raise ValueError(
+                f"Não existe um checklist configurado para esta categoria no ano "
+                f"{evaluation['anoReferencia']}. Configure as perguntas na aba "
+                f"\"Configurar checklists\" antes de criar um novo checklist."
+            )
         checklist_id = ChecklistModel.create_evaluation_checklist(
             evaluation_id=evaluation["id"],
             model_id=model["id"],

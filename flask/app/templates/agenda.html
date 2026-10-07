@@ -19,7 +19,7 @@
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v='20260910-1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20260918-7') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/agenda.css', v='20261007-2') }}">
 </head>
 <body>
 {% set current_page = "agenda" %}
@@ -262,9 +262,11 @@
 
             <input class="evaluation-area-input" id="evaluationAreaFlow" name="evaluationArea" type="radio" checked>
             <input class="evaluation-area-input" id="evaluationAreaDashboard" name="evaluationArea" type="radio">
+            <input class="evaluation-area-input" id="evaluationAreaChecklistConfig" name="evaluationArea" type="radio">
             <nav class="evaluation-area-tabs" aria-label="Áreas da avaliação">
                 <label for="evaluationAreaFlow">Fluxo de avaliação</label>
                 <label for="evaluationAreaDashboard">Dashboard</label>
+                <label for="evaluationAreaChecklistConfig">Configurar checklists</label>
             </nav>
 
             <div class="evaluation-area-content evaluation-flow-content">
@@ -543,6 +545,41 @@
                         <span id="evaluationDashboardDetailsPageInfo">Página 1 de 1</span>
                         <button class="btn" id="evaluationDashboardDetailsNextPage" type="button">Próxima</button>
                     </div>
+                </div>
+            </div>
+
+            <div class="evaluation-area-content evaluation-checklist-config-content">
+                <div class="evaluation-dashboard-head">
+                    <div>
+                        <span class="eyebrow">Configuração</span>
+                        <h3>Perguntas do checklist por categoria e ano</h3>
+                        <p>Defina, para cada categoria e ano de referência, as seções e perguntas usadas nos checklists. Editar uma configuração que já tem checklists em uso cria automaticamente uma nova versão — os checklists já criados nunca são alterados.</p>
+                    </div>
+                    <div class="evaluation-dashboard-filters">
+                        <label><span>Categoria</span><select id="checklistConfigCategory"></select></label>
+                        <label><span>Ano de referência</span><select id="checklistConfigYear"></select></label>
+                    </div>
+                </div>
+
+                <p class="evaluation-form-message hidden" id="checklistConfigMessage"></p>
+
+                <div class="checklist-config-status hidden" id="checklistConfigStatus"></div>
+
+                <div class="checklist-config-copy-banner hidden" id="checklistConfigCopyBanner">
+                    <span>Nenhuma configuração encontrada para este ano<span id="checklistConfigCopySuffix"></span>.</span>
+                    <div class="checklist-config-copy-actions">
+                        <button class="btn btn-primary hidden" id="checklistConfigCopyButton" type="button">Copiar do ano <span id="checklistConfigCopyYearLabel"></span></button>
+                        <button class="btn" id="checklistConfigStartBlankButton" type="button">Começar em branco</button>
+                    </div>
+                </div>
+
+                <div class="checklist-config-sections" id="checklistConfigSections"></div>
+
+                <button class="btn checklist-config-add-section" id="checklistConfigAddSection" type="button">+ Adicionar seção</button>
+
+                <div class="evaluation-stage-actions">
+                    <button class="btn" id="checklistConfigSaveButton" type="button">Salvar</button>
+                    <button class="btn btn-primary" id="checklistConfigPublishButton" type="button">Publicar</button>
                 </div>
             </div>
         </div>
@@ -836,7 +873,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/agenda.js', v='20260921-11') }}"></script>
+<script src="{{ url_for('static', filename='js/agenda.js', v='20261007-1') }}"></script>
 <script src="{{ url_for('static', filename='js/self_password.js', v='20260821-1') }}"></script>
 <script src="{{ url_for('static', filename='js/logout.js', v='20260821-1') }}"></script>
 </body>

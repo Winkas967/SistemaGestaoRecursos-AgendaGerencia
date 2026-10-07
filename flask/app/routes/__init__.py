@@ -12,6 +12,7 @@ from routes.documents_routes import documents_bp
 from routes.providers_routes import providers_bp
 from routes.settings_routes import settings_bp
 from routes.evaluations_routes import evaluations_bp
+from routes.checklist_config_routes import checklist_config_bp
 from routes.next_visits_routes import next_visits_bp
 
 #registra todos os blueprints na aplicacao
@@ -54,6 +55,9 @@ def register_routes(app):
 
     #registra as rotas das avaliacoes
     app.register_blueprint(evaluations_bp)
+
+    #registra as rotas de configuracao das perguntas do checklist
+    app.register_blueprint(checklist_config_bp)
 
     #registra as rotas das proximas visitas
     app.register_blueprint(next_visits_bp)

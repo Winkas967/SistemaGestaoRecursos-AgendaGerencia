@@ -4,9 +4,11 @@ from database.connection import get_db_connection
 #contem as consultas das estruturas e respostas dos checklists
 class ChecklistModel:
     
-    #busca o modelo de checklist correspondente á categoria
+    #busca o modelo de checklist configurado e publicado para a categoria no
+    #ano de referencia da avaliacao (ver checklist_modelo_anos/ChecklistConfigModel —
+    #cada categoria+ano decide, de forma independente, qual modelo esta em vigor)
     @staticmethod
-    def get_model_by_category(category_id):
+    def get_model_by_category(category_id, reference_year):
         connection = None
         cursor = None
         
@@ -19,14 +21,15 @@ class ChecklistModel:
                     cm.nome,
                     cm.slug,
                     cm.versao
-                FROM checklist_modelos cm
-                INNER JOIN checklist_modelo_categorias cmc
-                    ON cmc.modelo_id = cm.id
-                WHERE cmc.categoria_id = %s
+                FROM checklist_modelo_anos cma
+                INNER JOIN checklist_modelos cm
+                    ON cm.id = cma.modelo_id
+                WHERE cma.categoria_id = %s
+                  AND cma.ano_referencia = %s
+                  AND cma.publicado = TRUE
                   AND cm.ativo = TRUE
-                ORDER BY cm.versao DESC
                 LIMIT 1
-            """, (category_id,))
+            """, (category_id, reference_year))
             
             return cursor.fetchone()
         

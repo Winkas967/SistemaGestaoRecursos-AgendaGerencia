@@ -12,6 +12,7 @@ from config import Config
 
 from routes import register_routes
 from services.email_notifications_scheduler import start_email_notifications_scheduler
+from database.migrations_runner import run_pending_migrations
 
 #por padrao o Flask serializa date/datetime em formato HTTP (ex.: "Tue, 08 Sep 2026
 #00:00:00 GMT"), o que o JavaScript interpreta como UTC e pode exibir um dia a menos
@@ -35,7 +36,14 @@ def create_app():
     #impede o sistema de iniciar sem uma chave secreta
     if not app.config["SECRET_KEY"]:
         raise RuntimeError("SECRET_KEY não foi configurada no arquivo .env.")
-    
+
+    #aplica no banco as migracoes que ainda nao foram aplicadas (database/migrations/),
+    #antes de registrar qualquer rota -- se der erro, o servidor nao sobe, pra nunca
+    #servir requisicoes com o banco desatualizado
+    migracoes_aplicadas = run_pending_migrations()
+    if migracoes_aplicadas:
+        print(f"[migracoes] aplicadas agora: {', '.join(migracoes_aplicadas)}")
+
     #registra blueprints
     register_routes(app)
 

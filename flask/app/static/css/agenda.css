@@ -259,7 +259,8 @@ button {
 }
 
 #evaluationAreaFlow:checked ~ .evaluation-area-tabs label[for="evaluationAreaFlow"],
-#evaluationAreaDashboard:checked ~ .evaluation-area-tabs label[for="evaluationAreaDashboard"] {
+#evaluationAreaDashboard:checked ~ .evaluation-area-tabs label[for="evaluationAreaDashboard"],
+#evaluationAreaChecklistConfig:checked ~ .evaluation-area-tabs label[for="evaluationAreaChecklistConfig"] {
     color: #fff;
     background: var(--verde-principal);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--verde-principal) 18%, transparent);
@@ -270,7 +271,8 @@ button {
 }
 
 #evaluationAreaFlow:checked ~ .evaluation-flow-content,
-#evaluationAreaDashboard:checked ~ .evaluation-dashboard-content {
+#evaluationAreaDashboard:checked ~ .evaluation-dashboard-content,
+#evaluationAreaChecklistConfig:checked ~ .evaluation-checklist-config-content {
     display: block;
     animation: card-in .2s ease both;
 }
@@ -1639,6 +1641,190 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 
     .evaluation-checklist-card-meta {
         gap: 5px;
+    }
+}
+
+.checklist-config-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 18px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.checklist-config-status.is-publicado {
+    color: var(--verde-principal);
+    background: color-mix(in srgb, var(--verde-principal) 11%, transparent);
+    border: 1px solid color-mix(in srgb, var(--verde-principal) 28%, transparent);
+}
+
+.checklist-config-status.is-rascunho {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+
+.checklist-config-status-note {
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.checklist-config-copy-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+}
+
+.checklist-config-copy-banner span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.checklist-config-copy-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.checklist-config-sections {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.checklist-config-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 18px;
+}
+
+.checklist-config-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.checklist-config-section-name {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.checklist-config-section-actions,
+.checklist-config-question-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.checklist-config-section-actions button,
+.checklist-config-question-actions button {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    transition: color .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.checklist-config-section-actions button:hover,
+.checklist-config-question-actions button:hover {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--verde-principal) 32%, var(--border));
+}
+
+.checklist-config-section-actions button[data-action="remove-section"]:hover,
+.checklist-config-question-actions button[data-action="remove-question"]:hover {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.checklist-config-questions {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.checklist-config-question {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+}
+
+.checklist-config-question-text {
+    flex: 1;
+    min-height: 44px;
+    resize: vertical;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.checklist-config-question-obs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    width: 150px;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.checklist-config-add-question {
+    justify-self: start;
+}
+
+.checklist-config-add-section {
+    margin-bottom: 18px;
+}
+
+@media (max-width: 720px) {
+    .checklist-config-copy-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .checklist-config-question {
+        flex-direction: column;
+    }
+
+    .checklist-config-question-obs {
+        width: auto;
     }
 }
 
@@ -3370,11 +3556,8 @@ html[data-theme="dark"] .evaluation-new-backdrop {
 }
 
 .minutes-card-agenda {
-    display: -webkit-box;
-    overflow: hidden;
     color: var(--text);
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    word-break: break-word;
 }
 
 .minutes-card-file {

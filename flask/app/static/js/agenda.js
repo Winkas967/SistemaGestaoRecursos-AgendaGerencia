@@ -99,6 +99,11 @@
         proximasVisitasPagina: 1,
         proximasVisitasTotalPaginas: 1,
         proximasVisitasPorPagina: 20,
+        checklistConfigCategoriasCarregadas: false,
+        checklistConfigLoading: false,
+        checklistConfigSaving: false,
+        checklistConfig: null,
+        checklistConfigSecoes: [],
     };
 
     const el = {
@@ -264,6 +269,20 @@
         evaluationFeedbackCompleteButton: document.getElementById("evaluationFeedbackCompleteButton"),
         evaluationFeedbackFinalize: document.getElementById("evaluationFeedbackFinalize"),
         evaluationFinalizeButton: document.getElementById("evaluationFinalizeButton"),
+        evaluationAreaChecklistConfig: document.getElementById("evaluationAreaChecklistConfig"),
+        checklistConfigCategory: document.getElementById("checklistConfigCategory"),
+        checklistConfigYear: document.getElementById("checklistConfigYear"),
+        checklistConfigMessage: document.getElementById("checklistConfigMessage"),
+        checklistConfigStatus: document.getElementById("checklistConfigStatus"),
+        checklistConfigCopyBanner: document.getElementById("checklistConfigCopyBanner"),
+        checklistConfigCopySuffix: document.getElementById("checklistConfigCopySuffix"),
+        checklistConfigCopyButton: document.getElementById("checklistConfigCopyButton"),
+        checklistConfigCopyYearLabel: document.getElementById("checklistConfigCopyYearLabel"),
+        checklistConfigStartBlankButton: document.getElementById("checklistConfigStartBlankButton"),
+        checklistConfigSections: document.getElementById("checklistConfigSections"),
+        checklistConfigAddSection: document.getElementById("checklistConfigAddSection"),
+        checklistConfigSaveButton: document.getElementById("checklistConfigSaveButton"),
+        checklistConfigPublishButton: document.getElementById("checklistConfigPublishButton"),
         nextVisitsSearchInput: document.getElementById("nextVisitsSearchInput"),
         nextVisitsResultCount: document.getElementById("nextVisitsResultCount"),
         nextVisitsList: document.getElementById("nextVisitsList"),
@@ -861,6 +880,290 @@
         el.evaluationDashboardYear.innerHTML = anos
             .map((ano) => `<option value="${ano}"${ano === anoAtual ? " selected" : ""}>${ano}</option>`)
             .join("");
+    }
+
+    const CHECKLIST_CONFIG_API_URL = `${EVALUATIONS_API_URL}/checklist-config`;
+
+    // Preenche o seletor de ano da configuração de checklist (ano atual + 2
+    // até 3 anos atrás — cobre tanto configurar o próximo ano com antecedência
+    // quanto revisar anos já encerrados)
+    function popularAnoChecklistConfig() {
+        if (!el.checklistConfigYear || el.checklistConfigYear.options.length) return;
+        const anoAtual = new Date().getFullYear();
+        const anos = [];
+        for (let ano = anoAtual + 2; ano >= anoAtual - 3; ano -= 1) anos.push(ano);
+        el.checklistConfigYear.innerHTML = anos
+            .map((ano) => `<option value="${ano}"${ano === anoAtual ? " selected" : ""}>${ano}</option>`)
+            .join("");
+    }
+
+    // Carrega a lista de categorias uma única vez e preenche o seletor
+    async function carregarCategoriasChecklistConfig() {
+        if (state.checklistConfigCategoriasCarregadas || !el.checklistConfigCategory) return;
+        try {
+            const data = await requestJson(`${CHECKLIST_CONFIG_API_URL}/categorias`);
+            const categorias = Array.isArray(data.registros) ? data.registros : [];
+            el.checklistConfigCategory.innerHTML = categorias
+                .map((categoria) => `<option value="${Number(categoria.id)}">${escapeHtml(categoria.nome)}</option>`)
+                .join("");
+            state.checklistConfigCategoriasCarregadas = true;
+        } catch (error) {
+            setEvaluationMessage(el.checklistConfigMessage, error.message);
+        }
+    }
+
+    // Remove os identificadores do servidor da estrutura, deixando só o que
+    // é editável — o PUT não precisa (nem aceita) ids de volta
+    function clonarEstruturaChecklistConfig(secoes) {
+        return (secoes || []).map((secao) => ({
+            nome: secao.nome || "",
+            perguntas: (secao.perguntas || []).map((pergunta) => ({
+                pergunta: pergunta.pergunta || "",
+                permiteObservacao: Boolean(pergunta.permiteObservacao),
+            })),
+        }));
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value).replace(/`/g, "&#96;");
+    }
+
+    // Desenha as seções/perguntas em edição (state.checklistConfigSecoes)
+    function renderChecklistConfigSections() {
+        if (!el.checklistConfigSections) return;
+        const secoes = state.checklistConfigSecoes;
+        if (!secoes.length) {
+            el.checklistConfigSections.innerHTML = '<p class="checklist-config-status-note">Nenhuma seção ainda. Clique em "Adicionar seção" para começar.</p>';
+            return;
+        }
+        el.checklistConfigSections.innerHTML = secoes.map((secao, secaoIndex) => `
+            <div class="checklist-config-section" data-section-index="${secaoIndex}">
+                <div class="checklist-config-section-head">
+                    <input type="text" class="checklist-config-section-name" value="${escapeAttr(secao.nome)}" placeholder="Nome da seção">
+                    <div class="checklist-config-section-actions">
+                        <button type="button" data-action="move-section-up" ${secaoIndex === 0 ? "disabled" : ""} title="Mover seção para cima">↑</button>
+                        <button type="button" data-action="move-section-down" ${secaoIndex === secoes.length - 1 ? "disabled" : ""} title="Mover seção para baixo">↓</button>
+                        <button type="button" data-action="remove-section" title="Remover seção">×</button>
+                    </div>
+                </div>
+                <div class="checklist-config-questions">
+                    ${secao.perguntas.map((pergunta, perguntaIndex) => `
+                        <div class="checklist-config-question" data-question-index="${perguntaIndex}">
+                            <textarea class="checklist-config-question-text" placeholder="Texto da pergunta">${escapeHtml(pergunta.pergunta)}</textarea>
+                            <label class="checklist-config-question-obs">
+                                <input type="checkbox" class="checklist-config-question-checkbox" ${pergunta.permiteObservacao ? "checked" : ""}>
+                                Permite observação
+                            </label>
+                            <div class="checklist-config-question-actions">
+                                <button type="button" data-action="move-question-up" ${perguntaIndex === 0 ? "disabled" : ""} title="Mover pergunta para cima">↑</button>
+                                <button type="button" data-action="move-question-down" ${perguntaIndex === secao.perguntas.length - 1 ? "disabled" : ""} title="Mover pergunta para baixo">↓</button>
+                                <button type="button" data-action="remove-question" title="Remover pergunta">×</button>
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+                <button type="button" class="btn checklist-config-add-question" data-action="add-question">+ Pergunta</button>
+            </div>
+        `).join("");
+    }
+
+    // Lê os valores atuais do DOM de volta para state.checklistConfigSecoes —
+    // chamado antes de qualquer mutação estrutural (adicionar/remover/mover) e
+    // antes de salvar, para não perder o que o usuário já digitou
+    function sincronizarChecklistConfigSecoesComDom() {
+        if (!el.checklistConfigSections) return;
+        const secaoElements = el.checklistConfigSections.querySelectorAll(".checklist-config-section");
+        state.checklistConfigSecoes = Array.from(secaoElements).map((secaoEl) => {
+            const nome = secaoEl.querySelector(".checklist-config-section-name")?.value || "";
+            const perguntaElements = secaoEl.querySelectorAll(".checklist-config-question");
+            const perguntas = Array.from(perguntaElements).map((perguntaEl) => ({
+                pergunta: perguntaEl.querySelector(".checklist-config-question-text")?.value || "",
+                permiteObservacao: Boolean(perguntaEl.querySelector(".checklist-config-question-checkbox")?.checked),
+            }));
+            return { nome, perguntas };
+        });
+    }
+
+    function adicionarSecaoChecklistConfig() {
+        sincronizarChecklistConfigSecoesComDom();
+        state.checklistConfigSecoes.push({ nome: "", perguntas: [{ pergunta: "", permiteObservacao: false }] });
+        renderChecklistConfigSections();
+    }
+
+    function removerSecaoChecklistConfig(indice) {
+        sincronizarChecklistConfigSecoesComDom();
+        state.checklistConfigSecoes.splice(indice, 1);
+        renderChecklistConfigSections();
+    }
+
+    function moverSecaoChecklistConfig(indice, direcao) {
+        sincronizarChecklistConfigSecoesComDom();
+        const destino = indice + direcao;
+        if (destino < 0 || destino >= state.checklistConfigSecoes.length) return;
+        const [secao] = state.checklistConfigSecoes.splice(indice, 1);
+        state.checklistConfigSecoes.splice(destino, 0, secao);
+        renderChecklistConfigSections();
+    }
+
+    function adicionarPerguntaChecklistConfig(secaoIndice) {
+        sincronizarChecklistConfigSecoesComDom();
+        state.checklistConfigSecoes[secaoIndice]?.perguntas.push({ pergunta: "", permiteObservacao: false });
+        renderChecklistConfigSections();
+    }
+
+    function removerPerguntaChecklistConfig(secaoIndice, perguntaIndice) {
+        sincronizarChecklistConfigSecoesComDom();
+        state.checklistConfigSecoes[secaoIndice]?.perguntas.splice(perguntaIndice, 1);
+        renderChecklistConfigSections();
+    }
+
+    function moverPerguntaChecklistConfig(secaoIndice, perguntaIndice, direcao) {
+        sincronizarChecklistConfigSecoesComDom();
+        const perguntas = state.checklistConfigSecoes[secaoIndice]?.perguntas;
+        if (!perguntas) return;
+        const destino = perguntaIndice + direcao;
+        if (destino < 0 || destino >= perguntas.length) return;
+        const [pergunta] = perguntas.splice(perguntaIndice, 1);
+        perguntas.splice(destino, 0, pergunta);
+        renderChecklistConfigSections();
+    }
+
+    // Mostra o selo de status (publicado/rascunho + em uso) e o banner de
+    // "copiar do ano anterior" quando a categoria+ano ainda não tem nada
+    function renderChecklistConfigStatus() {
+        const config = state.checklistConfig;
+        if (!config) return;
+
+        if (!config.configurado) {
+            el.checklistConfigStatus?.classList.add("hidden");
+            el.checklistConfigCopyBanner?.classList.remove("hidden");
+            if (el.checklistConfigCopyButton) {
+                const temSugestao = config.anoSugeridoParaCopia !== null && config.anoSugeridoParaCopia !== undefined;
+                el.checklistConfigCopyButton.classList.toggle("hidden", !temSugestao);
+                if (el.checklistConfigCopyYearLabel) el.checklistConfigCopyYearLabel.textContent = temSugestao ? config.anoSugeridoParaCopia : "";
+            }
+            return;
+        }
+
+        el.checklistConfigCopyBanner?.classList.add("hidden");
+        if (el.checklistConfigStatus) {
+            el.checklistConfigStatus.classList.remove("hidden");
+            el.checklistConfigStatus.classList.toggle("is-publicado", config.publicado);
+            el.checklistConfigStatus.classList.toggle("is-rascunho", !config.publicado);
+            const situacao = config.publicado ? "Publicado" : "Rascunho (ainda não é usado em novos checklists)";
+            const emUso = config.emUso ? " · Em uso — editar aqui criará automaticamente uma nova versão" : "";
+            el.checklistConfigStatus.innerHTML = `<span>${escapeHtml(situacao)}</span><span class="checklist-config-status-note">${escapeHtml(`v${config.versao}${emUso}`)}</span>`;
+        }
+    }
+
+    // Busca a configuração da categoria+ano selecionados e atualiza a tela
+    async function carregarConfiguracaoChecklist() {
+        if (!el.checklistConfigCategory || !el.checklistConfigYear) return;
+        const categoriaId = el.checklistConfigCategory.value;
+        const ano = el.checklistConfigYear.value;
+        if (!categoriaId || !ano) return;
+
+        state.checklistConfigLoading = true;
+        setEvaluationMessage(el.checklistConfigMessage);
+        if (el.checklistConfigSections) el.checklistConfigSections.innerHTML = '<p class="checklist-config-status-note">Carregando configuração...</p>';
+        try {
+            const query = buildQueryString({ categoriaId, ano });
+            const config = await requestJson(`${CHECKLIST_CONFIG_API_URL}${query}`);
+            state.checklistConfig = config;
+            state.checklistConfigSecoes = clonarEstruturaChecklistConfig(config.secoes);
+            renderChecklistConfigStatus();
+            renderChecklistConfigSections();
+        } catch (error) {
+            if (el.checklistConfigSections) el.checklistConfigSections.innerHTML = "";
+            setEvaluationMessage(el.checklistConfigMessage, error.message);
+        } finally {
+            state.checklistConfigLoading = false;
+        }
+    }
+
+    // Busca a estrutura de outro ano (sugerido pelo servidor) e a traz para
+    // edição no ano atual, sem salvar — o usuário ainda precisa clicar em Salvar
+    async function copiarConfiguracaoChecklistDeOutroAno() {
+        const config = state.checklistConfig;
+        if (!config || config.anoSugeridoParaCopia === null || config.anoSugeridoParaCopia === undefined) return;
+        setEvaluationMessage(el.checklistConfigMessage);
+        try {
+            const query = buildQueryString({ categoriaId: config.categoriaId, ano: config.anoSugeridoParaCopia });
+            const origem = await requestJson(`${CHECKLIST_CONFIG_API_URL}${query}`);
+            state.checklistConfigSecoes = clonarEstruturaChecklistConfig(origem.secoes);
+            renderChecklistConfigSections();
+            setEvaluationMessage(el.checklistConfigMessage, `Perguntas de ${config.anoSugeridoParaCopia} copiadas. Revise e clique em "Salvar" para confirmar.`, "success");
+        } catch (error) {
+            setEvaluationMessage(el.checklistConfigMessage, error.message);
+        }
+    }
+
+    function comecarChecklistConfigEmBranco() {
+        state.checklistConfigSecoes = [{ nome: "", perguntas: [{ pergunta: "", permiteObservacao: false }] }];
+        renderChecklistConfigSections();
+    }
+
+    // Salva (cria/edita/gera nova versão conforme o backend decidir) a
+    // estrutura em edição
+    async function salvarConfiguracaoChecklist() {
+        const config = state.checklistConfig;
+        if (!config || state.checklistConfigSaving) return;
+        sincronizarChecklistConfigSecoesComDom();
+        state.checklistConfigSaving = true;
+        setEvaluationMessage(el.checklistConfigMessage);
+        if (el.checklistConfigSaveButton) el.checklistConfigSaveButton.disabled = true;
+        try {
+            const atualizado = await requestJson(CHECKLIST_CONFIG_API_URL, {
+                method: "PUT",
+                body: JSON.stringify({
+                    categoriaId: config.categoriaId,
+                    ano: config.ano,
+                    secoes: state.checklistConfigSecoes,
+                }),
+            });
+            state.checklistConfig = atualizado;
+            state.checklistConfigSecoes = clonarEstruturaChecklistConfig(atualizado.secoes);
+            renderChecklistConfigStatus();
+            renderChecklistConfigSections();
+            setEvaluationMessage(el.checklistConfigMessage, "Configuração salva.", "success");
+        } catch (error) {
+            setEvaluationMessage(el.checklistConfigMessage, error.message);
+        } finally {
+            state.checklistConfigSaving = false;
+            if (el.checklistConfigSaveButton) el.checklistConfigSaveButton.disabled = false;
+        }
+    }
+
+    // Publica a configuração — a partir disso, novos checklists da
+    // categoria+ano passam a usar essas perguntas
+    async function publicarConfiguracaoChecklist() {
+        const config = state.checklistConfig;
+        if (!config) return;
+        setEvaluationMessage(el.checklistConfigMessage);
+        if (el.checklistConfigPublishButton) el.checklistConfigPublishButton.disabled = true;
+        try {
+            const atualizado = await requestJson(`${CHECKLIST_CONFIG_API_URL}/publicar`, {
+                method: "POST",
+                body: JSON.stringify({ categoriaId: config.categoriaId, ano: config.ano }),
+            });
+            state.checklistConfig = atualizado;
+            state.checklistConfigSecoes = clonarEstruturaChecklistConfig(atualizado.secoes);
+            renderChecklistConfigStatus();
+            renderChecklistConfigSections();
+            setEvaluationMessage(el.checklistConfigMessage, "Configuração publicada. Novos checklists desta categoria/ano já usam estas perguntas.", "success");
+        } catch (error) {
+            setEvaluationMessage(el.checklistConfigMessage, error.message);
+        } finally {
+            if (el.checklistConfigPublishButton) el.checklistConfigPublishButton.disabled = false;
+        }
+    }
+
+    // Primeira vez que a aba "Configurar checklists" é aberta: carrega as
+    // categorias e, assim que tiver uma selecionada, a configuração
+    async function abrirAbaChecklistConfig() {
+        popularAnoChecklistConfig();
+        await carregarCategoriasChecklistConfig();
+        carregarConfiguracaoChecklist();
     }
 
     function formatDashboardPercent(value) {
@@ -3240,6 +3543,37 @@
                 if (el.evaluationAreaDashboard.checked) carregarDashboardAvaliacoes();
             });
             el.evaluationDashboardYear?.addEventListener("change", () => carregarDashboardAvaliacoes(true));
+            el.evaluationAreaChecklistConfig?.addEventListener("change", () => {
+                if (el.evaluationAreaChecklistConfig.checked && !state.checklistConfigCategoriasCarregadas) {
+                    abrirAbaChecklistConfig();
+                }
+            });
+            el.checklistConfigCategory?.addEventListener("change", () => carregarConfiguracaoChecklist());
+            el.checklistConfigYear?.addEventListener("change", () => carregarConfiguracaoChecklist());
+            el.checklistConfigCopyButton?.addEventListener("click", copiarConfiguracaoChecklistDeOutroAno);
+            el.checklistConfigStartBlankButton?.addEventListener("click", comecarChecklistConfigEmBranco);
+            el.checklistConfigAddSection?.addEventListener("click", adicionarSecaoChecklistConfig);
+            el.checklistConfigSaveButton?.addEventListener("click", salvarConfiguracaoChecklist);
+            el.checklistConfigPublishButton?.addEventListener("click", publicarConfiguracaoChecklist);
+            el.checklistConfigSections?.addEventListener("click", (event) => {
+                const button = event.target.closest("[data-action]");
+                if (!button) return;
+                const sectionEl = button.closest(".checklist-config-section");
+                if (!sectionEl) return;
+                const secaoIndice = Number(sectionEl.dataset.sectionIndex);
+                const questionEl = button.closest(".checklist-config-question");
+                const perguntaIndice = questionEl ? Number(questionEl.dataset.questionIndex) : null;
+                switch (button.dataset.action) {
+                    case "move-section-up": moverSecaoChecklistConfig(secaoIndice, -1); break;
+                    case "move-section-down": moverSecaoChecklistConfig(secaoIndice, 1); break;
+                    case "remove-section": removerSecaoChecklistConfig(secaoIndice); break;
+                    case "add-question": adicionarPerguntaChecklistConfig(secaoIndice); break;
+                    case "move-question-up": moverPerguntaChecklistConfig(secaoIndice, perguntaIndice, -1); break;
+                    case "move-question-down": moverPerguntaChecklistConfig(secaoIndice, perguntaIndice, 1); break;
+                    case "remove-question": removerPerguntaChecklistConfig(secaoIndice, perguntaIndice); break;
+                    default: break;
+                }
+            });
             el.evaluationDashboardSearch?.addEventListener("input", debounce(filtrarDashboardDetalhes));
             el.evaluationDashboardDetailsPrevPage?.addEventListener("click", () => {
                 if (state.dashboardDetalhesPagina <= 1) return;
