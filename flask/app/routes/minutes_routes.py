@@ -87,3 +87,26 @@ def delete_minute(minute_id):
         return jsonify({
             "erro": str(error),
         }), 400
+        
+#edita uma ata e seu anexo
+@minutes_bp.route("/<int:minute_id>", methods=["PUT"])
+@permission_required("atas", "editar")
+def updated_minute(minute_id):
+    try:
+        
+        MinutesService.update(
+            minute_id,
+            request.form,
+            request.files.get("arquivo"),
+            user_id=session.get("user_id")
+        )
+        
+        return jsonify({
+            "mensagem": "Ata editada com sucesso.",
+        }), 200
+        
+    except ValueError as error:
+        return jsonify({
+            "erro": str(error),
+        }), 400
+ 

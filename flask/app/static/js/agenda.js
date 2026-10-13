@@ -407,16 +407,44 @@
         }
     }
 
-    function abrirFormularioAta() {
-        el.minutesOverlay.classList.add("open");
-        window.setTimeout(() => document.getElementById("minutesNumber")?.focus(), 50);
-    }
+    function definirModoModalAta(editando) {
+    el.minutesOverlay.querySelector(".modal-head h2").textContent = editando ? "Editar ata" : "Adicionar nova ata";
+    el.minutesForm.querySelector('button[type="submit"]').textContent = editando ? "Salvar alterações" : "Adicionar ata";
+    el.minutesFile.required = !editando;
+}
 
-    function fecharFormularioAta() {
-        el.minutesOverlay.classList.remove("open");
-        el.minutesFormError.textContent = "";
-        el.minutesFormError.classList.add("hidden");
-    }
+function abrirFormularioAta() {
+    state.atasEditandoId = null;
+    el.minutesForm.reset();
+    el.minutesFileName.textContent = "PDF, DOC ou DOCX";
+    definirModoModalAta(false);
+    el.minutesOverlay.classList.add("open");
+    window.setTimeout(() => document.getElementById("minutesNumber")?.focus(), 50);
+}
+
+function abrirEdicaoAta(id) {
+    const ata = state.atas.find((item) => item.id === id);
+    if (!ata) return;
+    state.atasEditandoId = id;
+    el.minutesForm.reset();
+    document.getElementById("minutesNumber").value = ata.numero || "";
+    document.getElementById("minutesDate").value = ata.data || "";
+    document.getElementById("minutesType").value = ata.tipo || "";
+    document.getElementById("minutesAgenda").value = ata.pauta || "";
+    document.getElementById("minutesParticipants").value = ata.participantes || "";
+    el.minutesFileName.textContent = ata.arquivo?.nome
+        ? `Atual: ${ata.arquivo.nome} (selecione outro só para substituir)`
+        : "PDF, DOC ou DOCX";
+    definirModoModalAta(true);
+    el.minutesOverlay.classList.add("open");
+}
+
+function fecharFormularioAta() {
+    state.atasEditandoId = null;
+    el.minutesOverlay.classList.remove("open");
+    el.minutesFormError.textContent = "";
+    el.minutesFormError.classList.add("hidden");
+}
 
     function filtrarAtas() {
         state.atasPagina = 1;
@@ -519,6 +547,7 @@
                         <button class="minutes-delete-btn" data-action="delete-minute" data-id="${ata.id}" type="button" aria-label="Apagar ata" title="Apagar ata">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-1 11H8L7 9Z"/></svg>
                         </button>
+                        <button class="btn" data-action="edit-minute" data-id="${ata.id}" type="button">Editar</button>
                     </div>
                 </article>
             `).join("");
@@ -529,6 +558,9 @@
         });
         el.minutesList.querySelectorAll('[data-action="delete-minute"]').forEach((button) => {
             button.addEventListener("click", () => excluirAta(Number(button.dataset.id)));
+        });
+        el.minutesList.querySelectorAll('[data-action="edit-minute"]').forEach((button) => {
+            button.addEventListener("click", () => abrirEdicaoAta(Number(button.dataset.id)));
         });
     }
 
@@ -615,44 +647,52 @@
     }
 
     async function salvarAta(event) {
-        event.preventDefault();
-        el.minutesFormError.textContent = "";
-        el.minutesFormError.classList.add("hidden");
+    event.preventDefault();
+    el.minutesFormError.textContent = "";
+    el.minutesFormError.classList.add("hidden");
 
-        const submit = el.minutesForm.querySelector('button[type="submit"]');
-        const formData = new FormData();
-        formData.append("numero", document.getElementById("minutesNumber").value.trim());
-        formData.append("data", document.getElementById("minutesDate").value);
-        formData.append("tipo", document.getElementById("minutesType").value);
-        formData.append("pauta", document.getElementById("minutesAgenda").value.trim());
-        formData.append("participantes", document.getElementById("minutesParticipants").value.trim());
-        formData.append("arquivo", el.minutesFile.files[0]);
+    const editandoId = state.atasEditandoId;
+    const submit = el.minutesForm.querySelector('button[type="submit"]');
+    const formData = new FormData();
+    formData.append("numero", document.getElementById("minutesNumber").value.trim());
+    formData.append("data", document.getElementById("minutesDate").value);
+    formData.append("tipo", document.getElementById("minutesType").value);
+    formData.append("pauta", document.getElementById("minutesAgenda").value.trim());
+    formData.append("participantes", document.getElementById("minutesParticipants").value.trim());
 
-        submit.disabled = true;
-        submit.textContent = "Adicionando...";
-        try {
-            const response = await fetch(MINUTES_API_URL, {
-                method: "POST",
-                headers: { Accept: "application/json" },
-                body: formData,
-            });
-            const ata = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(ata.erro || "Não foi possível adicionar a ata.");
+    const arquivo = el.minutesFile.files[0];
+    if (arquivo) formData.append("arquivo", arquivo);
 
-            el.minutesForm.reset();
-            el.minutesFileName.textContent = "PDF, DOC ou DOCX";
-            fecharFormularioAta();
-            state.atasPagina = 1;
-            await carregarAtas(true);
-            showFeedback("Ata adicionada com sucesso.");
-        } catch (error) {
-            el.minutesFormError.textContent = error.message;
-            el.minutesFormError.classList.remove("hidden");
-        } finally {
-            submit.disabled = false;
-            submit.textContent = "Adicionar ata";
+    submit.disabled = true;
+    submit.textContent = editandoId ? "Salvando..." : "Adicionando...";
+    try {
+        const url = editandoId ? `${MINUTES_API_URL}/${editandoId}` : MINUTES_API_URL;
+        const response = await fetch(url, {
+            method: editandoId ? "PUT" : "POST",
+            headers: { Accept: "application/json" },
+            body: formData,
+        });
+        const ata = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(ata.erro || (editandoId
+                ? "Não foi possível atualizar a ata."
+                : "Não foi possível adicionar a ata."));
         }
+
+        el.minutesForm.reset();
+        el.minutesFileName.textContent = "PDF, DOC ou DOCX";
+        fecharFormularioAta();
+        if (!editandoId) state.atasPagina = 1;
+        await carregarAtas(true);
+        showFeedback(editandoId ? "Ata atualizada com sucesso." : "Ata adicionada com sucesso.");
+    } catch (error) {
+        el.minutesFormError.textContent = error.message;
+        el.minutesFormError.classList.remove("hidden");
+    } finally {
+        submit.disabled = false;
+        submit.textContent = state.atasEditandoId ? "Salvar alterações" : "Adicionar ata";
     }
+}
 
     async function excluirAta(id) {
         if (!window.confirm("Deseja apagar esta ata e o arquivo anexado?")) return;

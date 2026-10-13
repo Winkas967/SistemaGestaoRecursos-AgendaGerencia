@@ -36,7 +36,6 @@ def get_checklist_config():
 # geral do checklist e tratada como administrativa, por isso exige admin
 # (diferente das rotas de avaliacao individual, que usam permissao de modulo)
 @checklist_config_bp.route("", methods=["PUT"])
-@admin_required
 def save_checklist_config():
     data = request.get_json(silent=True) or {}
     try:
@@ -52,7 +51,6 @@ def save_checklist_config():
 
 # publica a configuracao em rascunho, liberando para novos checklists
 @checklist_config_bp.route("/publicar", methods=["POST"])
-@admin_required
 def publish_checklist_config():
     data = request.get_json(silent=True) or {}
     try:

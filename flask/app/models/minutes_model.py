@@ -330,6 +330,55 @@ class MinuteModel:
             if connection:
                 connection.close()
                 
+    #update das atas
+    @staticmethod
+    def update(numero_ata, data_reuniao, tipo_ata_id, pauta, participantes, minute_id, arquivo_id=None):
+        connection = None
+        cursor = None
+
+        try:
+            connection, cursor = get_db_connection()
+
+            # só troca o anexo se um arquivo novo foi enviado
+            if arquivo_id:
+                cursor.execute(""" 
+                    UPDATE atas_reuniao
+                    SET numero_ata = %s,
+                        data_reuniao = %s,
+                        tipo_ata_id = %s,
+                        pauta = %s,
+                        participantes = %s,
+                        arquivo_id = %s
+                    WHERE id = %s
+                """, (numero_ata, data_reuniao, tipo_ata_id, pauta, participantes, arquivo_id, minute_id,))
+            else:
+                cursor.execute(""" 
+                    UPDATE atas_reuniao
+                    SET numero_ata = %s,
+                        data_reuniao = %s,
+                        tipo_ata_id = %s,
+                        pauta = %s,
+                        participantes = %s
+                    WHERE id = %s
+                """, (numero_ata, data_reuniao, tipo_ata_id, pauta, participantes, minute_id,))
+
+            updated = cursor.rowcount > 0
+            connection.commit()
+
+            return updated
+
+        except Exception:
+            if connection:
+                connection.rollback()
+
+            raise
+
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+                    
                 
     #exclui uma ata
     @staticmethod

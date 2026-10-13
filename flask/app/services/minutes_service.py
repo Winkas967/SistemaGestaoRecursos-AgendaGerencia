@@ -278,3 +278,52 @@ class MinutesService:
             raise ValueError("Não foi possível excluir a ata.")
         
         return True
+    
+    #edita uma ata e, opcionalmente, troca o anexo
+    @staticmethod
+    def update(minute_id, data, uploaded_file=None, user_id=None):
+        minute = MinutesService.get_by_id(minute_id)
+        validated_data = MinutesService.validate_data(data)
+
+        new_file_id = None
+
+        # arquivo é opcional na edição: só salva se o usuário enviou um novo
+        if uploaded_file and uploaded_file.filename:
+            file_record = FileStorageService.save(
+                uploaded_file=uploaded_file,
+                category="atas",
+                year=validated_data["data_reuniao"].year,
+                user_id=user_id,
+                allowed_extensions={".pdf", ".doc", ".docx"},
+            )
+            new_file_id = file_record.id
+
+        try:
+            MinuteModel.update(
+                numero_ata=validated_data["numero_ata"],
+                data_reuniao=validated_data["data_reuniao"],
+                tipo_ata_id=validated_data["tipo_ata_id"],
+                pauta=validated_data["pauta"],
+                participantes=validated_data["participantes"],
+                minute_id=minute.id,
+                arquivo_id=new_file_id,
+            )
+        except Exception:
+            # o banco falhou: descarta o arquivo novo para não deixar órfão
+            if new_file_id:
+                FileStorageService.delete(new_file_id)
+            raise
+
+        # só depois de gravar com sucesso, apaga o arquivo antigo
+        if new_file_id and minute.arquivo_id:
+            try:
+                FileStorageService.delete(minute.arquivo_id)
+            except Exception:
+                pass  # um arquivo órfão é menos grave que falhar uma edição já salva
+
+        updated_minute = MinuteModel.get_by_id(minute.id)
+
+        if not updated_minute:
+            raise ValueError("Não foi possível atualizar a ata.")
+
+        return MinutesService.to_dict(updated_minute)
