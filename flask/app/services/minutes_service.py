@@ -18,6 +18,9 @@ class MinutesService:
         "conselho-etica": (
             "Ata do Conselho Ético"
         ),
+        "comite-reforma-tributaria": (
+            "Ata do Comitê da Reforma Tributária"  
+        ),
         "relacionamento-cooperado": (
             "Ata do Relacionamento ao Cooperado"
         ),
@@ -64,6 +67,7 @@ class MinutesService:
         if not type_name:
             raise ValueError("O tipo da ata informada é inválido.")
         
+        print(repr(type_name))
         minute_type = MinuteModel.get_type_by_name(type_name)
         
         if not minute_type:
