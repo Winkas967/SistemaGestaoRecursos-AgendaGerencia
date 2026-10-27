@@ -21,6 +21,9 @@ class MinutesService:
         "comite-reforma-tributaria": (
             "Ata do Comitê da Reforma Tributária"  
         ),
+        "comite-privacidade": (
+            "Ata do Comitê de Privacidade"
+        ),
         "relacionamento-cooperado": (
             "Ata do Relacionamento ao Cooperado"
         ),
